@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "extensionPath": "/runtime.js"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://([^/]+\\.)?haxball\\.com/.*game-min\\.js([?#].*)?$",
+      "resourceTypes": [
+        "script"
+      ]
+    }
+  }
+]

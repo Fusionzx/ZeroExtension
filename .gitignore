@@ -1,0 +1,19 @@
+# Tool directories
+.agents/
+.codex/
+.qwen/
+.reference/
+_metadata/
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# License
+/LICENSE
