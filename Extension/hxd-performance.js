@@ -28,6 +28,7 @@
         'show_indicator',
         'show_chat_indicator',
         'high_priority',
+        'hxd_background_frames',
         'canvas_boost_scale',
         'fps_limit',
         'resolution_scale',

@@ -40,6 +40,155 @@
         } catch (e2) {}
         return false;
     }
+
+    function installBackgroundFrameScheduler() {
+        if (window.__hxdBackgroundFrameScheduler) return;
+
+        var nativeRequestAnimationFrame = window.requestAnimationFrame && window.requestAnimationFrame.bind(window);
+        var nativeCancelAnimationFrame = window.cancelAnimationFrame && window.cancelAnimationFrame.bind(window);
+        if (!nativeRequestAnimationFrame || !nativeCancelAnimationFrame) return;
+
+        var callbacks = {};
+        var nextFrameId = 1;
+        var nativeHandle = null;
+        var timerHandle = null;
+        var lastFrameTime = 0;
+        var maxBackgroundFps = 240;
+
+        function readEnabled() {
+            try {
+                return window.localStorage.getItem('hxd_background_frames') !== 'false';
+            } catch (e) {
+                return true;
+            }
+        }
+
+        function writeEnabled(enabled) {
+            try {
+                window.localStorage.setItem('hxd_background_frames', enabled ? 'true' : 'false');
+            } catch (e) {}
+        }
+
+        function isBackground() {
+            return document.hidden || document.visibilityState === 'hidden';
+        }
+
+        function hasCallbacks() {
+            for (var id in callbacks) {
+                if (Object.prototype.hasOwnProperty.call(callbacks, id)) return true;
+            }
+            return false;
+        }
+
+        function getTargetFps() {
+            var fps = 0;
+            try {
+                fps = parseInt(window.localStorage.getItem('fps_limit'), 10) || 0;
+            } catch (e) {}
+            if (fps < 1) fps = maxBackgroundFps;
+            if (fps > maxBackgroundFps) fps = maxBackgroundFps;
+            return fps;
+        }
+
+        function clearNativeFrame() {
+            if (nativeHandle === null) return;
+            try {
+                nativeCancelAnimationFrame(nativeHandle);
+            } catch (e) {}
+            nativeHandle = null;
+        }
+
+        function clearTimerFrame() {
+            if (timerHandle === null) return;
+            window.clearTimeout(timerHandle);
+            timerHandle = null;
+        }
+
+        function scheduleFrame() {
+            if (!hasCallbacks()) return;
+
+            if (readEnabled() && isBackground()) {
+                clearNativeFrame();
+                if (timerHandle !== null) return;
+
+                var now = window.performance.now();
+                if (!lastFrameTime) lastFrameTime = now;
+                var interval = 1000 / getTargetFps();
+                var delay = Math.max(0, interval - (now - lastFrameTime));
+
+                timerHandle = window.setTimeout(function() {
+                    timerHandle = null;
+                    runFrame(window.performance.now());
+                }, delay);
+                return;
+            }
+
+            clearTimerFrame();
+            if (nativeHandle !== null) return;
+            nativeHandle = nativeRequestAnimationFrame(function(now) {
+                nativeHandle = null;
+                runFrame(now);
+            });
+        }
+
+        function runFrame(now) {
+            now = now || window.performance.now();
+            lastFrameTime = now;
+
+            var batch = callbacks;
+            callbacks = {};
+
+            for (var id in batch) {
+                if (!Object.prototype.hasOwnProperty.call(batch, id)) continue;
+                try {
+                    batch[id](now);
+                } catch (e) {
+                    window.setTimeout(function(err) {
+                        throw err;
+                    }.bind(null, e), 0);
+                }
+            }
+
+            scheduleFrame();
+        }
+
+        window.requestAnimationFrame = function(callback) {
+            if (typeof callback !== 'function') {
+                return nativeRequestAnimationFrame(callback);
+            }
+            var id = nextFrameId++;
+            callbacks[id] = callback;
+            scheduleFrame();
+            return id;
+        };
+
+        window.cancelAnimationFrame = function(id) {
+            delete callbacks[id];
+            if (!hasCallbacks()) {
+                clearNativeFrame();
+                clearTimerFrame();
+            }
+        };
+
+        document.addEventListener('visibilitychange', function() {
+            if (readEnabled() && isBackground()) {
+                clearNativeFrame();
+            } else {
+                clearTimerFrame();
+            }
+            scheduleFrame();
+        }, true);
+
+        window.__hxdBackgroundFrameScheduler = {
+            isEnabled: readEnabled,
+            setEnabled: function(enabled) {
+                writeEnabled(!!enabled);
+                if (!enabled) clearTimerFrame();
+                scheduleFrame();
+            },
+            getTargetFps: getTargetFps
+        };
+    }
     
     // Carrega o game script do servidor local
     function loadGameScript() {
@@ -127,6 +276,7 @@
     });
     
     // Carrega scripts
+    installBackgroundFrameScheduler();
     var gameLoaded = loadGameScript();
     var extLoaded = loadExtensions();
     

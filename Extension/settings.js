@@ -1815,6 +1815,12 @@
                     title: t('Alta prioridade'),
                     desc: t('Dá mais recursos do sistema para o jogo. Pode travar outros programas. Use com cuidado!'),
                     warning: true
+                },
+                {
+                    hook: 'hxd-background-frames',
+                    title: t('FPS em segundo plano'),
+                    desc: t('Mantem o loop de frames ativo quando voce usa Alt+Tab ou deixa a aba oculta.'),
+                    warning: true
                 }
             ];
 
@@ -1841,7 +1847,7 @@
                     key: 'system',
                     title: t('Sistema'),
                     desc: t('Opciones sensibles que impactan más fuerte en el rendimiento.'),
-                    hooks: ['tmisc-highpriority']
+                    hooks: ['hxd-background-frames', 'tmisc-highpriority']
                 }
             ];
 
@@ -1863,6 +1869,23 @@
             }
 
             var perfRowsByHook = {};
+
+            function isBackgroundFramesEnabled() {
+                try {
+                    return localStorage.getItem('hxd_background_frames') !== 'false';
+                } catch (e) {
+                    return true;
+                }
+            }
+
+            function setBackgroundFramesEnabled(enabled) {
+                try {
+                    localStorage.setItem('hxd_background_frames', enabled ? 'true' : 'false');
+                } catch (e) {}
+                if (window.__hxdBackgroundFrameScheduler && typeof window.__hxdBackgroundFrameScheduler.setEnabled === 'function') {
+                    window.__hxdBackgroundFrameScheduler.setEnabled(enabled);
+                }
+            }
 
             function createPerfOptionRow(opt) {
                 var row = doc.createElement('div');
@@ -1909,15 +1932,20 @@
                 row.appendChild(textDiv);
 
                 // Click handler - encontra e clica no toggle original
-                (function(hookName) {
+                (function(rowOpt) {
                     row.onclick = function() {
-                        var originalToggle = findPerfToggleEl(hookName);
+                        if (rowOpt.hook === 'hxd-background-frames') {
+                            setBackgroundFramesEnabled(!isBackgroundFramesEnabled());
+                            updatePerfCheckboxes();
+                            return;
+                        }
+                        var originalToggle = findPerfToggleEl(rowOpt.hook);
                         if (originalToggle) {
                             originalToggle.click();
                             setTimeout(updatePerfCheckboxes, 100);
                         }
                     };
-                })(opt.hook);
+                })(opt);
 
                 return row;
             }
@@ -2001,6 +2029,7 @@
                 'show_avatars', 'team_colors', 'show_names', 'simple_field',
                 'low_quality_circles', 'show_animations', 'show_indicator',
                 'show_chat_indicator', 'high_priority',
+                'hxd_background_frames',
                 'canvas_boost_scale',
                 'fps_limit', 'resolution_scale', 'viewmode',
                 'quality_mode', 'input_tolerance', 'hxd_input_tolerance_unlock', 'low_latency_canvas',
@@ -2154,8 +2183,13 @@
                     var perfRow = perfSection.querySelector('[data-perf-hook="' + opt.hook + '"]');
                     if (!perfRow) return;
 
+                    var backgroundFramesActive = null;
+                    if (opt.hook === 'hxd-background-frames') {
+                        backgroundFramesActive = isBackgroundFramesEnabled();
+                    }
+
                     var originalToggle = findPerfToggleEl(opt.hook);
-                    if (!originalToggle) return;
+                    if (!originalToggle && backgroundFramesActive === null) return;
 
                     var perfCheckbox = perfRow.querySelector('.perf-checkbox');
                     if (!perfCheckbox) return;
@@ -2163,7 +2197,7 @@
                     if (!svg) return;
 
                     // Verifica se o toggle está ativo - busca qualquer <i> dentro do toggle
-                    var icons = originalToggle.getElementsByTagName('i');
+                    var icons = originalToggle ? originalToggle.getElementsByTagName('i') : [];
                     var isToggleActive = false;
                     for (var i = 0; i < icons.length; i++) {
                         if (icons[i].classList.contains('icon-ok')) {
@@ -2174,7 +2208,7 @@
 
                     // Algumas opções são invertidas (mostrar = desativado para performance)
                     var isInverted = ['tmisc-showavatars', 'tmisc-shownames', 'tmisc-showanimations', 'tmisc-showindicator', 'tmisc-showchat'].indexOf(opt.hook) !== -1;
-                    var isActive = isInverted ? !isToggleActive : isToggleActive;
+                    var isActive = backgroundFramesActive !== null ? backgroundFramesActive : (isInverted ? !isToggleActive : isToggleActive);
 
                     if (isActive) {
                         perfCheckbox.style.background = '#22c55e';
