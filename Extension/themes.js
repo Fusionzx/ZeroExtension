@@ -539,6 +539,7 @@
     function applyTheme(theme) {
         if (!THEMES[theme]) return;
         
+        var themeChanged = (theme !== currentTheme);
         currentTheme = theme;
         saveTheme(theme);
         
@@ -575,16 +576,17 @@
             document.body.setAttribute('data-theme', theme);
         }
         
-        // Notifica outros módulos
-        window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: theme, colors: getThemeColors(theme) } }));
-        
-        // Notifica o parent frame (header)
-        if (window.parent && window.parent !== window) {
-            window.parent.postMessage({ type: 'themeChanged', theme: theme, colors: getThemeColors(theme) }, '*');
+        // Notifica e persiste apenas se o tema realmente mudou
+        if (themeChanged) {
+            window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: theme, colors: getThemeColors(theme) } }));
+            
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage({ type: 'themeChanged', theme: theme, colors: getThemeColors(theme) }, '*');
+            }
+            
+            Injector.log('Theme applied: ' + theme);
+            schedulePersistAppearance();
         }
-        
-        Injector.log('Theme applied: ' + theme);
-        schedulePersistAppearance();
     }
 
     // Obtém tema atual
@@ -636,6 +638,8 @@
         saveCustomThemeBase(customThemeBase);
         THEMES.custom.colors = buildCustomThemeColors(customThemeBase);
         applyTheme(currentTheme);
+        window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: currentTheme, colors: getThemeColors(currentTheme) } }));
+        schedulePersistAppearance();
         return getCustomThemeBase();
     }
 
@@ -651,6 +655,8 @@
         saveCustomThemeBase(customThemeBase);
         THEMES.custom.colors = buildCustomThemeColors(customThemeBase);
         applyTheme(currentTheme);
+        window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: currentTheme, colors: getThemeColors(currentTheme) } }));
+        schedulePersistAppearance();
         return getCustomThemeBase();
     }
 
