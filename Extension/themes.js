@@ -443,7 +443,10 @@
         if (!data || typeof data !== 'object') return;
         try {
             if (data.theme && THEMES[data.theme]) {
-                localStorage.setItem(STORAGE_KEY, String(data.theme));
+                var existing = localStorage.getItem(STORAGE_KEY);
+                if (!existing || !THEMES[existing]) {
+                    localStorage.setItem(STORAGE_KEY, String(data.theme));
+                }
             }
             if (Object.prototype.hasOwnProperty.call(data, 'customThemeBase') && data.customThemeBase && typeof data.customThemeBase === 'object') {
                 var ct = Object.assign({}, data.customThemeBase);
