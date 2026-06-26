@@ -662,6 +662,17 @@
                     if (e.data.theme) localStorage.setItem('haxball-theme', String(e.data.theme));
                 } catch (err) {}
                 applyThemeToMainFrame(e.data.theme, e.data.colors);
+                try {
+                    if (e.data.theme) {
+                        var ct = JSON.parse(localStorage.getItem('haxball-custom-theme-base') || '{}');
+                        shellAppearanceDiskCache = {
+                            version: 1,
+                            theme: e.data.theme,
+                            customThemeBase: ct || {},
+                            wallpaper: localStorage.getItem('haxball-app-wallpaper') || ''
+                        };
+                    }
+                } catch (eUpd) {}
             }
             if (e.data && e.data.type === 'hxd-appearance-sync-parent-ls' && e.data.payload) {
                 var p = e.data.payload;
