@@ -4,7 +4,6 @@
     var roomListObservers = [];
     var roomRefreshInterval = null;
     var roomRetryTimer = null;
-    var escFixInstalled = false;
     var refreshActionBarsScheduled = null;
     var localProfileMenuTarget = null;
     var localProfileMenuCleanup = null;
@@ -1093,27 +1092,6 @@
         }
     }
 
-    function installSafeEscapeHandler() {
-        if (escFixInstalled) return;
-        escFixInstalled = true;
-
-        document.addEventListener('keydown', function(e) {
-            if (e.key !== 'Escape') return;
-            if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
-            if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
-            if (!document.querySelector('.game-view')) return;
-            if (document.querySelector('.dialog')) return;
-
-            var menuBtn = document.querySelector('.game-view button[data-hook="menu"]');
-            if (!menuBtn) return;
-
-            e.preventDefault();
-            e.stopPropagation();
-            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-            menuBtn.click();
-        }, true);
-    }
-
     function installPlayerContextMenuGuard() {
         return;
     }
@@ -1134,7 +1112,6 @@
     });
 
     installHostAdminHotkeys();
-    installSafeEscapeHandler();
     installPlayerContextMenuGuard();
     observeRoomLists();
 
