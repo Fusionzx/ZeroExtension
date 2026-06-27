@@ -26,6 +26,7 @@
         'low_quality_circles',
         'show_animations',
         'show_indicator',
+        'player_indicator_name',
         'show_chat_indicator',
         'high_priority',
         'hxd_background_frames',

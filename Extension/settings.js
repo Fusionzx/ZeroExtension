@@ -1806,6 +1806,11 @@
                     desc: t('O círculo que mostra onde você está. Economiza um pouco de renderização.')
                 },
                 {
+                    hook: 'tmisc-indicator-name',
+                    title: t('Mostrar nome no indicador'),
+                    desc: t('Exibe seu nome junto ao círculo que indica sua posição em campo.')
+                },
+                {
                     hook: 'tmisc-showchat',
                     title: t('Desativar indicador de chat'),
                     desc: t('O balão que aparece quando alguém fala. Remove essa renderização extra.')
@@ -1835,7 +1840,7 @@
                     key: 'players',
                     title: t('Jugadores y HUD'),
                     desc: t('Reduce nombres, avatares, indicadores y animaciones visibles.'),
-                    hooks: ['tmisc-showavatars', 'tmisc-shownames', 'tmisc-showanimations', 'tmisc-showindicator', 'tmisc-showchat']
+                    hooks: ['tmisc-showavatars', 'tmisc-shownames', 'tmisc-showanimations', 'tmisc-showindicator', 'tmisc-indicator-name', 'tmisc-showchat']
                 },
                 {
                     key: 'quality',
@@ -2028,6 +2033,7 @@
                 'simple_lines', 'ultra_simple_lines', 'culling_enabled',
                 'show_avatars', 'team_colors', 'show_names', 'simple_field',
                 'low_quality_circles', 'show_animations', 'show_indicator',
+                'player_indicator_name',
                 'show_chat_indicator', 'high_priority',
                 'hxd_background_frames',
                 'canvas_boost_scale',
