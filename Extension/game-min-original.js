@@ -5210,11 +5210,11 @@
             this.c.globalAlpha = 1;
             if (m.j.Nm.v() && this._hxdIndName) {
                 this.c.save();
-                this.c.font = "bold 13px sans-serif";
+                this.c.font = "13px sans-serif";
                 this.c.fillStyle = "white";
                 this.c.textAlign = "center";
-                this.c.textBaseline = "bottom";
-                this.c.fillText(this._hxdIndName, a.x, a.y - 35);
+                this.c.textBaseline = "top";
+                this.c.fillText(this._hxdIndName, a.x, a.y + 30);
                 this.c.restore();
             }
         }
