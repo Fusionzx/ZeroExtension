@@ -790,8 +790,8 @@
         'Converte todas as linhas curvas em retas. Desenhar retas é muito mais rápido que arcos.': { pt: 'Converte todas as linhas curvas em retas. Desenhar retas é muito mais rápido que arcos.', es: 'Convierte todas las líneas curvas en rectas. Dibujar rectas es mucho más rápido que arcos.', en: 'Converts curved lines into straight lines. Straight lines render much faster than arcs.' },
         'Culling de viewport': { pt: 'Culling de viewport', es: 'Culling de viewport', en: 'Viewport culling' },
         'Não desenha objetos fora da tela. Em mapas grandes, evita renderizar o que você não vê.': { pt: 'Não desenha objetos fora da tela. Em mapas grandes, evita renderizar o que você não vê.', es: 'No dibuja objetos fuera de la pantalla. En mapas grandes, evita renderizar lo que no ves.', en: 'Skips drawing objects outside the screen. On large maps, it avoids rendering what you cannot see.' },
-        'Desativar avatares e cores': { pt: 'Desativar avatares e cores', es: 'Desactivar avatares y colores', en: 'Disable avatars and colors' },
-        'Remove avatares personalizados e usa cores padrão dos times. Menos texturas.': { pt: 'Remove avatares personalizados e usa cores padrão dos times. Menos texturas.', es: 'Elimina avatares personalizados y usa colores estándar de los equipos. Menos texturas.', en: 'Removes custom avatars and uses default team colors. Fewer textures to render.' },
+        'Desativar avatares': { pt: 'Desativar avatares', es: 'Desactivar avatares', en: 'Disable avatars' },
+        'Remove avatares personalizados e usa círculos sólidos nos outros jogadores. Mantém seu próprio avatar.': { pt: 'Remove avatares personalizados e usa círculos sólidos nos outros jogadores. Mantém seu próprio avatar.', es: 'Elimina los avatares personalizados y usa círculos sólidos en los demás jugadores. Mantiene tu propio avatar.', en: 'Removes custom avatars and uses solid circles for other players. Keeps your own avatar.' },
         'Desativar nomes': { pt: 'Desativar nomes', es: 'Desactivar nombres', en: 'Disable names' },
         'Esconde os nomes dos jogadores. Menos texto para renderizar.': { pt: 'Esconde os nomes dos jogadores. Menos texto para renderizar.', es: 'Oculta los nombres de los jugadores. Menos texto para renderizar.', en: 'Hides player names. Less text to render.' },
         'Campo simplificado': { pt: 'Campo simplificado', es: 'Campo simplificado', en: 'Simplified field' },
@@ -830,6 +830,7 @@
         'Player leave sound': { pt: 'Som ao sair jogador', es: 'Sonido al salir jugador', en: 'Player leave sound' },
         'Use low latency canvas': { pt: 'Usar canvas de baixa latência', es: 'Usar canvas de baja latencia', en: 'Use low latency canvas' },
         'Custom team colors enabled': { pt: 'Cores de time personalizadas ativadas', es: 'Colores de equipo personalizados activados', en: 'Custom team colors enabled' },
+        'Show player avatars': { pt: 'Mostrar avatares dos jogadores', es: 'Mostrar avatares de jugadores', en: 'Show player avatars' },
         'Qualidade:': { pt: 'Qualidade:', es: 'Calidad:', en: 'Quality:' },
         'HD': { pt: 'HD', es: 'HD', en: 'HD' },
 
@@ -1277,7 +1278,8 @@
             'tsound-join': 'Player join sound',
             'tsound-leave': 'Player leave sound',
             'tvideo-lowlatency': 'Use low latency canvas',
-            'tvideo-teamcol': 'Custom team colors enabled'
+            'tvideo-teamcol': 'Custom team colors enabled',
+            'tvideo-showavatars': 'Show player avatars'
         };
 
         for (var hook in hookTranslationKeys) {

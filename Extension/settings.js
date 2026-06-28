@@ -1767,8 +1767,8 @@
                 },
                 {
                     hook: 'tmisc-showavatars',
-                    title: t('Desativar avatares e cores'),
-                    desc: t('Remove avatares personalizados e usa cores padrão dos times. Menos texturas.')
+                    title: t('Desativar avatares'),
+                    desc: t('Remove avatares personalizados e usa círculos sólidos nos outros jogadores. Mantém seu próprio avatar.')
                 },
                 {
                     hook: 'tmisc-shownames',
