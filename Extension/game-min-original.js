@@ -5214,7 +5214,7 @@
                 this.c.fillStyle = "white";
                 this.c.textAlign = "center";
                 this.c.textBaseline = "top";
-                this.c.fillText(this._hxdIndName, a.x, a.y + 15);
+                this.c.fillText(this._hxdIndName, a.x, a.y + 17);
                 this.c.restore();
             }
         }
