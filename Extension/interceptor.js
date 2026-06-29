@@ -16,33 +16,6 @@ if (chrome.downloads && chrome.downloads.setShelfEnabled) {
     chrome.downloads.setShelfEnabled(false);
 }
 
-// Controle de abas - mantém apenas a aba do HaxBall
-var mainTabId = null;
-
-chrome.tabs.query({ url: ['*://www.haxball.com/*', '*://haxball.com/*'] }, function(tabs) {
-    if (tabs.length > 0) mainTabId = tabs[0].id;
-});
-
-chrome.tabs.onCreated.addListener(function(tab) {
-    if (mainTabId === null) {
-        chrome.tabs.query({ url: ['*://www.haxball.com/*', '*://haxball.com/*'] }, function(tabs) {
-            if (tabs.length > 0) mainTabId = tabs[0].id;
-        });
-    }
-    if (tab.id !== mainTabId) {
-        chrome.tabs.remove(tab.id);
-    }
-});
-
-chrome.windows.onCreated.addListener(function(win) {
-    chrome.tabs.query({ windowId: win.id }, function(tabs) {
-        var hasMain = tabs.some(function(t) { return t.id === mainTabId; });
-        if (!hasMain && win.type !== 'popup') {
-            chrome.windows.remove(win.id);
-        }
-    });
-});
-
 // Handler de mensagens do content script
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     // Abre link externo
