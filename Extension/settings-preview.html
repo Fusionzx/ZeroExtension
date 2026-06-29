@@ -3085,7 +3085,8 @@
     }
   }
 
-  function buildAvatarVisibilityPanel() {
+  function buildAvatarVisibilityPanel(regTab) {
+    regTab = regTab || 'misc';
     var block = $('div', 'avatar-vis-block');
     block.appendChild($('div', 'section-title section-title--split', t('misc_avatar_vis_sec')));
     block.appendChild($('p', 'group-lead', t('misc_avatar_vis_d')));
@@ -3323,10 +3324,10 @@
     list.appendChild(borderConfig);
     block.appendChild(list);
 
-    reg('misc', t('misc_avatar_vis_disabled'), 'avatar desactivar ocultar nadie imagen', disabledRow);
-    reg('misc', t('misc_avatar_vis_self'), 'avatar visibilidad solo privado imagen', selfRow);
-    reg('misc', t('misc_avatar_vis_all'), 'avatar visibilidad todos equipo rival imagen', allRow);
-    reg('misc', t('misc_avatar_team_border'), 'avatar diferencia equipo borde rojo azul imagen', borderRow);
+    reg(regTab, t('misc_avatar_vis_disabled'), 'avatar desactivar ocultar nadie imagen', disabledRow);
+    reg(regTab, t('misc_avatar_vis_self'), 'avatar visibilidad solo privado imagen', selfRow);
+    reg(regTab, t('misc_avatar_vis_all'), 'avatar visibilidad todos equipo rival imagen', allRow);
+    reg(regTab, t('misc_avatar_team_border'), 'avatar diferencia equipo borde rojo azul imagen', borderRow);
 
     return block;
   }
@@ -3604,9 +3605,11 @@
     });
   }
 
-  function buildAvatarPanel() {
+  function buildAvatarPanel(panelId, regTab) {
+    panelId = panelId || 'avatar-panel';
+    regTab = regTab || 'misc';
     var wrap = $('div', 'list-block');
-    wrap.id = 'avatar-panel';
+    wrap.id = panelId;
     wrap.appendChild($('div', 'section-title', t('misc_avatar_sec')));
     wrap.appendChild($('p', 'group-lead', t('misc_avatar_d')));
 
@@ -3708,7 +3711,7 @@
     actions.appendChild(fileInput);
     ul.appendChild(actions);
     wrap.appendChild(ul);
-    wrap.appendChild(buildAvatarVisibilityPanel());
+    wrap.appendChild(buildAvatarVisibilityPanel(regTab));
     syncAvatarPanelUi(previewRing, status);
     loadAvatarProfileFromServer(previewRing, status);
     return wrap;
@@ -6026,6 +6029,9 @@
       themesBlock.appendChild(lookThemesMount);
       p.appendChild(themesBlock);
       p.appendChild(buildCustomThemePanel());
+      var lookAvatarPanel = buildAvatarPanel('avatar-panel', 'look');
+      p.appendChild(lookAvatarPanel);
+      reg('look', t('misc_avatar_sec'), 'avatar foto imagem perfil pro visibilidade', lookAvatarPanel);
       p.appendChild(buildWallpaperPanel());
       themeGridEl.querySelectorAll('.theme-item').forEach(function (item) {
         var name = item.querySelector('strong').textContent;
@@ -6062,10 +6068,9 @@
         ]));
       }
       try {
-        if (!document.getElementById('avatar-panel')) {
-          p.appendChild(buildAvatarPanel());
-          reg('misc', t('misc_avatar_sec'), 'avatar foto subir imagem perfil pro', document.getElementById('avatar-panel'));
-        }
+        var miscAvatarPanel = buildAvatarPanel('avatar-panel-misc', 'misc');
+        p.appendChild(miscAvatarPanel);
+        reg('misc', t('misc_avatar_sec'), 'avatar foto subir imagem perfil pro', miscAvatarPanel);
       } catch (eAvatarPanel) {}
 
     }
