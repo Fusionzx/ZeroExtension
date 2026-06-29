@@ -1983,10 +1983,51 @@
     }
   }
 
+  function getLocalPreviewUser() {
+    var nick = 'Player';
+    try {
+      nick = localStorage.getItem('haxball_nick') || localStorage.getItem('ghost_nick') || localStorage.getItem('haxclient_my_nick') || nick;
+    } catch (eNick) {}
+    var stored = null;
+    try { stored = JSON.parse(localStorage.getItem('haxclient_user') || 'null'); } catch (eStored) {}
+    return Object.assign({}, stored || {}, {
+      logged_in: true,
+      nick: (stored && (stored.nick || stored.username)) || nick,
+      username: (stored && (stored.username || stored.nick)) || nick,
+      discord_id: (stored && stored.discord_id) || 'zero-local-test',
+      is_verified: true,
+      is_pro: true,
+      is_vip: true
+    });
+  }
+
+  function buildProfileFromUser(user) {
+    user = user || getLocalPreviewUser();
+    var nick = user.nick || user.username || 'Player';
+    var avatarUrl = '';
+    try { avatarUrl = localStorage.getItem('hxd_settings_preview_avatar') || ''; } catch (eAv) {}
+    if (!avatarUrl && user.discord_avatar) avatarUrl = user.discord_avatar;
+    return {
+      loggedIn: true,
+      nick: nick,
+      handle: user.username || user.discord_username || '',
+      avatarUrl: avatarUrl,
+      tier: user.is_pro ? 'PRO' : user.is_vip ? 'VIP' : 'NOVATO+',
+      online: true,
+      roomName: user.room_name || null,
+      playTimeMinutes: Number(user.play_time_minutes) || 0,
+      createdAt: user.created_at || null,
+      playStreakDays: Number(user.play_streak_days) || 0
+    };
+  }
+
   function renderPlayerProfileFromSync(profile) {
     if (!profile) return;
     var loginWall = document.getElementById('pp-login-wall');
     var main = document.getElementById('pp-main');
+    if (!profile.loggedIn) {
+      profile = buildProfileFromUser(getLocalPreviewUser());
+    }
     if (!profile.loggedIn) {
       loginWall.classList.remove('pp-hidden');
       main.classList.add('pp-hidden');
@@ -2098,27 +2139,7 @@
         return Promise.resolve(parentStatus);
       }
     } catch (eParentStatus) {}
-    return fetch(API_BASE + '/vip/status').then(function (r) { return r.json(); }).then(function (data) {
-      try {
-        if (data && (data.is_pro || data.is_vip)) {
-          localStorage.setItem('haxclient_pro_snapshot', JSON.stringify({
-            is_pro: !!data.is_pro,
-            is_vip: !!data.is_vip,
-            at: Date.now()
-          }));
-          try { window.parent.__proStatus = data; } catch (eSetParent) {}
-        } else {
-          localStorage.removeItem('haxclient_pro_snapshot');
-        }
-      } catch (eSnap) {}
-      return data;
-    }).catch(function () {
-      try {
-        var snap = JSON.parse(localStorage.getItem('haxclient_pro_snapshot') || 'null');
-        if (snap && (snap.is_pro || snap.is_vip)) return { is_pro: !!snap.is_pro, is_vip: !!snap.is_vip };
-      } catch (e) {}
-      return { is_pro: false, is_vip: false };
-    });
+    return Promise.resolve({ is_pro: true, is_vip: true, allpro: true, expires_at: null });
   }
 
   function loadProSettings() {
@@ -2139,7 +2160,9 @@
 
   function loadProUser() {
     if (!isLive) return Promise.resolve({ nick: 'GZ', is_verified: true });
-    return fetch(API_BASE + '/user').then(function (r) { return r.json(); }).catch(function () { return { nick: 'Player' }; });
+    return fetch(API_BASE + '/user').then(function (r) { return r.json(); }).then(function (u) {
+      return u && u.logged_in ? u : getLocalPreviewUser();
+    }).catch(function () { return getLocalPreviewUser(); });
   }
 
   function loadProPanel() {

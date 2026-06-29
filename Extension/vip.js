@@ -122,6 +122,29 @@
         return o;
     }
 
+    function getLocalUser() {
+        var nick = 'Player';
+        try {
+            nick = localStorage.getItem('haxball_nick') ||
+                localStorage.getItem('ghost_nick') ||
+                localStorage.getItem('haxclient_my_nick') ||
+                nick;
+        } catch (eNick) {}
+        var id = 'zero-local-test';
+        try {
+            if (window.__haxDiscordId) id = String(window.__haxDiscordId);
+        } catch (eId) {}
+        return {
+            logged_in: true,
+            nick: nick,
+            username: nick,
+            discord_id: id,
+            is_verified: true,
+            is_pro: true,
+            is_vip: true
+        };
+    }
+
     function loadProSettings() {
         return fetch(API_BASE + '/vip/settings').then(function(r) { return r.json(); }).then(function(data) {
             var cached = window.__proSettings;
@@ -210,12 +233,6 @@
     function renderProIntoInpanel(iframeDoc, proWrap) {
         var content = proWrap && proWrap.querySelector('#pro-inpanel-content');
         if (!content || !iframeDoc) return;
-        if (window.__hxdIsAnonymousMode && window.__hxdIsAnonymousMode()) {
-            if (typeof window.showToast === 'function') {
-                window.showToast(t('Anonymous mode block pro'), 'info', 2800);
-            }
-            return;
-        }
         proInpanelContext = { iframeDoc: iframeDoc, proWrap: proWrap };
         content.innerHTML = '';
         var popup = iframeDoc.createElement('div');
@@ -308,12 +325,6 @@
     }
 
     function showProPopup() {
-        if (window.__hxdIsAnonymousMode && window.__hxdIsAnonymousMode()) {
-            if (typeof window.showToast === 'function') {
-                window.showToast(t('Anonymous mode block pro'), 'info', 2800);
-            }
-            return;
-        }
         clearProInpanelContext();
         closePopup();
         var overlay = document.createElement('div');
@@ -455,8 +466,12 @@
         renderProPopupLoading(popup, 'Cargando personalización...');
         loadProSettings().then(function(settings) {
             fetch(API_BASE + '/user').then(function(r) { return r.json(); }).then(function(u) {
+                if (!u || !u.logged_in) u = getLocalUser();
                 renderProUI(popup, status, settings, u.nick || 'Player', u);
-            }).catch(function() { renderProUI(popup, status, settings, 'Player', null); });
+            }).catch(function() {
+                var u = getLocalUser();
+                renderProUI(popup, status, settings, u.nick || 'Player', u);
+            });
         });
     }
 
@@ -1248,7 +1263,11 @@
     function init() {
         if (!Injector.isGameFrame()) return;
         applyProSnapshotFromStorage();
+        var localUser = getLocalUser();
+        window.__myNick = localUser.nick;
+        try { localStorage.setItem('haxclient_my_nick', localUser.nick); } catch(eLocalNick) {}
         fetch(API_BASE + '/user').then(function(r) { return r.json(); }).then(function(data) {
+            if (!data || !data.logged_in) data = localUser;
             if (data.nick) {
                 window.__myNick = data.nick;
                 try { localStorage.setItem('haxclient_my_nick', data.nick); } catch(e) {}

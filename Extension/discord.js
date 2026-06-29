@@ -86,12 +86,6 @@
 
     function applyUserStatus(data) {
         if (!data || !data.logged_in) data = getLocalTestUser();
-        if (data.discord_id) {
-            try {
-                localStorage.removeItem('hxd_anonymous_mode');
-                localStorage.removeItem('ghost_mode');
-            } catch (eAnonClear) {}
-        }
         discordNick = data.nick || data.username || 'Zero';
         discordUsername = data.username || discordNick;
         discordId = data.discord_id || 'zero-local-test';

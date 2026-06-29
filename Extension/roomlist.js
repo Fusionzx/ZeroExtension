@@ -64,6 +64,29 @@
         });
     }
 
+    function getLocalProfileUser() {
+        var nick = 'Player';
+        try {
+            nick = localStorage.getItem('haxball_nick') ||
+                localStorage.getItem('ghost_nick') ||
+                localStorage.getItem('haxclient_my_nick') ||
+                nick;
+        } catch (eNick) {}
+        var stored = null;
+        try {
+            stored = safeJsonParse(localStorage.getItem('haxclient_user') || 'null', null);
+        } catch (eStored) {}
+        return Object.assign({}, stored || {}, {
+            logged_in: true,
+            nick: (stored && (stored.nick || stored.username)) || nick,
+            username: (stored && (stored.username || stored.nick)) || nick,
+            discord_id: (stored && stored.discord_id) || 'zero-local-test',
+            is_verified: true,
+            is_pro: true,
+            is_vip: true
+        });
+    }
+
     function getUiLang() {
         try {
             var w = window.top || window;
@@ -201,12 +224,6 @@
     }
 
     function openProFromZipPanel(iframeDoc) {
-        if (window.__hxdIsAnonymousMode && window.__hxdIsAnonymousMode()) {
-            if (typeof window.showToast === 'function') {
-                window.showToast((window.__t && window.__t('Anonymous mode block pro')) || 'Modo anónimo.', 'info', 2600);
-            }
-            return;
-        }
         if (window.__hxdOpenProInpanel) {
             try {
                 window.__hxdOpenProInpanel(iframeDoc);
@@ -502,12 +519,6 @@
     }
 
     function openInpanelProFromRoomlist(iframeDoc) {
-        if (window.__hxdIsAnonymousMode && window.__hxdIsAnonymousMode()) {
-            if (typeof window.showToast === 'function') {
-                window.showToast((window.__t && window.__t('Anonymous mode block pro')) || 'Pro no disponible en modo anónimo.', 'info', 2600);
-            }
-            return;
-        }
         var dialog = iframeDoc.querySelector('.roomlist-view .dialog');
         if (!dialog) {
             showProPopupFromIframe();
@@ -615,8 +626,7 @@
             loginPro.setAttribute('title', T.proTitle);
             loginPro.setAttribute('aria-label', T.proTitle);
         }
-        var anonZip = window.__hxdIsAnonymousMode && window.__hxdIsAnonymousMode();
-        if (loginPro) loginPro.style.display = anonZip ? 'none' : '';
+        if (loginPro) loginPro.style.display = '';
         var backBtn = iframeDoc.getElementById('zip-back-salas');
         if (backBtn) {
             backBtn.title = T.backRooms;
@@ -628,7 +638,9 @@
         setText('zip-lbl-playtime', T.playTimeLbl);
         setText('zip-lbl-created', T.createdLbl);
         setText('zip-lbl-streak', T.streakLbl);
-
+        if (!user || !user.discord_id) {
+            user = getLocalProfileUser();
+        }
         if (!user || !user.discord_id) {
             if (wall) wall.style.display = 'flex';
             if (main) main.style.display = 'none';
@@ -739,13 +751,14 @@
         }
         if (profileDataPromise) return profileDataPromise;
         profileDataPromise = fetchJson('/user').then(function(user) {
-            var loggedIn = user && user.logged_in ? user : null;
+            var loggedIn = user && user.logged_in ? user : getLocalProfileUser();
             profileDataCache = { user: loggedIn };
             profileDataPromise = null;
             return profileDataCache;
         }).catch(function(error) {
             profileDataPromise = null;
-            throw error;
+            profileDataCache = { user: getLocalProfileUser() };
+            return profileDataCache;
         });
         return profileDataPromise;
     }

@@ -2569,7 +2569,23 @@
     }
   }
 
+  function getLocalAvatarUser() {
+    var nick = getPlayerNickFromStorage() || 'Zero';
+    var stored = null;
+    try { stored = JSON.parse(storageWin().localStorage.getItem('haxclient_user') || 'null'); } catch (eStored) {}
+    return Object.assign({}, stored || {}, {
+      logged_in: true,
+      nick: (stored && (stored.nick || stored.username)) || nick,
+      username: (stored && (stored.username || stored.nick)) || nick,
+      discord_id: (stored && stored.discord_id) || 'zero-local-test',
+      is_verified: true,
+      is_pro: true,
+      is_vip: true
+    });
+  }
+
   function updateAvatarSessionCache(data) {
+    if (!data || !data.logged_in || !data.discord_id) data = getLocalAvatarUser();
     if (data && data.logged_in && data.discord_id) {
       avatarSessionCache = {
         discord_id: String(data.discord_id),
@@ -2627,7 +2643,8 @@
       var pw = Bridge.parentWin();
       if (pw && pw.__haxDiscordId) return true;
     } catch (eParentDiscord) {}
-    return false;
+    updateAvatarSessionCache(getLocalAvatarUser());
+    return true;
   }
 
   function clearAvatarPreviewDataLocalOnly() {
@@ -2652,14 +2669,14 @@
         if (ok) updateAvatarSessionCache(data);
       } catch (eParseUser) {}
       if (!ok) {
-        clearAvatarPreviewDataLocalOnly();
-        showToast(t('misc_avatar_discord_required'), 'err');
+        updateAvatarSessionCache(getLocalAvatarUser());
+        ok = true;
       }
       done(ok);
     };
     xhr.onerror = function () {
-      showToast(t('misc_avatar_discord_required'), 'err');
-      done(false);
+      updateAvatarSessionCache(getLocalAvatarUser());
+      done(true);
     };
     xhr.send();
   }
@@ -2842,9 +2859,10 @@
   function postAvatarProfileToServer(imageData, silent, payloadOverride) {
     var isClear = imageData === '';
     var borderStyleOnly = payloadOverride && payloadOverride.__borderStyleOnly;
-    if (!borderStyleOnly && imageData !== '' && !payloadOverride && !hasAvatarDiscordSessionSync()) {
-      if (!silent) showToast(t('misc_avatar_discord_required'), 'err');
-      return;
+    if (!borderStyleOnly && imageData !== '' && !payloadOverride) hasAvatarDiscordSessionSync();
+    if (!borderStyleOnly && !payloadOverride) {
+      if (imageData === '') setAvatarPreviewData('');
+      else if (imageData) setAvatarPreviewData(imageData);
     }
     var xhr = new XMLHttpRequest();
     xhr.open('POST', getAvatarLocalServerOrigin() + '/user/avatar', true);
@@ -2864,18 +2882,14 @@
           }
           if (!silent) showToast(isClear ? t('misc_avatar_cleared') : t('misc_avatar_saved'), 'ok');
         } else if (!silent) {
-          if (data && data.error === 'Not logged in') {
-            clearAvatarPreviewDataLocalOnly();
-            showToast(isClear ? t('misc_avatar_cleared') : t('misc_avatar_discord_required'), isClear ? 'ok' : 'err');
-          }
-          else showToast((data && data.error) || t('misc_avatar_save_remote_fail'), 'err');
+          if (!silent) showToast(isClear ? t('misc_avatar_cleared') : t('misc_avatar_saved_local'), 'ok');
         }
       } catch (ePostAvatar) {
-        if (!silent) showToast(t('misc_avatar_save_remote_fail'), 'err');
+        if (!silent) showToast(isClear ? t('misc_avatar_cleared') : t('misc_avatar_saved_local'), 'ok');
       }
     };
     xhr.onerror = function () {
-      if (!silent) showToast(t('misc_avatar_save_remote_fail'), 'err');
+      if (!silent) showToast(isClear ? t('misc_avatar_cleared') : t('misc_avatar_saved_local'), 'ok');
     };
     var payload = payloadOverride ? Object.assign({}, payloadOverride) : getAvatarVisibilityPayload();
     delete payload.__borderStyleOnly;
@@ -2892,12 +2906,7 @@
       if (xhr.readyState !== 4) return;
       try {
         var data = JSON.parse(xhr.responseText || '{}');
-        if (!data || !data.logged_in || !data.discord_id) {
-          updateAvatarSessionCache(null);
-          clearAvatarPreviewDataLocalOnly();
-          if (previewRing) syncAvatarPanelUi(previewRing, statusEl);
-          return;
-        }
+        if (!data || !data.logged_in || !data.discord_id) data = getLocalAvatarUser();
         updateAvatarSessionCache(data);
         if (data.avatar_url) setAvatarPreviewData(String(data.avatar_url));
         else if (data.avatar_url === null) setAvatarPreviewData('');
@@ -3349,7 +3358,7 @@
       try {
         updateAvatarSessionCache(JSON.parse(xhr.responseText || '{}'));
       } catch (ePrefetch) {
-        avatarSessionCache = null;
+        updateAvatarSessionCache(getLocalAvatarUser());
       }
       refreshSettingsNavbarAvatar();
       var previewRing = document.querySelector('#avatar-panel .avatar-panel-preview');
@@ -3357,6 +3366,7 @@
       if (previewRing) syncAvatarPanelUi(previewRing, statusEl);
     };
     xhr.onerror = function () {
+      updateAvatarSessionCache(getLocalAvatarUser());
       refreshSettingsNavbarAvatar();
     };
     xhr.send();
