@@ -6666,11 +6666,7 @@
                 fpsLimit = parseInt(window.localStorage.getItem("fps_limit"), 10) || 0;
             } catch (e) {}
             var n = Number(a) || 0;
-            var display = n;
-            if (fpsLimit < 1 && gameView && !gameView.hidden) {
-                display = n + 425;
-            }
-            this.bp.textContent = "Fps: " + display;
+            this.bp.textContent = "Fps: " + n;
         }
     }
     class Hb {
