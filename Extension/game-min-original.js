@@ -5104,7 +5104,7 @@
         try {
             storedUrl = localStorage.getItem('hxd_settings_preview_avatar') || null;
         } catch (e) {}
-        if (storedUrl && (window.__haxDiscordId || window.__hxdAvatarDiscordAllowed === true)) return storedUrl;
+        if (storedUrl) return storedUrl;
         if (window.__hxdMyAvatarUrl) return window.__hxdMyAvatarUrl;
         if (!window.__haxDiscordId && window.__hxdAvatarDiscordAllowed !== true) return null;
         return storedUrl;

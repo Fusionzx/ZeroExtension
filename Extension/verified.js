@@ -345,6 +345,8 @@
         var id = parseInt(data.player_id, 10);
         if (!isNaN(id)) {
             window.__myLocalPlayerId = id;
+            syncAvatarRuntimeForLocalPlayer();
+            publishAvatarProfilesToRuntime();
         }
     });
 
@@ -2243,7 +2245,7 @@
         startNicknameInputWatcher();
         window.addEventListener('hxd-avatar-profile-changed', applyProfilesNow);
         window.addEventListener('storage', function() {
-            resyncRoomAvatarProfiles(false);
+            applyProfilesNow();
         });
         window.addEventListener('hax-verified-toggle-changed', function() {
             if (isVerifiedEnabled()) {
