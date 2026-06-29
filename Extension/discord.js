@@ -65,35 +65,74 @@
     }
 
     // Busca status do usuário no servidor local
+    function getLocalTestUser() {
+        var nick = 'Zero';
+        try {
+            nick = localStorage.getItem('haxball_nick') ||
+                localStorage.getItem('player_name') ||
+                localStorage.getItem('ghost_nick') ||
+                nick;
+        } catch (eNick) {}
+        return {
+            logged_in: true,
+            nick: nick,
+            username: nick,
+            discord_id: 'zero-local-test',
+            is_verified: true,
+            is_pro: true,
+            is_vip: true
+        };
+    }
+
+    function applyUserStatus(data) {
+        if (!data || !data.logged_in) data = getLocalTestUser();
+        if (data.discord_id) {
+            try {
+                localStorage.removeItem('hxd_anonymous_mode');
+                localStorage.removeItem('ghost_mode');
+            } catch (eAnonClear) {}
+        }
+        discordNick = data.nick || data.username || 'Zero';
+        discordUsername = data.username || discordNick;
+        discordId = data.discord_id || 'zero-local-test';
+        isVerified = data.is_verified !== false;
+        window.__haxDiscordId = discordId;
+        window.__hxdAvatarDiscordAllowed = true;
+        try {
+            localStorage.setItem('haxclient_user', JSON.stringify(Object.assign({}, data, {
+                logged_in: true,
+                nick: discordNick,
+                username: discordUsername,
+                discord_id: discordId,
+                is_verified: isVerified
+            })));
+        } catch (eStoreUser) {}
+        return Object.assign({}, data, {
+            logged_in: true,
+            nick: discordNick,
+            username: discordUsername,
+            discord_id: discordId,
+            is_verified: isVerified
+        });
+    }
+
     function fetchUserStatus() {
         return new Promise(function(resolve) {
             var xhr = new XMLHttpRequest();
             xhr.open('GET', LOCAL_SERVER + '/user', true);
             xhr.timeout = 8000;
-            xhr.ontimeout = function() { resolve({ logged_in: false }); };
+            xhr.ontimeout = function() { resolve(applyUserStatus(getLocalTestUser())); };
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4) {
                     try {
                         var data = JSON.parse(xhr.responseText);
-                        if (data.logged_in) {
-                            if (data.discord_id) {
-                                try {
-                                    localStorage.removeItem('hxd_anonymous_mode');
-                                    localStorage.removeItem('ghost_mode');
-                                } catch (eAnonClear) {}
-                            }
-                            discordNick = data.nick;
-                            discordUsername = data.username;
-                            discordId = data.discord_id;
-                            isVerified = data.is_verified;
-                        }
-                        resolve(data);
+                        resolve(applyUserStatus(data));
                     } catch (e) {
-                        resolve({ logged_in: false });
+                        resolve(applyUserStatus(getLocalTestUser()));
                     }
                 }
             };
-            xhr.onerror = function() { resolve({ logged_in: false }); };
+            xhr.onerror = function() { resolve(applyUserStatus(getLocalTestUser())); };
             xhr.send();
         });
     }

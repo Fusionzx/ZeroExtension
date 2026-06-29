@@ -5,8 +5,10 @@
     if (Injector.isMainFrame() && !Injector.isGameDocument()) return;
 
     var API_BASE = 'http://127.0.0.1:5483';
-    var proStatus = null;
+    var proStatus = { is_pro: true, is_vip: true, allpro: true };
     var proSettings = null;
+    window.__proStatus = proStatus;
+    window.__vipStatus = { is_vip: true };
 
     function t(key) { return window.__t ? window.__t(key) : key; }
 
@@ -70,60 +72,43 @@
 
     function applyProSnapshotFromStorage() {
         try {
-            var snap = JSON.parse(localStorage.getItem('haxclient_pro_snapshot') || 'null');
-            if (snap && (snap.is_pro || snap.is_vip)) {
-                proStatus = { is_pro: !!snap.is_pro, is_vip: !!snap.is_vip };
-                window.__proStatus = proStatus;
-                return true;
-            }
+            proStatus = { is_pro: true, is_vip: true, allpro: true };
+            window.__proStatus = proStatus;
+            window.__vipStatus = { is_vip: true };
+            localStorage.setItem(
+                'haxclient_pro_snapshot',
+                JSON.stringify({
+                    is_pro: true,
+                    is_vip: true,
+                    allpro: true,
+                    at: Date.now()
+                })
+            );
+            return true;
         } catch (e) {}
-        return false;
+        return true;
     }
 
     function loadProStatus() {
         return fetch(API_BASE + '/vip/status').then(function(r) { return r.json(); }).then(function(data) {
-            proStatus = data;
-            window.__proStatus = data;
-            window.__vipStatus = { is_vip: data.is_vip || data.is_pro };
-            try {
-                if (data.is_pro || data.is_vip) {
-                    localStorage.setItem(
-                        'haxclient_pro_snapshot',
-                        JSON.stringify({
-                            is_pro: !!data.is_pro,
-                            is_vip: !!data.is_vip,
-                            at: Date.now()
-                        })
-                    );
-                } else {
-                    localStorage.removeItem('haxclient_pro_snapshot');
-                    if (window.__hxdClearProCustomSoundsLocal) {
-                        try {
-                            window.__hxdClearProCustomSoundsLocal();
-                        } catch (eClr) {}
-                    }
-                }
-            } catch (eSnap) {
-                if (!(data.is_pro || data.is_vip) && window.__hxdClearProCustomSoundsLocal) {
-                    try {
-                        window.__hxdClearProCustomSoundsLocal();
-                    } catch (eClr0) {}
-                }
-            }
-            return data;
-        }).catch(function() {
-            if (applyProSnapshotFromStorage()) {
-                window.__vipStatus = { is_vip: !!(proStatus && proStatus.is_vip) };
-                return proStatus;
-            }
-            if (proStatus && (proStatus.is_pro || proStatus.is_vip)) {
-                window.__proStatus = proStatus;
-                window.__vipStatus = { is_vip: !!(proStatus.is_vip || proStatus.is_pro) };
-                return proStatus;
-            }
-            proStatus = { is_pro: false, is_vip: false };
+            proStatus = Object.assign({}, data || {}, { is_pro: true, is_vip: true, allpro: true });
             window.__proStatus = proStatus;
-            window.__vipStatus = { is_vip: false };
+            window.__vipStatus = { is_vip: true };
+            try {
+                localStorage.setItem(
+                    'haxclient_pro_snapshot',
+                    JSON.stringify({
+                        is_pro: true,
+                        is_vip: true,
+                        allpro: true,
+                        at: Date.now()
+                    })
+                );
+            } catch (eSnap) {
+            }
+            return proStatus;
+        }).catch(function() {
+            applyProSnapshotFromStorage();
             return proStatus;
         });
     }
@@ -1277,10 +1262,7 @@
         window.__hxdClearProInpanelContext = clearProInpanelContext;
         window.__proLoadStatus = loadProStatus;
         window.__proLoadSettings = loadProSettings;
-        window.__proIsPro = function() {
-            if (proStatus && (proStatus.is_pro || proStatus.is_vip)) return true;
-            return applyProSnapshotFromStorage();
-        };
+        window.__proIsPro = function() { return true; };
     }
 
     if (document.readyState === 'loading') {

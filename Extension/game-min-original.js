@@ -6202,7 +6202,7 @@
                     this.Kb.fillRect(c, -32, d + 4, 64),
                     c += d;
                 this.Kb.restore();
-                if (m.j.Km.v()) {
+                if (null != a && "" !== a) {
                     this.Kb.fillStyle = V.nc(this.mb.pd);
                     this.Kb.textAlign = "center";
                     this.Kb.textBaseline = "alphabetic";
