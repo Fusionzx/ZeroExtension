@@ -60,6 +60,7 @@
         "runtime.js",
         "game-min-original.js",
         "*.js",
+        "*.html",
         "icons/*"
       ],
       "matches": [
