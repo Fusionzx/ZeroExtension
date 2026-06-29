@@ -1704,7 +1704,7 @@
     <div class="nav-shell" id="nav-shell">
       <header class="navbar" id="navbar">
         <div class="nav-left">
-          <button type="button" class="nav-circle hidden" id="settings-back-btn" title="Volver a salas" aria-label="Volver a salas">
+          <button type="button" class="nav-circle" id="settings-back-btn" title="Volver a salas" aria-label="Volver a salas">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
           </button>
           <div class="nav-lang-wrap">
@@ -1937,6 +1937,29 @@
     return localStorage;
   }
 
+  function persistThemeSelection(id) {
+    var bridgeId = Bridge.themeToBridge(id);
+    var targets = [];
+    function addTarget(w) {
+      try {
+        if (w && w.localStorage && targets.indexOf(w.localStorage) === -1) targets.push(w.localStorage);
+      } catch (eAddTarget) {}
+    }
+    try { targets.push(themeStorage()); } catch (eThemeStore) {}
+    addTarget(window);
+    try { addTarget(window.parent); } catch (eParentStore) {}
+    try { addTarget(window.top); } catch (eTopStore) {}
+    try { addTarget(Bridge.parentWin()); } catch (eBridgeStore) {}
+    try { addTarget(themesHostWin()); } catch (eHostStore) {}
+    targets.forEach(function (ls) {
+      try { ls.setItem(THEME_STORAGE_KEY, bridgeId); } catch (eSetTheme) {}
+    });
+    try {
+      var pw = Bridge.parentWin();
+      if (pw) pw.dispatchEvent(new Event('storage'));
+    } catch (eThemeEvent) {}
+  }
+
   function themesHostWin() {
     var w = window;
     try {
@@ -2164,7 +2187,6 @@
   function applyTheme(id) {
     if (!THEMES[id]) id = 'dark';
     currentThemeId = id;
-    var bridgeId = Bridge.themeToBridge(id);
     if (!Bridge.applyThemeBridge(id)) {
       var colors = resolveThemeColors(id);
       applyThemeColorsToRoot(document.documentElement, colors);
@@ -2172,14 +2194,8 @@
         var pdoc = Bridge.parentDoc();
         if (pdoc && pdoc.documentElement) applyThemeColorsToRoot(pdoc.documentElement, colors);
       } catch (eParentTheme) {}
-      try {
-        themeStorage().setItem(THEME_STORAGE_KEY, bridgeId);
-        var pw = Bridge.parentWin();
-        if (pw) pw.dispatchEvent(new Event('storage'));
-      } catch (eThemeSave) {}
-    } else {
-      try { themeStorage().setItem(THEME_STORAGE_KEY, bridgeId); } catch (eThemeSave2) {}
     }
+    persistThemeSelection(id);
     if (id === CUSTOM_THEME_ID && customThemeData && customThemeData.base) {
       persistAppearanceSnapshot(id, customThemeData.base);
     } else {
@@ -3865,7 +3881,7 @@
     native: { es: 'Nativa', en: 'Native', pt: 'Nativa' },
     lang_es: { es: 'Español', en: 'Español', pt: 'Español' },
     lang_en: { es: 'English', en: 'English', pt: 'English' },
-    lang_pt: { es: 'Portugueus', en: 'Portugueus', pt: 'Portugueus' },
+    lang_pt: { es: 'Português', en: 'Português', pt: 'Português' },
     sec_perf_backup: { es: 'Preset HXZ0', en: 'HXZ0 preset', pt: 'Preset HXZ0' },
     perf_cat_map: { es: 'Mapa', en: 'Map', pt: 'Mapa' },
     perf_cat_map_d: { es: 'Líneas, curvas y dibujo del estadio.', en: 'Lines, curves and stadium rendering.', pt: 'Linhas, curvas e desenho do estádio.' },
@@ -6038,8 +6054,6 @@
         overrideBtn.onclick = function () { Bridge.clickParentHook('loc-ovr-btn'); };
         reg('misc', t('misc_override'), 'loc-ovr traducao manual', overrideBtn);
         p.appendChild(bl);
-        p.appendChild(buildAvatarPanel());
-        reg('misc', t('misc_avatar_sec'), 'avatar foto subir imagem perfil', document.getElementById('avatar-panel'));
       } catch (eMisc) {
         p.appendChild(listGroup('Misc', '', [
           toggle('misc', t('misc_verified'), 'Jogadores verificados em sala', true, 'hax_verified_disabled verified'),
@@ -6047,6 +6061,12 @@
           toggle('misc', t('misc_scoreboard_old'), t('misc_scoreboard_old_h'), false, 'hxd_scoreboard_old scoreboard marcador old vanilla')
         ]));
       }
+      try {
+        if (!document.getElementById('avatar-panel')) {
+          p.appendChild(buildAvatarPanel());
+          reg('misc', t('misc_avatar_sec'), 'avatar foto subir imagem perfil pro', document.getElementById('avatar-panel'));
+        }
+      } catch (eAvatarPanel) {}
 
     }
   };
@@ -6276,8 +6296,7 @@
     if (settingsOpen === false && !isOpenedFromRoomlistContext()) {
       settingsBackFromRoomlist = false;
     }
-    var show = settingsBackFromRoomlist || fromRoomlist || isOpenedFromRoomlistContext();
-    settingsBackBtn.classList.toggle('hidden', !show);
+    settingsBackBtn.classList.toggle('hidden', settingsOpen === false);
   }
 
   function refreshSettingsBackBtn() {
@@ -6349,12 +6368,14 @@
   function bootstrapSettingsPreview() {
     loadUserTheme();
     try {
-      var pwInit = themesHostWin();
-      if (pwInit && pwInit.HaxThemes && typeof pwInit.HaxThemes.getCurrent === 'function') {
-        currentThemeId = Bridge.themeFromBridge(pwInit.HaxThemes.getCurrent());
+      var resolved = resolveSavedThemeId(themeStorage().getItem(THEME_STORAGE_KEY));
+      if (resolved) {
+        currentThemeId = resolved;
       } else {
-        var resolved = resolveSavedThemeId(themeStorage().getItem(THEME_STORAGE_KEY));
-        if (resolved) currentThemeId = resolved;
+        var pwInit = themesHostWin();
+        if (pwInit && pwInit.HaxThemes && typeof pwInit.HaxThemes.getCurrent === 'function') {
+          currentThemeId = Bridge.themeFromBridge(pwInit.HaxThemes.getCurrent());
+        }
       }
     } catch (eThemeInit) {}
 
