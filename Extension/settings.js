@@ -9,6 +9,329 @@
         return window.__t ? window.__t(key) : key;
     }
 
+    var settingsPreviewHtmlCache = null;
+    var settingsPreviewFetchPending = null;
+
+    function markSettingsOpening(win) {
+        if (!win) return;
+        try {
+            win.__hxdSuppressSettingsEscUntil = Date.now() + 1500;
+            win.__hxdSettingsOpeningUntil = Date.now() + 1500;
+        } catch (eMarkOpen) {}
+    }
+
+    function isSettingsEscTarget(doc) {
+        if (!doc) return false;
+        return Boolean(
+            doc.querySelector('.dialog.settings-view') ||
+            doc.getElementById('hxd-settings-preview-root') ||
+            doc.querySelector('#hxd-settings-preview-frame')
+        );
+    }
+
+    function shouldSuppressSettingsEsc(doc) {
+        var win = doc && doc.defaultView ? doc.defaultView : window;
+        if (win.__hxdSuppressSettingsEscUntil && Date.now() < win.__hxdSuppressSettingsEscUntil) return true;
+        if (win.__hxdSettingsOpeningUntil && Date.now() < win.__hxdSettingsOpeningUntil) return true;
+        return isSettingsEscTarget(doc);
+    }
+
+    function handleSettingsEscKeydown(e, doc) {
+        if (!e || (e.key !== 'Escape' && e.keyCode !== 27)) return false;
+        if (!shouldSuppressSettingsEsc(doc)) return false;
+        var frame = doc.getElementById('hxd-settings-preview-frame');
+        if (frame && frame.contentDocument && frame.contentDocument.documentElement) {
+            if (frame.contentDocument.documentElement.classList.contains('kb-capturing')) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+                return true;
+            }
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        try { doc.defaultView.__hxdSuppressSettingsEscUntil = Date.now() + 900; } catch (eFlag) {}
+        if (doc.__hxdCloseSettingsPreviewAnimated && isSettingsOpenedFromRoomlist(doc)) {
+            doc.__hxdCloseSettingsPreviewAnimated();
+            return true;
+        }
+        var win = doc.defaultView;
+        if (win && typeof win.__hxdCloseSettingsPreview === 'function') {
+            win.__hxdCloseSettingsPreview();
+        } else if (win && typeof win.__hxdCloseSettingsPopup === 'function') {
+            win.__hxdCloseSettingsPopup();
+        } else {
+            var closeBtn = doc.querySelector('.dialog.settings-view button[data-hook="close"]');
+            if (closeBtn) closeBtn.click();
+        }
+        return true;
+    }
+
+    function installGlobalSettingsEscGuard(doc) {
+        if (!doc || doc.hxdGlobalSettingsEscGuardInstalled) return;
+        doc.hxdGlobalSettingsEscGuardInstalled = true;
+        doc.addEventListener('keydown', function (e) {
+            handleSettingsEscKeydown(e, doc);
+        }, true);
+        doc.addEventListener('keyup', function (e) {
+            if (!e || (e.key !== 'Escape' && e.keyCode !== 27)) return;
+            if (!doc.defaultView || Date.now() > (doc.defaultView.__hxdSuppressSettingsEscUntil || 0)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        }, true);
+        doc.addEventListener('pointerdown', function (e) {
+            var btn = e.target && e.target.closest ? e.target.closest('[data-hook="settings"]') : null;
+            if (btn) markSettingsOpening(doc.defaultView);
+        }, true);
+        doc.addEventListener('mousedown', function (e) {
+            var btn = e.target && e.target.closest ? e.target.closest('[data-hook="settings"]') : null;
+            if (btn) markSettingsOpening(doc.defaultView);
+        }, true);
+    }
+
+    function getSettingsPreviewUrl() {
+        try {
+            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
+                return chrome.runtime.getURL('settings-preview.html');
+            }
+        } catch (eUrl) {}
+        return null;
+    }
+
+    function fetchSettingsPreviewHtml(done) {
+        if (settingsPreviewHtmlCache) {
+            done(null, settingsPreviewHtmlCache);
+            return;
+        }
+        if (settingsPreviewFetchPending) {
+            settingsPreviewFetchPending.push(done);
+            return;
+        }
+        settingsPreviewFetchPending = [done];
+        var url = getSettingsPreviewUrl();
+        if (!url) {
+            settingsPreviewFetchPending.forEach(function (cb) { cb(new Error('no preview url')); });
+            settingsPreviewFetchPending = null;
+            return;
+        }
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.onload = function () {
+            var pending = settingsPreviewFetchPending || [];
+            settingsPreviewFetchPending = null;
+            if (xhr.status === 200 && xhr.responseText) {
+                settingsPreviewHtmlCache = xhr.responseText;
+                pending.forEach(function (cb) { cb(null, settingsPreviewHtmlCache); });
+            } else {
+                pending.forEach(function (cb) { cb(new Error('preview fetch failed')); });
+            }
+        };
+        xhr.onerror = function () {
+            var pending = settingsPreviewFetchPending || [];
+            settingsPreviewFetchPending = null;
+            pending.forEach(function (cb) { cb(new Error('preview xhr error')); });
+        };
+        xhr.send();
+    }
+
+    function getSettingsPreviewStylesCss() {
+        return '.dialog.settings-view.hxd-settings-preview-dialog{' +
+            'background:var(--theme-bg-primary,#141414)!important;border:none!important;box-shadow:none!important;padding:0!important;overflow:hidden!important;' +
+            'opacity:1;transition:opacity 0.16s ease-out;' +
+        '}' +
+        '.dialog.settings-view.hxd-settings-preview-dialog.hxd-settings-preview-enter,' +
+        '.dialog.settings-view.hxd-settings-preview-dialog.hxd-settings-preview-closing{' +
+            'opacity:0!important;pointer-events:none!important;' +
+        '}' +
+        '.dialog.settings-view.hxd-settings-preview-dialog > :not(#hxd-settings-preview-root){display:none!important;}' +
+        '.dialog.settings-view.hxd-settings-preview-dialog #hxd-settings-preview-root{' +
+            'display:block!important;background:var(--theme-bg-primary,#141414);' +
+        '}' +
+        '#hxd-settings-preview-frame{width:100%;height:100%;border:none;display:block;background:transparent;}';
+    }
+
+    function ensureSettingsPreviewStyles(doc) {
+        var style = doc.getElementById('hxd-settings-preview-styles');
+        var css = getSettingsPreviewStylesCss();
+        if (style) {
+            style.textContent = css;
+            return;
+        }
+        style = doc.createElement('style');
+        style.id = 'hxd-settings-preview-styles';
+        style.textContent = css;
+        doc.head.appendChild(style);
+    }
+
+    function applySettingsPreviewDialogSize(dialog) {
+        Injector.applyPreviewShellSize(dialog, 'hxd-settings-preview-dialog');
+    }
+
+    function clearSettingsPreviewDialogShell(dialog) {
+        if (!dialog) return;
+        dialog.classList.remove('hxd-settings-preview-dialog');
+        dialog.style.removeProperty('box-sizing');
+        dialog.style.removeProperty('position');
+        dialog.style.removeProperty('width');
+        dialog.style.removeProperty('min-width');
+        dialog.style.removeProperty('max-width');
+        dialog.style.removeProperty('min-height');
+        dialog.style.removeProperty('height');
+        dialog.style.removeProperty('max-height');
+        dialog.style.removeProperty('padding');
+        dialog.style.removeProperty('overflow');
+        dialog.style.removeProperty('border-radius');
+        delete dialog.dataset.hxdSettingsPreview;
+    }
+
+    function clearSettingsOpenedFromRoomlist(doc) {
+        if (!doc) doc = document;
+        try { delete doc.__hxdSettingsOpenedFromRoomlist; } catch (eD) {}
+        try { delete doc.__hxdSettingsOpenedFromRoomlistUntil; } catch (eDu) {}
+        try { delete doc.hxdSettingsRoomlistSession; } catch (eSess) {}
+        try { delete window.__hxdSettingsOpenedFromRoomlist; } catch (eW) {}
+        try { delete window.__hxdSettingsOpenedFromRoomlistUntil; } catch (eWu) {}
+        try { delete window.__hxdSettingsRoomlistSession; } catch (eWs) {}
+        try { delete doc.hxdSettingsPreviewContextSig; } catch (eS) {}
+    }
+
+    function markSettingsOpenedFromRoomlist(doc) {
+        if (!doc) doc = document;
+        var now = Date.now();
+        doc.__hxdSettingsOpenedFromRoomlist = true;
+        doc.__hxdSettingsOpenedFromRoomlistUntil = now + 60000;
+        doc.hxdSettingsRoomlistSession = true;
+        try {
+            window.__hxdSettingsOpenedFromRoomlist = true;
+            window.__hxdSettingsOpenedFromRoomlistUntil = now + 60000;
+            window.__hxdSettingsRoomlistSession = true;
+        } catch (eWin) {}
+        try { delete doc.hxdSettingsPreviewContextSig; } catch (eSig) {}
+    }
+
+    try { window.__hxdMarkSettingsOpenedFromRoomlist = markSettingsOpenedFromRoomlist; } catch (eExp) {}
+    try { window.__hxdClearSettingsOpenedFromRoomlist = clearSettingsOpenedFromRoomlist; } catch (eExp2) {}
+
+    function isSettingsOpenedFromRoomlist(doc) {
+        if (!doc) doc = document;
+        if (doc.hxdSettingsRoomlistSession || window.__hxdSettingsRoomlistSession) return true;
+        var until = doc.__hxdSettingsOpenedFromRoomlistUntil || window.__hxdSettingsOpenedFromRoomlistUntil || 0;
+        if (until && Date.now() < until) return true;
+        return !!(doc.__hxdSettingsOpenedFromRoomlist || window.__hxdSettingsOpenedFromRoomlist);
+    }
+
+    function pushSettingsPreviewContext(doc, force) {
+        if (!doc) doc = document;
+        var frame = doc.getElementById('hxd-settings-preview-frame');
+        if (!frame || !frame.contentWindow) return;
+        var settingsOpen = !!doc.querySelector('.dialog.settings-view');
+        var fromRoomlist = isSettingsOpenedFromRoomlist(doc);
+        if (settingsOpen && (doc.hxdSettingsRoomlistSession || window.__hxdSettingsRoomlistSession)) {
+            fromRoomlist = true;
+        }
+        var sig = fromRoomlist ? 'roomlist' : 'default';
+        if (!force && doc.hxdSettingsPreviewContextSig === sig) return;
+        doc.hxdSettingsPreviewContextSig = sig;
+        try {
+            frame.contentWindow.postMessage({
+                type: 'hxd-settings-sync',
+                openedFromRoomlist: fromRoomlist,
+                settingsOpen: settingsOpen
+            }, '*');
+        } catch (ePush) {}
+    }
+
+    function mountSettingsPreview(doc, dialog, done) {
+        if (!dialog) {
+            done(false);
+            return;
+        }
+        if (doc.getElementById('hxd-settings-preview-root')) {
+            done(true);
+            return;
+        }
+
+        ensureSettingsPreviewStyles(doc);
+        applySettingsPreviewDialogSize(dialog);
+
+        fetchSettingsPreviewHtml(function (err, html) {
+            if (err || !html) {
+                clearSettingsPreviewDialogShell(dialog);
+                done(false);
+                return;
+            }
+            if (!dialog.isConnected || doc.getElementById('hxd-settings-preview-root')) {
+                done(!!doc.getElementById('hxd-settings-preview-root'));
+                return;
+            }
+
+            var closeBtn = dialog.querySelector('button[data-hook="close"]');
+
+            var root = doc.createElement('div');
+            root.id = 'hxd-settings-preview-root';
+            root.style.cssText = 'position:relative;width:100%;height:100%;overflow:hidden;';
+
+            var iframe = doc.createElement('iframe');
+            iframe.id = 'hxd-settings-preview-frame';
+            iframe.setAttribute('title', t('Configuración'));
+            iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms');
+            iframe.onload = function () {
+                pushSettingsPreviewContext(doc, true);
+                setTimeout(function () { pushSettingsPreviewContext(doc, true); }, 80);
+                setTimeout(function () { pushSettingsPreviewContext(doc, true); }, 250);
+            };
+            iframe.srcdoc = html;
+
+            function closeSettingsPreviewLikeClick() {
+                var fromRoomlist = isSettingsOpenedFromRoomlist(doc);
+                if (fromRoomlist && typeof doc.__hxdCloseSettingsPreviewAnimated === 'function') {
+                    doc.__hxdCloseSettingsPreviewAnimated();
+                    return;
+                }
+                try { doc.defaultView.__hxdSuppressSettingsEscUntil = Date.now() + 900; } catch (eEscFlag) {}
+                clearSettingsOpenedFromRoomlist(doc);
+                if (closeBtn) closeBtn.click();
+                window.setTimeout(function () {
+                    try {
+                        var restore = doc.defaultView && doc.defaultView.__hxdRestoreGameFocusAfterSettingsClose;
+                        if (typeof restore === 'function') restore();
+                    } catch (eRestoreFocus) {}
+                }, 0);
+            }
+
+            if (doc.defaultView) doc.defaultView.__hxdCloseSettingsPreview = closeSettingsPreviewLikeClick;
+
+            if (!doc.hxdSettingsPreviewEscBound) {
+                doc.hxdSettingsPreviewEscBound = true;
+                doc.addEventListener('keydown', function (e) {
+                    handleSettingsEscKeydown(e, doc);
+                }, true);
+                doc.addEventListener('keyup', function (e) {
+                    if (!e || (e.key !== 'Escape' && e.keyCode !== 27)) return;
+                    if (!doc.defaultView || Date.now() > (doc.defaultView.__hxdSuppressSettingsEscUntil || 0)) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+                }, true);
+            }
+
+            root.appendChild(iframe);
+            dialog.appendChild(root);
+            dialog.dataset.hxdSettingsPreview = '1';
+            dialog.classList.add('hxd-settings-preview-enter');
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    dialog.classList.remove('hxd-settings-preview-enter');
+                });
+            });
+
+            Injector.log('Settings preview mounted');
+            done(true);
+        });
+    }
+
     function modifySettingsDialog(doc) {
         // O dialog settings-view aparece como .dialog.settings-view
         var dialog = doc.querySelector('.dialog.settings-view');
@@ -16,6 +339,7 @@
 
         // Já foi modificado
         if (doc.getElementById('settings-sidebar-panel')) return;
+        if (doc.getElementById('hxd-settings-preview-root')) return;
 
         // Cria tooltip customizado
         var tooltip = doc.getElementById('settings-sidebar-tooltip');
@@ -1282,9 +1606,26 @@
             multiAuthSection.setAttribute('data-hook', 'multiauth-section');
             multiAuthSection.style.display = 'none';
 
-            var MAX_AUTHS = 5;
             var STORAGE_KEY = 'haxdesk_multi_auths';
             var CURRENT_AUTH_KEY = 'player_auth_key';
+
+            function getMaxAuths() {
+                try {
+                    if (window.__proIsPro && window.__proIsPro()) return 5;
+                } catch (eMax) {}
+                try {
+                    if (typeof window.__hxdClientHasProAccess === 'function' && window.__hxdClientHasProAccess()) return 5;
+                } catch (eHx) {}
+                try {
+                    var snap = JSON.parse(localStorage.getItem('haxclient_pro_snapshot') || 'null');
+                    if (snap && (snap.is_pro || snap.is_vip)) return 5;
+                } catch (eSnap) {}
+                try {
+                    var st = window.__proStatus || window.__vipStatus;
+                    if (st && (st.is_pro || st.is_vip)) return 5;
+                } catch (eSt) {}
+                return 1;
+            }
 
             function getStoredAuths() {
                 try {
@@ -1306,6 +1647,11 @@
             function setCurrentAuth(authKey) {
                 if (authKey) {
                     localStorage.setItem(CURRENT_AUTH_KEY, authKey);
+                    try {
+                        if (typeof window.__haxSetPlayerAuth === 'function') {
+                            window.__haxSetPlayerAuth(authKey);
+                        }
+                    } catch (eSetAuth) {}
                 }
             }
 
@@ -1424,7 +1770,7 @@
                         headerNameEl.style.display = found && found.name ? 'block' : 'none';
                         copyCurrentBtn.style.display = '';
                     } else {
-                        headerPreview.textContent = t('Nenhuma auth ativa. Máximo de 5 auths.');
+                        headerPreview.textContent = t('Nenhuma auth ativa. Máximo de ') + getMaxAuths() + t(' auths.');
                         headerNameEl.textContent = '';
                         headerNameEl.style.display = 'none';
                         copyCurrentBtn.style.display = 'none';
@@ -1493,7 +1839,7 @@
                                     updateHeader();
                                     renderAuthList();
                                     if (window.showToast) {
-                                        window.showToast(t('Auth alterada! Feche e abra o app para aplicar.'), 'success');
+                                        window.showToast(t('Auth alterada!'), 'success');
                                     }
                                 };
                                 rowBtns.appendChild(useBtn);
@@ -1590,8 +1936,10 @@
                         if (window.showToast) window.showToast(t('Esta auth já está salva'), 'error');
                         return;
                     }
-                    if (authsList.length >= MAX_AUTHS) {
-                        if (window.showToast) window.showToast(t('Limite de 5 auths atingido'), 'error');
+                    if (authsList.length >= getMaxAuths()) {
+                        if (window.showToast) {
+                            window.showToast(getMaxAuths() > 1 ? t('Limite de 5 auths atingido') : t('Limite de 1 auth (Pro: até 5)'), 'error');
+                        }
                         return;
                     }
 
@@ -1629,8 +1977,10 @@
                         if (window.showToast) window.showToast(t('Auth atual já está salva'), 'info');
                         return;
                     }
-                    if (authsList.length >= MAX_AUTHS) {
-                        if (window.showToast) window.showToast(t('Limite de 5 auths atingido'), 'error');
+                    if (authsList.length >= getMaxAuths()) {
+                        if (window.showToast) {
+                            window.showToast(getMaxAuths() > 1 ? t('Limite de 5 auths atingido') : t('Limite de 1 auth (Pro: até 5)'), 'error');
+                        }
                         return;
                     }
 
@@ -1767,8 +2117,8 @@
                 },
                 {
                     hook: 'tmisc-showavatars',
-                    title: t('Desativar avatares'),
-                    desc: t('Remove avatares personalizados e usa círculos sólidos nos outros jogadores. Mantém seu próprio avatar.')
+                    title: t('Desativar avatares e cores'),
+                    desc: t('Remove avatares personalizados e usa cores padrão dos times. Menos texturas.')
                 },
                 {
                     hook: 'tmisc-shownames',
@@ -1806,11 +2156,6 @@
                     desc: t('O círculo que mostra onde você está. Economiza um pouco de renderização.')
                 },
                 {
-                    hook: 'tmisc-indicator-name',
-                    title: t('Mostrar nome no indicador'),
-                    desc: t('Exibe seu nome junto ao círculo que indica sua posição em campo.')
-                },
-                {
                     hook: 'tmisc-showchat',
                     title: t('Desativar indicador de chat'),
                     desc: t('O balão que aparece quando alguém fala. Remove essa renderização extra.')
@@ -1819,12 +2164,6 @@
                     hook: 'tmisc-highpriority',
                     title: t('Alta prioridade'),
                     desc: t('Dá mais recursos do sistema para o jogo. Pode travar outros programas. Use com cuidado!'),
-                    warning: true
-                },
-                {
-                    hook: 'hxd-background-frames',
-                    title: t('FPS em segundo plano'),
-                    desc: t('Mantem o loop de frames ativo quando voce usa Alt+Tab ou deixa a aba oculta.'),
                     warning: true
                 }
             ];
@@ -1840,7 +2179,7 @@
                     key: 'players',
                     title: t('Jugadores y HUD'),
                     desc: t('Reduce nombres, avatares, indicadores y animaciones visibles.'),
-                    hooks: ['tmisc-showavatars', 'tmisc-shownames', 'tmisc-showanimations', 'tmisc-showindicator', 'tmisc-indicator-name', 'tmisc-showchat']
+                    hooks: ['tmisc-showavatars', 'tmisc-shownames', 'tmisc-showanimations', 'tmisc-showindicator', 'tmisc-showchat']
                 },
                 {
                     key: 'quality',
@@ -1852,7 +2191,7 @@
                     key: 'system',
                     title: t('Sistema'),
                     desc: t('Opciones sensibles que impactan más fuerte en el rendimiento.'),
-                    hooks: ['hxd-background-frames', 'tmisc-highpriority']
+                    hooks: ['tmisc-highpriority']
                 }
             ];
 
@@ -1874,23 +2213,6 @@
             }
 
             var perfRowsByHook = {};
-
-            function isBackgroundFramesEnabled() {
-                try {
-                    return localStorage.getItem('hxd_background_frames') !== 'false';
-                } catch (e) {
-                    return true;
-                }
-            }
-
-            function setBackgroundFramesEnabled(enabled) {
-                try {
-                    localStorage.setItem('hxd_background_frames', enabled ? 'true' : 'false');
-                } catch (e) {}
-                if (window.__hxdBackgroundFrameScheduler && typeof window.__hxdBackgroundFrameScheduler.setEnabled === 'function') {
-                    window.__hxdBackgroundFrameScheduler.setEnabled(enabled);
-                }
-            }
 
             function createPerfOptionRow(opt) {
                 var row = doc.createElement('div');
@@ -1937,20 +2259,15 @@
                 row.appendChild(textDiv);
 
                 // Click handler - encontra e clica no toggle original
-                (function(rowOpt) {
+                (function(hookName) {
                     row.onclick = function() {
-                        if (rowOpt.hook === 'hxd-background-frames') {
-                            setBackgroundFramesEnabled(!isBackgroundFramesEnabled());
-                            updatePerfCheckboxes();
-                            return;
-                        }
-                        var originalToggle = findPerfToggleEl(rowOpt.hook);
+                        var originalToggle = findPerfToggleEl(hookName);
                         if (originalToggle) {
                             originalToggle.click();
                             setTimeout(updatePerfCheckboxes, 100);
                         }
                     };
-                })(opt);
+                })(opt.hook);
 
                 return row;
             }
@@ -2030,14 +2347,12 @@
 
             // Export/import: módulo global `hxd-performance.js` (manifest + runtime); fallback si no cargó.
             var PERF_STORAGE_KEYS_FALLBACK = [
-                'simple_lines', 'ultra_simple_lines', 'culling_enabled',
+                'simple_lines', 'ultra_simple_lines', 'culling_enabled', 'viewport_culling',
                 'show_avatars', 'team_colors', 'show_names', 'simple_field',
                 'low_quality_circles', 'show_animations', 'show_indicator',
-                'player_indicator_name',
-                'show_chat_indicator', 'high_priority',
-                'hxd_background_frames',
+                'show_player_indicator', 'show_chat_indicator', 'show_indicators', 'high_priority',
                 'canvas_boost_scale',
-                'fps_limit', 'resolution_scale', 'viewmode',
+                'fps_limit', 'resolution_scale', 'viewmode', 'view_mode',
                 'quality_mode', 'input_tolerance', 'hxd_input_tolerance_unlock', 'low_latency_canvas',
                 'stretched_resolution',
                 'hax_max_perf_mode', 'hax_max_perf_snapshot',
@@ -2049,7 +2364,20 @@
                 'hax_zoom_key_binds',
                 'hax_chat_command_shortcuts',
                 'hax_hide_match_status_text',
-                'hideui_settings'
+                'hideui_settings',
+                'player_keys',
+                'sound_main', 'sound_chat', 'sound_highlight', 'sound_crowd',
+                'sound_kick', 'sound_goal', 'sound_join', 'sound_leave', 'sound_volume',
+                'chat_height', 'chat_focus_height', 'chat_opacity', 'chat_bg_mode',
+                'image_smoothing', 'extrapolation',
+                'hxd_ui_scoreboard_opacity', 'hxd_ui_chatbox_opacity',
+                'haxball-theme',
+                'haxball-user-theme',
+                'haxball-user-themes',
+                'haxball_language',
+                'hax_verified_disabled',
+                'hax_zero_zoom',
+                'hax_glass_ui'
             ];
 
             function perfSnapshotKeyList() {
@@ -2101,6 +2429,11 @@
                             } catch (eS) {}
                         }
                     }
+                    try {
+                        if (typeof window.__hxdApplyRuntimeConfig === 'function') window.__hxdApplyRuntimeConfig(config);
+                        window.dispatchEvent(new Event('storage'));
+                        window.dispatchEvent(new Event('resize'));
+                    } catch (eLive) {}
                     return true;
                 } catch (e) {
                     return false;
@@ -2189,13 +2522,8 @@
                     var perfRow = perfSection.querySelector('[data-perf-hook="' + opt.hook + '"]');
                     if (!perfRow) return;
 
-                    var backgroundFramesActive = null;
-                    if (opt.hook === 'hxd-background-frames') {
-                        backgroundFramesActive = isBackgroundFramesEnabled();
-                    }
-
                     var originalToggle = findPerfToggleEl(opt.hook);
-                    if (!originalToggle && backgroundFramesActive === null) return;
+                    if (!originalToggle) return;
 
                     var perfCheckbox = perfRow.querySelector('.perf-checkbox');
                     if (!perfCheckbox) return;
@@ -2203,7 +2531,7 @@
                     if (!svg) return;
 
                     // Verifica se o toggle está ativo - busca qualquer <i> dentro do toggle
-                    var icons = originalToggle ? originalToggle.getElementsByTagName('i') : [];
+                    var icons = originalToggle.getElementsByTagName('i');
                     var isToggleActive = false;
                     for (var i = 0; i < icons.length; i++) {
                         if (icons[i].classList.contains('icon-ok')) {
@@ -2214,7 +2542,7 @@
 
                     // Algumas opções são invertidas (mostrar = desativado para performance)
                     var isInverted = ['tmisc-showavatars', 'tmisc-shownames', 'tmisc-showanimations', 'tmisc-showindicator', 'tmisc-showchat'].indexOf(opt.hook) !== -1;
-                    var isActive = backgroundFramesActive !== null ? backgroundFramesActive : (isInverted ? !isToggleActive : isToggleActive);
+                    var isActive = isInverted ? !isToggleActive : isToggleActive;
 
                     if (isActive) {
                         perfCheckbox.style.background = '#22c55e';
@@ -2749,54 +3077,6 @@
             } catch (eNz) {}
         }
 
-        function ensureHxdSpotifyPanelAnchorRow(doc, mountBlock) {
-            if (!mountBlock || mountBlock.querySelector('[data-hook="hxd-spotify-panel-anchor-row"]')) return;
-            var wrap = doc.createElement('div');
-            wrap.setAttribute('data-hook', 'hxd-spotify-panel-anchor-row');
-            wrap.style.marginTop = '10px';
-            wrap.style.paddingTop = '10px';
-            wrap.style.borderTop = '1px solid rgba(255,255,255,0.08)';
-            var lab = doc.createElement('div');
-            lab.textContent = 'Posición del panel Spotify';
-            lab.style.fontSize = '13px';
-            lab.style.fontWeight = '600';
-            lab.style.color = 'var(--theme-text-primary, #fff)';
-            lab.style.marginBottom = '8px';
-            var sel = doc.createElement('select');
-            sel.className = 'hxd-ui-select';
-            sel.setAttribute('aria-label', 'Posición del panel Spotify');
-            var optList = [
-                { v: 'tr', t: 'Arriba derecha' },
-                { v: 'tl', t: 'Arriba izquierda' },
-                { v: 'br', t: 'Abajo derecha' },
-                { v: 'bl', t: 'Abajo izquierda' },
-                { v: 'mr', t: 'Centro derecha' },
-                { v: 'ml', t: 'Centro izquierda' }
-            ];
-            var curA = 'tr';
-            try {
-                curA = localStorage.getItem('hxd_spotify_panel_anchor') || 'tr';
-                if (['tr', 'tl', 'br', 'bl', 'mr', 'ml'].indexOf(curA) < 0) curA = 'tr';
-            } catch (eCur) {}
-            for (var oi = 0; oi < optList.length; oi++) {
-                var opEl = doc.createElement('option');
-                opEl.value = optList[oi].v;
-                opEl.textContent = optList[oi].t;
-                if (optList[oi].v === curA) opEl.selected = true;
-                sel.appendChild(opEl);
-            }
-            sel.addEventListener('change', function() {
-                try {
-                    localStorage.setItem('hxd_spotify_panel_anchor', sel.value);
-                } catch (eSt) {}
-                try {
-                    window.dispatchEvent(new Event('hxd-spotify-panel-anchor-changed'));
-                } catch (eDisp) {}
-            });
-            wrap.appendChild(lab);
-            wrap.appendChild(sel);
-            mountBlock.appendChild(wrap);
-        }
 
         function ensureHaxClientMiscOptions() {
             var legacy = dialog.querySelector('[data-hook="verified-toggle-row"]');
@@ -2885,7 +3165,6 @@
 
             var hxdMiscExtraEarly = miscsec.querySelector('[data-hook="hax-client-miscsec-extra"]');
             if (hxdMiscExtraEarly) {
-                ensureHxdSpotifyPanelAnchorRow(doc, hxdMiscExtraEarly);
                 return;
             }
 
@@ -2987,11 +3266,72 @@
             );
             noMatchStatusRow.setAttribute('data-hook', 'hax-row-no-match-status');
 
+            var oldScoreboardRow = makeGameStyleToggleRow(
+                'Marcador clásico',
+                'Vuelve al marcador original de HaxBall.',
+                function() {
+                    try {
+                        return localStorage.getItem('hxd_scoreboard_old') === '1';
+                    } catch (eOld1) {
+                        return false;
+                    }
+                },
+                function() {
+                    try {
+                        if (localStorage.getItem('hxd_scoreboard_old') === '1') {
+                            localStorage.removeItem('hxd_scoreboard_old');
+                        } else {
+                            localStorage.setItem('hxd_scoreboard_old', '1');
+                        }
+                        window.dispatchEvent(new Event('storage'));
+                    } catch (eOld2) {}
+                }
+            );
+            oldScoreboardRow.setAttribute('data-hook', 'hax-row-scoreboard-old');
+
+            var buttonsLayoutRow = doc.createElement('div');
+            buttonsLayoutRow.className = 'hax-client-video-block hxd-misc-select-row';
+            buttonsLayoutRow.setAttribute('data-hook', 'hax-row-scoreboard-buttons');
+            var buttonsLayoutLabel = doc.createElement('span');
+            buttonsLayoutLabel.textContent = 'Botones en partida';
+            buttonsLayoutLabel.style.cssText = 'flex:1;min-width:0;';
+            var buttonsLayoutSelect = doc.createElement('select');
+            buttonsLayoutSelect.setAttribute('data-hook', 'hxd-scoreboard-buttons-select');
+            var optDefault = doc.createElement('option');
+            optDefault.value = 'default';
+            optDefault.textContent = 'HaxBall (arriba a la derecha)';
+            var optIntegrated = doc.createElement('option');
+            optIntegrated.value = 'integrated';
+            optIntegrated.textContent = 'Lados del marcador';
+            buttonsLayoutSelect.appendChild(optDefault);
+            buttonsLayoutSelect.appendChild(optIntegrated);
+            try {
+                buttonsLayoutSelect.value = localStorage.getItem('hxd_scoreboard_buttons_layout') === 'integrated'
+                    ? 'integrated'
+                    : 'default';
+            } catch (eBl1) {}
+            buttonsLayoutSelect.onchange = function() {
+                try {
+                    if (buttonsLayoutSelect.value === 'integrated') {
+                        localStorage.setItem('hxd_scoreboard_buttons_layout', 'integrated');
+                    } else {
+                        localStorage.removeItem('hxd_scoreboard_buttons_layout');
+                    }
+                    window.dispatchEvent(new Event('storage'));
+                } catch (eBl2) {}
+            };
+            buttonsLayoutRow.style.display = 'flex';
+            buttonsLayoutRow.style.alignItems = 'center';
+            buttonsLayoutRow.style.gap = '8px';
+            buttonsLayoutRow.appendChild(buttonsLayoutLabel);
+            buttonsLayoutRow.appendChild(buttonsLayoutSelect);
+
             block.appendChild(verifiedRow);
             block.appendChild(zoomRow);
             block.appendChild(anonymousRow);
             block.appendChild(noMatchStatusRow);
-            ensureHxdSpotifyPanelAnchorRow(doc, block);
+            block.appendChild(oldScoreboardRow);
+            block.appendChild(buttonsLayoutRow);
             miscsec.appendChild(block);
         }
 
@@ -3397,12 +3737,6 @@
 
             function assignKeyToSlot(all, slotIndex, code) {
                 if (!code) return;
-                var r;
-                for (r = 0; r < 9; r++) {
-                    all[r] = all[r].filter(function (c) {
-                        return c !== code;
-                    });
-                }
                 if (all[slotIndex].indexOf(code) === -1) {
                     all[slotIndex].push(code);
                 }
@@ -3761,24 +4095,96 @@
     function init() {
         if (!Injector.isGameFrame()) return;
 
+        installGlobalSettingsEscGuard(document);
+
         var checkInterval = null;
+        var settingsObserver = null;
+
+        ensureSettingsPreviewStyles(document);
+        fetchSettingsPreviewHtml(function () {});
+
+        var settingsWasOpen = false;
+        var settingsCloseTimer = null;
+
+        var checkSettingsDialog = function () {
+            var settingsDialog = document.querySelector('.dialog.settings-view');
+            var sidebar = document.getElementById('settings-sidebar-panel');
+            var previewRoot = document.getElementById('hxd-settings-preview-root');
+            var isOpen = !!settingsDialog;
+
+            if (isOpen) {
+                if (settingsCloseTimer) {
+                    clearTimeout(settingsCloseTimer);
+                    settingsCloseTimer = null;
+                }
+                settingsWasOpen = true;
+            } else if (settingsWasOpen) {
+                if (!settingsCloseTimer) {
+                    settingsCloseTimer = setTimeout(function () {
+                        settingsCloseTimer = null;
+                        if (!document.querySelector('.dialog.settings-view')) {
+                            settingsWasOpen = false;
+                            clearSettingsOpenedFromRoomlist(document);
+                            document.hxdRoomlistThemePending = true;
+                            if (typeof window.__hxdForceRoomlistPreviewSync === 'function') {
+                                window.__hxdForceRoomlistPreviewSync(document, true);
+                            }
+                            var frame = document.getElementById('hxd-settings-preview-frame');
+                            if (frame && frame.contentWindow) {
+                                try {
+                                    frame.contentWindow.postMessage({
+                                        type: 'hxd-settings-sync',
+                                        openedFromRoomlist: false,
+                                        settingsOpen: false
+                                    }, '*');
+                                } catch (eClosePush) {}
+                            }
+                        }
+                    }, 350);
+                }
+            }
+
+            if (settingsDialog && previewRoot) {
+                pushSettingsPreviewContext(document);
+            }
+            if (settingsDialog && !sidebar && !previewRoot) {
+                ensureSettingsPreviewStyles(document);
+                if (!settingsDialog.classList.contains('hxd-settings-preview-dialog')) {
+                    applySettingsPreviewDialogSize(settingsDialog);
+                }
+            }
+            if (!settingsDialog || sidebar || previewRoot) return;
+            if (settingsDialog.dataset.hxdPreviewMounting === '1') return;
+
+            settingsDialog.dataset.hxdPreviewMounting = '1';
+            mountSettingsPreview(document, settingsDialog, function (success) {
+                if (settingsDialog.isConnected) {
+                    delete settingsDialog.dataset.hxdPreviewMounting;
+                }
+                if (!success && settingsDialog.isConnected && !document.getElementById('settings-sidebar-panel')) {
+                    modifySettingsDialog(document);
+                }
+            });
+        };
 
         var startChecking = function () {
             if (checkInterval) return;
-            // Verifica a cada 300ms se o settings apareceu
-            checkInterval = setInterval(function () {
-                var settingsDialog = document.querySelector('.dialog.settings-view');
-                var sidebar = document.getElementById('settings-sidebar-panel');
-                if (settingsDialog && !sidebar) {
-                    modifySettingsDialog(document);
-                }
-            }, 300);
+            checkInterval = setInterval(checkSettingsDialog, 80);
+            if (!settingsObserver) {
+                settingsObserver = new MutationObserver(checkSettingsDialog);
+                settingsObserver.observe(document.documentElement, { childList: true, subtree: true });
+            }
+            checkSettingsDialog();
         };
 
         var stopChecking = function () {
             if (checkInterval) {
                 clearInterval(checkInterval);
                 checkInterval = null;
+            }
+            if (settingsObserver) {
+                settingsObserver.disconnect();
+                settingsObserver = null;
             }
             hideTooltip();
         };
