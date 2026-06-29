@@ -81,6 +81,8 @@
 
     /** Windows + Electron: una sola barra (nativa). Si electronAPI aún no existe, inferir por UA. */
     function hxdDetectWindowsNativeShell() {
+        // Chrome extension: sem Electron, sem titlebar
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id && !window.electronAPI) return true;
         var api = window.electronAPI;
         if (api) {
             if (api.shellUsesNativeFrame === true) return true;
@@ -733,7 +735,7 @@
         if (document.getElementById('custom-header') || document.getElementById('custom-titlebar')) return;
 
         var titlebar = null;
-        var tbLogoSrc = 'http://127.0.0.1:5483/app-assets/logoapp.ico';
+        var tbLogoSrc = chrome.runtime.getURL('icons/icon32.png');
         if (!shellUsesNativeFrame) {
             titlebar = document.createElement('div');
             titlebar.id = 'custom-titlebar';

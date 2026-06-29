@@ -1,13 +1,15 @@
-// Intercepta game-min.js e redireciona para runtime.js
-chrome.webRequest.onBeforeRequest.addListener(
-    function(details) {
-        if (details.url.includes('game-min.js')) {
-            return { redirectUrl: chrome.runtime.getURL('runtime.js') };
-        }
-    },
-    { urls: ['*://html5.haxball.com/*game-min.js*', '*://www.haxball.com/*game-min.js*'] },
-    ['blocking']
-);
+// MV2 usa webRequest blocking; MV3 já tem a regra declarativeNetRequest em rules.json
+if (chrome.runtime.getManifest().manifest_version === 2 && chrome.webRequest) {
+    chrome.webRequest.onBeforeRequest.addListener(
+        function(details) {
+            if (details.url.includes('game-min.js')) {
+                return { redirectUrl: chrome.runtime.getURL('runtime.js') };
+            }
+        },
+        { urls: ['*://html5.haxball.com/*game-min.js*', '*://www.haxball.com/*game-min.js*'] },
+        ['blocking']
+    );
+}
 
 // Desabilita a shelf de downloads (barra que aparece embaixo)
 if (chrome.downloads && chrome.downloads.setShelfEnabled) {

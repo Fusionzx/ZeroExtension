@@ -9,10 +9,13 @@
     }
 
     var BASE_URL = 'http://127.0.0.1:5483';
-    var EXTENSION_ORDER = ['core', 'hxd-sync-input-tolerance', 'welcome', 'styles', 'themes', 'hxd-performance', 'header', 'settings', 'discord', 'verified', 'vip', 'friends', 'teams', 'roomlist', 'jerseykit', 'chatlinks', 'hideui', 'quickavatar', 'hosttoken', 'leaveroom', 'shortcuts', 'chat-expand', 'translate', 'goal-celebration', 'ads', 'security', 'autoupdate', 'inputboost'];
+    var EXTENSION_ORDER = ['core', 'hxd-sync-input-tolerance', 'welcome', 'styles', 'themes', 'hxd-performance', 'header', 'settings', 'discord', 'verified', 'vip', 'roomlist', 'scoreboard', 'smart-extrapolation', 'split-extrapolation', 'jerseykit', 'chatlinks', 'hideui', 'quickavatar', 'hosttoken', 'leaveroom', 'shortcuts', 'chat-expand', 'translate', 'goal-celebration', 'ads', 'security', 'inputboost'];
 
     function extensionBaseUrl() {
         try {
+            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
+                return chrome.runtime.getURL('');
+            }
             var script = document.currentScript;
             var src = script && script.src ? String(script.src) : '';
             if (src) return src.replace(/\/[^\/]*$/, '/');
