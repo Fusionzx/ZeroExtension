@@ -300,33 +300,88 @@
             .replace(/</g, '\\u003c');
     }
 
+    var avatarRuntimeBridgeInjected = false;
+
+    function getExtensionResourceUrl(path) {
+        try {
+            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
+                return chrome.runtime.getURL(path);
+            }
+        } catch (eUrl) {}
+        return path;
+    }
+
+    function ensureAvatarRuntimeBridge() {
+        try {
+            if (document.getElementById('hxd-avatar-runtime-bridge')) {
+                avatarRuntimeBridgeInjected = true;
+                return;
+            }
+            var root = document.documentElement || document.head || document.body;
+            if (!root) return;
+            var script = document.createElement('script');
+            script.id = 'hxd-avatar-runtime-bridge';
+            script.src = getExtensionResourceUrl('avatar-runtime-bridge.js');
+            script.async = false;
+            root.appendChild(script);
+            avatarRuntimeBridgeInjected = true;
+        } catch (eBridge) {}
+    }
+
+    function postAvatarRuntimeMessage(message) {
+        ensureAvatarRuntimeBridge();
+        try { window.postMessage(message, '*'); } catch (ePost) {}
+        setTimeout(function () {
+            try { window.postMessage(message, '*'); } catch (ePostLater) {}
+        }, avatarRuntimeBridgeInjected ? 40 : 120);
+    }
+
+    var lastLocalPlayerIdRequestAt = 0;
+    var localPlayerIdRequestSeq = 0;
+
+    window.addEventListener('message', function(event) {
+        var data = event && event.data;
+        if (event.source !== window || !data || data.__hxdLocalPlayerIdResponse !== true) return;
+        var id = parseInt(data.player_id, 10);
+        if (!isNaN(id)) {
+            window.__myLocalPlayerId = id;
+        }
+    });
+
+    function requestLocalPlayerIdFromRuntime() {
+        var now = Date.now();
+        if (now - lastLocalPlayerIdRequestAt < 120) return;
+        lastLocalPlayerIdRequestAt = now;
+        localPlayerIdRequestSeq++;
+        postAvatarRuntimeMessage({
+            __hxdRequestLocalPlayerId: true,
+            requestId: localPlayerIdRequestSeq
+        });
+    }
+
     function injectAvatarGlobalsToRuntime() {
         try {
             var avatarUrl = getResolvedMyAvatarUrl();
             var visibleAll = getAvatarVisibleAllToggle();
             var borderStyle = getAvatarBorderStyleFromStorage();
             var discordAllowed = hasAvatarDiscordSession();
-            var script = document.createElement('script');
-            var parts = [];
-            if (myDiscordId || window.__haxDiscordId) {
-                parts.push('window.__haxDiscordId="' + escapeScriptString(String(myDiscordId || window.__haxDiscordId)) + '";');
-            } else {
-                parts.push('try{delete window.__haxDiscordId;}catch(e){window.__haxDiscordId=null;}');
-            }
-            parts.push('window.__hxdAvatarDiscordAllowed=' + (discordAllowed ? 'true' : 'false') + ';');
-            parts.push('window.__hxdMyAvatarUrl=' + (avatarUrl ? "'" + escapeScriptString(avatarUrl) + "'" : 'null') + ';');
-            parts.push('window.__hxdAvatarDisabled=' + (getAvatarStorageToggle('hxd_avatar_disabled', myAvatarDisabled) ? 'true' : 'false') + ';');
-            parts.push('window.__hxdAvatarVisibleSelfOnly=' + (getAvatarStorageToggle('hxd_avatar_visible_self_only', myAvatarVisibleSelfOnly) ? 'true' : 'false') + ';');
-            parts.push('window.__hxdAvatarVisibleTeam=' + (visibleAll ? 'true' : 'false') + ';');
-            parts.push('window.__hxdAvatarVisibleRival=' + (visibleAll ? 'true' : 'false') + ';');
-            parts.push('window.__hxdAvatarTeamBorder=' + (getAvatarStorageToggle('hxd_avatar_team_border', myAvatarTeamBorder) ? 'true' : 'false') + ';');
-            parts.push('window.__hxdAvatarTeamBorderRed=' + borderStyle.avatar_team_border_red + ';');
-            parts.push('window.__hxdAvatarTeamBorderBlue=' + borderStyle.avatar_team_border_blue + ';');
-            parts.push('window.__hxdAvatarTeamBorderWidth=' + borderStyle.avatar_team_border_width + ';');
-            parts.push('window.__hxdAvatarTeamBorderInset=' + (borderStyle.avatar_team_border_inset ? 'true' : 'false') + ';');
-            script.textContent = parts.join('');
-            (document.documentElement || document.head || document.body).appendChild(script);
-            script.remove();
+            postAvatarRuntimeMessage({
+                __hxdAvatarGlobals: true,
+                globals: {
+                    discord_id: myDiscordId || window.__haxDiscordId || null,
+                    avatar_discord_allowed: discordAllowed,
+                    avatar_url: avatarUrl || null,
+                    avatar_disabled: getAvatarStorageToggle('hxd_avatar_disabled', myAvatarDisabled),
+                    avatar_visible_self_only: getAvatarStorageToggle('hxd_avatar_visible_self_only', myAvatarVisibleSelfOnly),
+                    avatar_visible_team: visibleAll,
+                    avatar_visible_rival: visibleAll,
+                    avatar_team_border: getAvatarStorageToggle('hxd_avatar_team_border', myAvatarTeamBorder),
+                    avatar_team_border_red: borderStyle.avatar_team_border_red,
+                    avatar_team_border_blue: borderStyle.avatar_team_border_blue,
+                    avatar_team_border_width: borderStyle.avatar_team_border_width,
+                    avatar_team_border_inset: borderStyle.avatar_team_border_inset
+                }
+            });
         } catch (eInject) {}
     }
 
@@ -554,25 +609,9 @@
     }
 
     function getLocalPlayerIdFromPage() {
-        var resultEl = document.getElementById('__hax_player_id_result');
-        if (!resultEl) {
-            resultEl = document.createElement('div');
-            resultEl.id = '__hax_player_id_result';
-            resultEl.style.display = 'none';
-            document.body.appendChild(resultEl);
-        }
-        
-        resultEl.removeAttribute('data-player-id');
-        
-        var script = document.createElement('script');
-        script.textContent = '(function() { var el = document.getElementById("__hax_player_id_result"); if (el) { var id = window.__haxLocalPlayerId; el.setAttribute("data-player-id", id != null ? id : "null"); } })();';
-        document.body.appendChild(script);
-        script.remove();
-        
-        var playerIdStr = resultEl.getAttribute('data-player-id');
-        if (playerIdStr != null && playerIdStr !== 'null') {
-            return parseInt(playerIdStr, 10);
-        }
+        var cached = getLocalPlayerId();
+        if (cached != null && !isNaN(cached)) return cached;
+        requestLocalPlayerIdFromRuntime();
         return null;
     }
 
@@ -1093,21 +1132,7 @@
     }
 
     function ensureAvatarRuntimeReceiver() {
-        if (window.__hxdAvatarReceiverInstalled) return;
-        window.__hxdAvatarReceiverInstalled = true;
-        var script = document.createElement('script');
-        script.textContent = '(function(){' +
-            'if(window.__hxdAvatarReceiverReady)return;' +
-            'window.__hxdAvatarReceiverReady=true;' +
-            'window.__hxdAvatarProfilesByPlayerId=window.__hxdAvatarProfilesByPlayerId||{};' +
-            'window.addEventListener("message",function(e){' +
-            'if(e.source!==window||!e.data||e.data.__hxdAvatars!==true)return;' +
-            'window.__hxdAvatarProfilesByPlayerId=e.data.profiles||{};' +
-            'try{window.dispatchEvent(new Event("hxd-avatar-image-loaded"));}catch(ex){}' +
-            '});' +
-            '})();';
-        (document.documentElement || document.head || document.body).appendChild(script);
-        script.remove();
+        ensureAvatarRuntimeBridge();
     }
 
     var avatarBlobUrlCache = {};
@@ -1188,10 +1213,10 @@
     function publishAvatarProfilesToRuntime() {
         ensureAvatarRuntimeReceiver();
         try {
-            window.postMessage({
+            postAvatarRuntimeMessage({
                 __hxdAvatars: true,
                 profiles: window.__hxdAvatarProfilesByPlayerId || {}
-            }, '*');
+            });
         } catch (e) {}
     }
 

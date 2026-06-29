@@ -124,6 +124,10 @@
 
     function ensureThemeBackgroundStyles() {
         if (document.getElementById('theme-custom-background-style')) return;
+        if (!document.head && document.documentElement) {
+            try { document.documentElement.appendChild(document.createElement('head')); } catch (eHead) {}
+        }
+        if (!document.head) return;
         var style = document.createElement('style');
         style.id = 'theme-custom-background-style';
         style.textContent =

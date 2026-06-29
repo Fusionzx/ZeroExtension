@@ -2542,6 +2542,7 @@
   var AVATAR_TEAM_BORDER_INSET_KEY = 'hxd_avatar_team_border_inset';
   var AVATAR_BORDER_RED_COLORS = ['#e56f57', '#cf3c47', '#ff0000'];
   var AVATAR_BORDER_BLUE_COLORS = ['#4099ff', '#0076ff', '#0026ff'];
+  var LOCAL_DISCORD_NAME_KEY = 'hxd_local_discord_name';
   var AVATAR_CROP_VIEWPORT = 280;
   var AVATAR_CROP_OUTPUT = 256;
   var avatarCropState = null;
@@ -2570,6 +2571,22 @@
     return '';
   }
 
+  function getLocalDiscordNameForSettings(fallback) {
+    var fb = String(fallback || '').replace(/\u200B/g, '').trim() || 'Zero';
+    try {
+      var storedName = String(storageWin().localStorage.getItem(LOCAL_DISCORD_NAME_KEY) || '').replace(/\u200B/g, '').trim();
+      if (storedName) return storedName;
+    } catch (eLocalDiscordName) {}
+    try {
+      var storedUser = JSON.parse(storageWin().localStorage.getItem('haxclient_user') || 'null');
+      if (storedUser && String(storedUser.discord_id || '') === 'zero-local-test') {
+        var userName = String(storedUser.username || storedUser.nick || '').replace(/\u200B/g, '').trim();
+        if (userName) return userName;
+      }
+    } catch (eStoredDiscordName) {}
+    return fb;
+  }
+
   function getAvatarInitials(nick) {
     var n = String(nick || '').trim();
     if (!n) {
@@ -2596,13 +2613,15 @@
   }
 
   function getLocalAvatarUser() {
-    var nick = getPlayerNickFromStorage() || 'Zero';
+    var gameNick = getPlayerNickForSettings() || 'Zero';
     var stored = null;
     try { stored = JSON.parse(storageWin().localStorage.getItem('haxclient_user') || 'null'); } catch (eStored) {}
+    var discordName = getLocalDiscordNameForSettings((stored && (stored.username || stored.nick)) || gameNick);
     return Object.assign({}, stored || {}, {
       logged_in: true,
-      nick: (stored && (stored.nick || stored.username)) || nick,
-      username: (stored && (stored.username || stored.nick)) || nick,
+      nick: discordName,
+      username: discordName,
+      game_nick: gameNick,
       discord_id: (stored && stored.discord_id) || 'zero-local-test',
       is_verified: true,
       is_pro: true,
@@ -6177,7 +6196,8 @@
 
   document.addEventListener('click', function (e) {
     if (!searchOpen) return;
-    if (!document.getElementById('nav-shell').contains(e.target)) closeSearch();
+    var navShell = document.getElementById('nav-shell');
+    if (navShell && !navShell.contains(e.target)) closeSearch();
   });
 
   /* ─── Idioma (globo) ─── */
@@ -6246,7 +6266,7 @@
 
   document.addEventListener('click', function (e) {
     if (!langOpen) return;
-    if (!langToggle.contains(e.target) && !langMenu.contains(e.target)) closeLangMenu();
+    if (langToggle && langMenu && !langToggle.contains(e.target) && !langMenu.contains(e.target)) closeLangMenu();
   });
 
   document.addEventListener('keydown', function (e) {

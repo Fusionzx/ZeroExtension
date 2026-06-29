@@ -49,6 +49,18 @@
         return false;
     }
 
+    function appendScriptUrl(url) {
+        if (!url) return false;
+        try {
+            var script = document.createElement('script');
+            script.src = url;
+            script.async = false;
+            document.documentElement.appendChild(script);
+            return true;
+        } catch (eUrl) {}
+        return false;
+    }
+
     function installBackgroundFrameScheduler() {
         if (window.__hxdBackgroundFrameScheduler) return;
 
@@ -213,6 +225,7 @@
         } catch (e) {}
         var base = extensionBaseUrl();
         if (base) {
+            if (appendScriptUrl(base + 'game-min-original.js')) return true;
             var localGame = loadTextSync(base + 'game-min-original.js');
             if (appendScriptText(localGame, base + 'game-min-original.js')) return true;
         }
@@ -241,6 +254,10 @@
         var loaded = false;
         if (base) {
             EXTENSION_ORDER.forEach(function(name) {
+                if (appendScriptUrl(base + name + '.js')) {
+                    loaded = true;
+                    return;
+                }
                 var source = loadTextSync(base + name + '.js');
                 if (appendScriptText(source, base + name + '.js')) loaded = true;
             });

@@ -27,6 +27,7 @@
     var isVerified = false;
     var isLoaded = false;
     var userStatusReady = false;
+    var LOCAL_DISCORD_NAME_KEY = 'hxd_local_discord_name';
     var DISCORD_SVG = '<svg width="24" height="24" viewBox="0 0 71 55" fill="#5865F2"><path d="M60.1 4.9A58.5 58.5 0 0045.4.2a.2.2 0 00-.2.1 40.8 40.8 0 00-1.8 3.7 54 54 0 00-16.2 0A37.4 37.4 0 0025.4.3a.2.2 0 00-.2-.1 58.4 58.4 0 00-14.7 4.6.2.2 0 00-.1.1C1.5 18.7-.9 32 .3 45.2v.1a58.7 58.7 0 0017.9 9.1.2.2 0 00.3-.1 42 42 0 003.6-5.9.2.2 0 00-.1-.3 38.7 38.7 0 01-5.5-2.6.2.2 0 01 0-.4l1.1-.9a.2.2 0 01.2 0 41.9 41.9 0 0035.6 0 .2.2 0 01.2 0l1.1.9a.2.2 0 010 .4 36.3 36.3 0 01-5.5 2.6.2.2 0 00-.1.3 47.2 47.2 0 003.6 5.9.2.2 0 00.3.1 58.5 58.5 0 0018-9.1v-.1c1.4-15-2.3-28-9.8-39.6a.2.2 0 00-.1-.1zM23.7 37.1c-3.4 0-6.2-3.1-6.2-7s2.7-7 6.2-7 6.3 3.2 6.2 7-2.8 7-6.2 7zm23 0c-3.4 0-6.2-3.1-6.2-7s2.7-7 6.2-7 6.3 3.2 6.2 7-2.8 7-6.2 7z"/></svg>';
 
     function getLanguage() {
@@ -65,27 +66,75 @@
     }
 
     // Busca status do usuário no servidor local
-    function getLocalTestUser() {
-        var nick = 'Zero';
+    function cleanLocalName(value) {
+        return String(value || '').replace(/\u200B/g, '').trim();
+    }
+
+    function getStoredGameNick() {
         try {
-            nick = localStorage.getItem('haxball_nick') ||
+            return cleanLocalName(
+                localStorage.getItem('haxball_nick') ||
                 localStorage.getItem('player_name') ||
                 localStorage.getItem('ghost_nick') ||
-                nick;
-        } catch (eNick) {}
+                ''
+            );
+        } catch (eNick) {
+            return '';
+        }
+    }
+
+    function getStoredLocalDiscordName(fallback) {
+        var fb = cleanLocalName(fallback) || 'Zero';
+        try {
+            var storedName = cleanLocalName(localStorage.getItem(LOCAL_DISCORD_NAME_KEY));
+            if (storedName) return storedName;
+        } catch (eLocalName) {}
+        try {
+            var storedUser = JSON.parse(localStorage.getItem('haxclient_user') || 'null');
+            if (storedUser && String(storedUser.discord_id || '') === 'zero-local-test') {
+                var userName = cleanLocalName(storedUser.username || storedUser.nick);
+                if (userName) return userName;
+            }
+        } catch (eStoredUser) {}
+        return fb;
+    }
+
+    function isLocalDiscordUser(id) {
+        return !id || String(id) === 'zero-local-test';
+    }
+
+    function saveLocalDiscordName(name) {
+        var clean = cleanLocalName(name) || 'Zero';
+        try { localStorage.setItem(LOCAL_DISCORD_NAME_KEY, clean); } catch (eSaveName) {}
+        return clean;
+    }
+
+    function getLocalTestUser() {
+        var gameNick = getStoredGameNick() || 'Zero';
+        var discordName = getStoredLocalDiscordName(gameNick);
         return {
             logged_in: true,
-            nick: nick,
-            username: nick,
+            nick: discordName,
+            username: discordName,
+            game_nick: gameNick,
             discord_id: 'zero-local-test',
             is_verified: true,
             is_pro: true,
-            is_vip: true
+            is_vip: true,
+            __hxd_local_user: true
         };
     }
 
     function applyUserStatus(data) {
         if (!data || !data.logged_in) data = getLocalTestUser();
+        if (data.__hxd_local_user || isLocalDiscordUser(data.discord_id)) {
+            var localDiscordName = getStoredLocalDiscordName(data.username || data.nick || getStoredGameNick() || 'Zero');
+            data = Object.assign({}, data, {
+                nick: localDiscordName,
+                username: localDiscordName,
+                game_nick: getStoredGameNick() || data.game_nick || ''
+            });
+        }
         discordNick = data.nick || data.username || 'Zero';
         discordUsername = data.username || discordNick;
         discordId = data.discord_id || 'zero-local-test';
@@ -483,6 +532,8 @@
                 '<p class="hxd-zero-auth-copy"><strong>' + (discordNick || discordUsername || 'Player') + '</strong>, ' + t('authConnected') + '</p>';
             container.appendChild(brand);
 
+            var localDiscordInput = null;
+
             // Campo de nick com label
             var fieldGroup = iframeDoc.createElement('div');
             fieldGroup.className = 'hxd-zero-field';
@@ -521,6 +572,34 @@
             fieldGroup.appendChild(inputWrapper);
             container.appendChild(fieldGroup);
 
+            if (isLocalDiscordUser(discordId)) {
+                var discordFieldGroup = iframeDoc.createElement('div');
+                discordFieldGroup.className = 'hxd-zero-field';
+
+                var discordLabel = iframeDoc.createElement('label');
+                discordLabel.textContent = 'Discord';
+                discordLabel.className = 'hxd-zero-label';
+                discordFieldGroup.appendChild(discordLabel);
+
+                var discordInputWrapper = iframeDoc.createElement('div');
+                discordInputWrapper.className = 'hxd-zero-input-wrap';
+
+                localDiscordInput = iframeDoc.createElement('input');
+                localDiscordInput.type = 'text';
+                localDiscordInput.value = getStoredLocalDiscordName(discordUsername || discordNick || savedNick);
+                localDiscordInput.placeholder = 'Discord';
+                localDiscordInput.maxLength = 50;
+                localDiscordInput.className = 'hxd-zero-input';
+                discordInputWrapper.appendChild(localDiscordInput);
+
+                var localDiscordIcon = iframeDoc.createElement('div');
+                localDiscordIcon.className = 'hxd-zero-field-icon';
+                localDiscordIcon.innerHTML = '<svg width="18" height="18" viewBox="0 0 71 55" fill="#5865F2"><path d="M60.1 4.9A58.5 58.5 0 0045.4.2a.2.2 0 00-.2.1 40.8 40.8 0 00-1.8 3.7 54 54 0 00-16.2 0A37.4 37.4 0 0025.4.3a.2.2 0 00-.2-.1 58.4 58.4 0 00-14.7 4.6.2.2 0 00-.1.1C1.5 18.7-.9 32 .3 45.2v.1a58.7 58.7 0 0017.9 9.1.2.2 0 00.3-.1 42 42 0 003.6-5.9.2.2 0 00-.1-.3 38.7 38.7 0 01-5.5-2.6.2.2 0 01 0-.4l1.1-.9a.2.2 0 01.2 0 41.9 41.9 0 0035.6 0 .2.2 0 01.2 0l1.1.9a.2.2 0 010 .4 36.3 36.3 0 01-5.5 2.6.2.2 0 00-.1.3 47.2 47.2 0 003.6 5.9.2.2 0 00.3.1 58.5 58.5 0 0018-9.1v-.1c1.4-15-2.3-28-9.8-39.6a.2.2 0 00-.1-.1zM23.7 37.1c-3.4 0-6.2-3.1-6.2-7s2.7-7 6.2-7 6.3 3.2 6.2 7-2.8 7-6.2 7zm23 0c-3.4 0-6.2-3.1-6.2-7s2.7-7 6.2-7 6.3 3.2 6.2 7-2.8 7-6.2 7z"/></svg>';
+                discordInputWrapper.appendChild(localDiscordIcon);
+                discordFieldGroup.appendChild(discordInputWrapper);
+                container.appendChild(discordFieldGroup);
+            }
+
             // Container dos botões (Ok + Sair)
             var btnContainer = iframeDoc.createElement('div');
             btnContainer.className = 'hxd-zero-actions';
@@ -541,10 +620,30 @@
                 enterBtn.appendChild(spin);
                 enterBtn.appendChild(iframeDoc.createTextNode(t('loading')));
 
+                var localDiscordName = localDiscordInput ? saveLocalDiscordName(localDiscordInput.value || discordUsername || discordNick) : null;
+                if (localDiscordName) {
+                    var localUser = Object.assign({}, getLocalTestUser(), {
+                        nick: localDiscordName,
+                        username: localDiscordName
+                    });
+                    applyUserStatus(localUser);
+                    if (tooltip) {
+                        var tooltipValue = tooltip.querySelector('.hxd-zero-tooltip-v');
+                        if (tooltipValue) tooltipValue.textContent = localDiscordName;
+                    }
+                }
+
                 var customNick = customNickInput.value.trim() || discordNick;
                 gameNick = customNick;
                 if (customNick) {
                     localStorage.setItem('haxball_nick', customNick);
+                }
+                if (localDiscordName) {
+                    applyUserStatus(Object.assign({}, getLocalTestUser(), {
+                        nick: localDiscordName,
+                        username: localDiscordName,
+                        game_nick: customNick
+                    }));
                 }
                 nickInput.value = customNick;
                 nickInput.dispatchEvent(new Event('input', { bubbles: true }));
