@@ -4,7 +4,6 @@
     if (typeof console !== 'undefined') {
         console.log = __hxdNoop;
         console.warn = __hxdNoop;
-        console.error = __hxdNoop;
         console.info = __hxdNoop;
     }
 
@@ -284,7 +283,10 @@
     var extLoaded = loadExtensions();
     
     if (!gameLoaded || !extLoaded) {
-        document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#1a1a1a;color:#fff;font-family:sans-serif;flex-direction:column;gap:16px;"><h2>Erro ao carregar</h2><p style="color:#888;">Não foi possível conectar ao servidor. O app será fechado.</p></div>';
+        function showError() {
+            (document.body || document.documentElement).innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#1a1a1a;color:#fff;font-family:sans-serif;flex-direction:column;gap:16px;"><h2>Erro ao carregar</h2><p style="color:#888;">Não foi possível conectar ao servidor. O app será fechado.</p></div>';
+        }
+        if (document.body) { showError(); } else { document.addEventListener('DOMContentLoaded', showError); }
         setTimeout(closeApp, 2000);
     }
 })();
