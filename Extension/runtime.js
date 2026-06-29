@@ -13,11 +13,17 @@
     function extensionBaseUrl() {
         try {
             if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
-                return chrome.runtime.getURL('');
+                var url = chrome.runtime.getURL('');
+                try { window.__hxdExtensionBaseUrl = url; } catch (eSetChromeBase) {}
+                return url;
             }
             var script = document.currentScript;
             var src = script && script.src ? String(script.src) : '';
-            if (src) return src.replace(/\/[^\/]*$/, '/');
+            if (src) {
+                var base = src.replace(/\/[^\/]*$/, '/');
+                try { window.__hxdExtensionBaseUrl = base; } catch (eSetScriptBase) {}
+                return base;
+            }
         } catch (e0) {}
         return '';
     }

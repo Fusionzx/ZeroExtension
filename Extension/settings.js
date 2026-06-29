@@ -97,6 +97,19 @@
                 return chrome.runtime.getURL('settings-preview.html');
             }
         } catch (eUrl) {}
+        try {
+            if (window.__hxdExtensionBaseUrl) {
+                return String(window.__hxdExtensionBaseUrl).replace(/\/?$/, '/') + 'settings-preview.html';
+            }
+        } catch (eBase) {}
+        try {
+            var scripts = document.getElementsByTagName('script');
+            for (var i = scripts.length - 1; i >= 0; i--) {
+                var src = scripts[i] && scripts[i].src ? String(scripts[i].src) : '';
+                if (!src || src.indexOf('runtime.js') === -1) continue;
+                return src.replace(/runtime\.js(?:[?#].*)?$/, 'settings-preview.html');
+            }
+        } catch (eScriptUrl) {}
         return null;
     }
 
