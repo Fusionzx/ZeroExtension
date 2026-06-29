@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "HaxBall Zero",
   "version": "2.0.1",
-  "description": "Extensao oficial do HaxBall Zero",
+  "description": "Extensão oficial do HaxBall Zero",
   "content_scripts": [
     {
       "matches": [

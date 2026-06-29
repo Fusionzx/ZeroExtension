@@ -42,6 +42,7 @@
         'low_latency_canvas',
         'stretched_resolution',
         'hax_max_perf_mode',
+        'hxd_background_frames',
         'hax_max_perf_snapshot',
         'hax_ping_display',
         'haxball_extrapolation',
@@ -117,7 +118,8 @@
         image_smoothing: '1',
         extrapolation: '0',
         hxd_ui_scoreboard_opacity: '100',
-        hxd_ui_chatbox_opacity: '100'
+        hxd_ui_chatbox_opacity: '100',
+        hxd_background_frames: 'true'
     };
 
     function padBase64(s) {

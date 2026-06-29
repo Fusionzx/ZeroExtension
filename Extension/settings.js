@@ -1623,21 +1623,7 @@
             var CURRENT_AUTH_KEY = 'player_auth_key';
 
             function getMaxAuths() {
-                try {
-                    if (window.__proIsPro && window.__proIsPro()) return 5;
-                } catch (eMax) {}
-                try {
-                    if (typeof window.__hxdClientHasProAccess === 'function' && window.__hxdClientHasProAccess()) return 5;
-                } catch (eHx) {}
-                try {
-                    var snap = JSON.parse(localStorage.getItem('haxclient_pro_snapshot') || 'null');
-                    if (snap && (snap.is_pro || snap.is_vip)) return 5;
-                } catch (eSnap) {}
-                try {
-                    var st = window.__proStatus || window.__vipStatus;
-                    if (st && (st.is_pro || st.is_vip)) return 5;
-                } catch (eSt) {}
-                return 1;
+                return 999;
             }
 
             function getStoredAuths() {
@@ -1783,7 +1769,7 @@
                         headerNameEl.style.display = found && found.name ? 'block' : 'none';
                         copyCurrentBtn.style.display = '';
                     } else {
-                        headerPreview.textContent = t('Nenhuma auth ativa. Máximo de ') + getMaxAuths() + t(' auths.');
+                        headerPreview.textContent = t('Nenhuma auth ativa. Auths ilimitadas.');
                         headerNameEl.textContent = '';
                         headerNameEl.style.display = 'none';
                         copyCurrentBtn.style.display = 'none';
@@ -1951,7 +1937,7 @@
                     }
                     if (authsList.length >= getMaxAuths()) {
                         if (window.showToast) {
-                            window.showToast(getMaxAuths() > 1 ? t('Limite de 5 auths atingido') : t('Limite de 1 auth (Pro: até 5)'), 'error');
+                            window.showToast(t('Sem limite de auths.'), 'info');
                         }
                         return;
                     }
@@ -1992,7 +1978,7 @@
                     }
                     if (authsList.length >= getMaxAuths()) {
                         if (window.showToast) {
-                            window.showToast(getMaxAuths() > 1 ? t('Limite de 5 auths atingido') : t('Limite de 1 auth (Pro: até 5)'), 'error');
+                            window.showToast(t('Sem limite de auths.'), 'info');
                         }
                         return;
                     }

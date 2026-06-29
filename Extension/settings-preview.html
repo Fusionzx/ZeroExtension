@@ -1734,7 +1734,7 @@
 
         <div class="nav-right">
           <button class="avatar-btn" type="button" title="Tu perfil" aria-label="Perfil">
-            <div class="avatar-fallback">??</div>
+            <div class="avatar-fallback">HZ</div>
             <span class="status-dot" title="En línea"></span>
           </button>
         </div>
@@ -2556,7 +2556,17 @@
 
   function getAvatarInitials(nick) {
     var n = String(nick || '').trim();
-    if (!n) return '??';
+    if (!n) {
+      try {
+        n = String(
+          storageWin().localStorage.getItem('haxball_nick') ||
+          storageWin().localStorage.getItem('ghost_nick') ||
+          storageWin().localStorage.getItem('haxclient_my_nick') ||
+          ''
+        ).trim();
+      } catch (eNickFallback) {}
+    }
+    if (!n) return 'HZ';
     return n.slice(0, 2).toUpperCase();
   }
 
@@ -3731,9 +3741,9 @@
     meta_perf_t: { es: 'Rendimiento', en: 'Performance', pt: 'Desempenho' },
     meta_perf_l: { es: 'Más FPS en partida. Activá tweaks, compartí presets.', en: 'More in-game FPS. Enable tweaks, share presets.', pt: 'Mais FPS na partida. Ative tweaks, compartilhe presets.' },
     meta_multi_t: { es: 'Multi-cuenta', en: 'Multi-account', pt: 'Multi-conta' },
-    meta_multi_l: { es: 'Hasta 5 cuentas. Cambiá sin reloguear.', en: 'Up to 5 accounts. Switch without re-logging.', pt: 'Até 5 contas. Troque sem relogar.' },
-    meta_multi_l_free: { es: '1 cuenta guardada. Pro: hasta 5.', en: '1 saved account. Pro: up to 5.', pt: '1 conta guardada. Pro: até 5.' },
-    meta_multi_l_pro: { es: 'Hasta 5 cuentas. Cambiá sin reloguear.', en: 'Up to 5 accounts. Switch without re-logging.', pt: 'Até 5 contas. Troque sem relogar.' },
+    meta_multi_l: { es: 'Cuentas ilimitadas. Cambiá sin reloguear.', en: 'Unlimited accounts. Switch without re-logging.', pt: 'Contas ilimitadas. Troque sem relogar.' },
+    meta_multi_l_free: { es: 'Cuentas ilimitadas.', en: 'Unlimited accounts.', pt: 'Contas ilimitadas.' },
+    meta_multi_l_pro: { es: 'Cuentas ilimitadas. Cambiá sin reloguear.', en: 'Unlimited accounts. Switch without re-logging.', pt: 'Contas ilimitadas. Troque sem relogar.' },
     meta_chat_t: { es: 'Atajos de chat', en: 'Chat shortcuts', pt: 'Atalhos de chat' },
     meta_chat_l: { es: 'Escribí poco, mandá mucho. En partida se expanden solos.', en: 'Type less, send more. They expand in-game.', pt: 'Digite pouco, mande muito. Expandem na partida.' },
     meta_chat_l_free: { es: '2 atajos de chat. Pro: hasta 10.', en: '2 chat shortcuts. Pro: up to 10.', pt: '2 atalhos de chat. Pro: até 10.' },
@@ -3897,6 +3907,8 @@
     perf_lowcircles_h: { es: 'Prerender pixelado — más FPS.', en: 'Pixelated prerender — more FPS.', pt: 'Prerender pixelado — mais FPS.' },
     perf_priority: { es: 'Alta prioridad', en: 'High priority', pt: 'Alta prioridade' },
     perf_priority_h: { es: 'Más recursos para el juego. Puede afectar otros programas.', en: 'More resources for the game. May affect other apps.', pt: 'Mais recursos pro jogo. Pode afetar outros programas.' },
+    perf_background_frames: { es: 'Mantener FPS en segundo plano', en: 'Keep FPS in background', pt: 'Manter FPS em segundo plano' },
+    perf_background_frames_h: { es: 'Sigue usando un timer de frames cuando cambiás de ventana.', en: 'Keeps a frame timer running after you switch windows.', pt: 'Mantém um timer de frames quando você troca de janela.' },
     perf_export: { es: 'Exportar preset HXZ0', en: 'Export HXZ0 preset', pt: 'Exportar preset HXZ0' },
     perf_import: { es: 'Importar preset', en: 'Import preset', pt: 'Importar preset' },
     perf_import_desc: { es: 'Pegá el código exportado. Se aplica al instante sin salir de la sala.', en: 'Paste the exported code. Applies instantly without leaving the room.', pt: 'Cole o código exportado. Aplica na hora sem sair da sala.' },
@@ -3911,8 +3923,8 @@
     multi_active_sec: { es: 'Cuenta activa', en: 'Active account', pt: 'Conta ativa' },
     multi_active_d: { es: 'La auth que usa el cliente ahora mismo.', en: 'The auth the client is using right now.', pt: 'A auth que o cliente usa agora.' },
     multi_saved_sec: { es: 'Guardadas', en: 'Saved', pt: 'Guardadas' },
-    multi_saved_d: { es: 'Máximo 5. Tocá Usar para cambiar.', en: 'Max 5. Tap Use to switch.', pt: 'Máximo 5. Toque Usar para trocar.' },
-    multi_saved_d_free: { es: '1 slot (Pro: hasta 5). Tocá Usar para cambiar.', en: '1 slot (Pro: up to 5). Tap Use to switch.', pt: '1 slot (Pro: até 5). Toque Usar para trocar.' },
+    multi_saved_d: { es: 'Sin límite. Tocá Usar para cambiar.', en: 'No limit. Tap Use to switch.', pt: 'Sem limite. Toque Usar para trocar.' },
+    multi_saved_d_free: { es: 'Sin límite. Tocá Usar para cambiar.', en: 'No limit. Tap Use to switch.', pt: 'Sem limite. Toque Usar para trocar.' },
     multi_no_active: { es: 'Sin auth activa', en: 'No active auth', pt: 'Sem auth ativa' },
     multi_no_auth: { es: '—', en: '—', pt: '—' },
     multi_copied: { es: 'Auth copiada', en: 'Auth copied', pt: 'Auth copiada' },
@@ -3921,8 +3933,8 @@
     multi_saved: { es: 'Auth guardada', en: 'Auth saved', pt: 'Auth guardada' },
     multi_invalid: { es: 'Formato inválido (idkey.xxx.xxx.xxx)', en: 'Invalid format (idkey.xxx.xxx.xxx)', pt: 'Formato inválido (idkey.xxx.xxx.xxx)' },
     multi_exists: { es: 'Esta auth ya está guardada', en: 'This auth is already saved', pt: 'Esta auth já está salva' },
-    multi_limit_free: { es: 'Límite: 1 cuenta (Pro: 5)', en: 'Limit: 1 account (Pro: 5)', pt: 'Limite: 1 conta (Pro: 5)' },
-    multi_limit_pro: { es: 'Límite de 5 cuentas alcanzado', en: '5 account limit reached', pt: 'Limite de 5 contas atingido' },
+    multi_limit_free: { es: 'Sin límite de cuentas', en: 'No account limit', pt: 'Sem limite de contas' },
+    multi_limit_pro: { es: 'Sin límite de cuentas', en: 'No account limit', pt: 'Sem limite de contas' },
     multi_save_current: { es: 'Guardar cuenta actual', en: 'Save current account', pt: 'Guardar conta atual' },
     multi_save_current_h: { es: 'Agrega la auth activa a tus slots', en: 'Add the active auth to your slots', pt: 'Adiciona a auth ativa aos seus slots' },
     host_token_sec: { es: 'Host Token', en: 'Host Token', pt: 'Host Token' },
@@ -5211,7 +5223,7 @@
   }
 
   function multiMaxSlots() {
-    return multiIsPro() ? 5 : 1;
+    return 999;
   }
 
   function multiLoadAuths() {
@@ -5325,7 +5337,7 @@
       }
       var max = multiMaxSlots();
       if (list.length >= max) {
-        showToast(multiIsPro() ? t('multi_limit_pro') : t('multi_limit_free'), 'err');
+        showToast(t('multi_limit_pro'), 'err');
         return;
       }
       if (!authName) authName = t('multi_slot') + ' ' + (list.length + 1);
@@ -5609,6 +5621,9 @@
         function (on) { optLsSet('image_smoothing', on ? '0' : '1'); optApplyRuntime(); })
     ]));
     p.appendChild(listGroup(t('perf_cat_system'), t('perf_cat_system_d'), [
+      perfOptToggle('perf', t('perf_background_frames'), t('perf_background_frames_h'),
+        function () { return optLsGet('hxd_background_frames') !== 'false'; },
+        function (on) { optLsSet('hxd_background_frames', on ? 'true' : 'false'); }),
       toggle('perf', t('perf_priority'), t('perf_priority_h'), false, 'tmisc-highpriority priority', true)
     ]));
   }
@@ -6003,27 +6018,36 @@
       reg('look', t('look_wallpaper_sec'), 'wallpaper fondo background imagen', document.getElementById('wallpaper-panel'));
     },
     misc: function (p) {
-      p.appendChild(fieldBlock('misc', t('misc_lang'),
-        '<select id="misc-lang-select"><option value="es">' + t('lang_es') + '</option><option value="pt">' + t('lang_pt') + '</option><option value="en">' + t('lang_en') + '</option></select>', 'loc language idioma'));
-      p.appendChild(list(null, [
-        toggle('misc', t('misc_verified'), 'Jugadores verificados en sala', true, 'hax_verified_disabled verified'),
-        toggle('misc', t('misc_zerozoom'), 'Zoom especial del cliente', false, 'hax_zero_zoom'),
-        toggle('misc', t('misc_no_text'), t('misc_no_text_h'), false, 'hax_hide_match_status_text no text gamestart gamestop chat'),
-        toggle('misc', t('misc_scoreboard_old'), t('misc_scoreboard_old_h'), false, 'hxd_scoreboard_old scoreboard marcador old vanilla')
-      ]));
-      var scoreboardButtonsField = fieldBlock('misc', t('misc_scoreboard_buttons'),
-        '<select id="misc-scoreboard-buttons-select"><option value="default">' + t('misc_scoreboard_buttons_default') + '</option><option value="integrated">' + t('misc_scoreboard_buttons_integrated') + '</option></select>',
-        'scoreboard buttons botones marcador layout menu ajustes');
-      scoreboardButtonsField.classList.add('field--split');
-      p.appendChild(scoreboardButtonsField);
-      var bl = $('div', 'btn-line');
-      bl.innerHTML = '<button class="btn" type="button">' + t('misc_override') + '</button>';
-      var overrideBtn = bl.querySelector('.btn');
-      overrideBtn.onclick = function () { Bridge.clickParentHook('loc-ovr-btn'); };
-      reg('misc', t('misc_override'), 'loc-ovr traducción manual', overrideBtn);
-      p.appendChild(bl);
-      p.appendChild(buildAvatarPanel());
-      reg('misc', t('misc_avatar_sec'), 'avatar foto subir imagen perfil', document.getElementById('avatar-panel'));
+      try {
+        p.appendChild(fieldBlock('misc', t('misc_lang'),
+          '<select id="misc-lang-select"><option value="es">' + t('lang_es') + '</option><option value="pt">' + t('lang_pt') + '</option><option value="en">' + t('lang_en') + '</option></select>', 'loc language idioma'));
+        p.appendChild(list(null, [
+          toggle('misc', t('misc_verified'), 'Jogadores verificados em sala', true, 'hax_verified_disabled verified'),
+          toggle('misc', t('misc_zerozoom'), 'Zoom especial do cliente', false, 'hax_zero_zoom'),
+          toggle('misc', t('misc_no_text'), t('misc_no_text_h'), false, 'hax_hide_match_status_text no text gamestart gamestop chat'),
+          toggle('misc', t('misc_scoreboard_old'), t('misc_scoreboard_old_h'), false, 'hxd_scoreboard_old scoreboard marcador old vanilla')
+        ]));
+        var scoreboardButtonsField = fieldBlock('misc', t('misc_scoreboard_buttons'),
+          '<select id="misc-scoreboard-buttons-select"><option value="default">' + t('misc_scoreboard_buttons_default') + '</option><option value="integrated">' + t('misc_scoreboard_buttons_integrated') + '</option></select>',
+          'scoreboard buttons botoes marcador layout menu ajustes');
+        scoreboardButtonsField.classList.add('field--split');
+        p.appendChild(scoreboardButtonsField);
+        var bl = $('div', 'btn-line');
+        bl.innerHTML = '<button class="btn" type="button">' + t('misc_override') + '</button>';
+        var overrideBtn = bl.querySelector('.btn');
+        overrideBtn.onclick = function () { Bridge.clickParentHook('loc-ovr-btn'); };
+        reg('misc', t('misc_override'), 'loc-ovr traducao manual', overrideBtn);
+        p.appendChild(bl);
+        p.appendChild(buildAvatarPanel());
+        reg('misc', t('misc_avatar_sec'), 'avatar foto subir imagem perfil', document.getElementById('avatar-panel'));
+      } catch (eMisc) {
+        p.appendChild(listGroup('Misc', '', [
+          toggle('misc', t('misc_verified'), 'Jogadores verificados em sala', true, 'hax_verified_disabled verified'),
+          toggle('misc', t('misc_zerozoom'), 'Zoom especial do cliente', false, 'hax_zero_zoom'),
+          toggle('misc', t('misc_scoreboard_old'), t('misc_scoreboard_old_h'), false, 'hxd_scoreboard_old scoreboard marcador old vanilla')
+        ]));
+      }
+
     }
   };
 
