@@ -70,30 +70,6 @@
     if (window.__headerInjected) return;
     window.__headerInjected = true;
 
-    /** Si la caché de extensiones desempaquetadas es vieja, el HTML puede no traer el botón; lo insertamos en la barra derecha (solo icono). */
-    var HXD_SPOTIFYToolbar_SVG =
-        '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.381-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.02-.181-1.02-.721 0-.439.24-.78.66-.96 4.281-1.261 11.521-1.021 16.201 2.521.539.301.719 1.021.42 1.56-.301.421-1.021.599-1.56.42z"/></svg>';
-
-    function hxdEnsureSpotifyToolbarButton(headerRoot) {
-        try {
-            if (!headerRoot || headerRoot.ownerDocument !== document) return;
-            if (headerRoot.querySelector('#hxd-spotify-header-slot')) return;
-            var right = headerRoot.querySelector('.header-right');
-            var chromeBtn = headerRoot.querySelector('#hxd-toggle-chrome-btn');
-            if (!right || !chromeBtn) return;
-            var slot = document.createElement('div');
-            slot.id = 'hxd-spotify-header-slot';
-            slot.className = 'hxd-spotify-header-slot';
-            slot.innerHTML =
-                '<button type="button" id="spotify-header-btn" data-translate-title="Spotify" title="Spotify" style="display:flex!important;align-items:center;justify-content:center;min-width:28px;min-height:28px;padding:4px;background:transparent;border:none;color:#1db954;cursor:pointer;visibility:visible!important;opacity:1!important;flex-shrink:0;">' +
-                HXD_SPOTIFYToolbar_SVG +
-                '</button>';
-            right.insertBefore(slot, chromeBtn);
-            try {
-                Injector.log('Spotify: botón navbar (solo icono)');
-            } catch (eL) {}
-        } catch (eEns) {}
-    }
 
     var HEADER_BAR_PX = 48;
     /** Franja entre barra e iframe; 0 = sin banda oscura extra debajo del header. */
@@ -123,6 +99,46 @@
         var spTop = tbPx + darkNavPx;
         return '\
         .header { display: none !important; }\
+        #custom-titlebar {\
+            position: fixed; top: 0; left: 0; right: 0; height: ' + tbPx + 'px;\
+            z-index: 100001;\
+            background: #ffffff;\
+            border-bottom: 1px solid #e2e2e2;\
+            display: flex; align-items: center; justify-content: space-between;\
+            padding: 0 0 0 12px;\
+            box-sizing: border-box;\
+            font-family: system-ui, "Segoe UI", -apple-system, sans-serif;\
+            -webkit-app-region: drag;\
+        }\
+        #custom-titlebar .hxd-titlebar-brand {\
+            display: flex; align-items: center; gap: 8px; min-width: 0;\
+            -webkit-app-region: drag;\
+        }\
+        #custom-titlebar .hxd-titlebar-logo {\
+            width: 18px; height: 18px; object-fit: contain; flex-shrink: 0;\
+            display: block; border-radius: 2px; pointer-events: none;\
+        }\
+        #custom-titlebar .hxd-titlebar-text {\
+            font-size: 12px; font-weight: 500; color: #111; letter-spacing: 0.02em;\
+            white-space: nowrap;\
+        }\
+        #custom-titlebar .hxd-titlebar-controls {\
+            display: flex; align-items: stretch; height: 100%; flex-shrink: 0;\
+            -webkit-app-region: no-drag;\
+        }\
+        #custom-titlebar .hxd-win-btn {\
+            width: 46px; min-height: 100%; border: none; background: transparent;\
+            color: #1a1a1a; cursor: pointer; padding: 0; display: flex;\
+            align-items: center; justify-content: center;\
+        }\
+        #custom-titlebar .hxd-win-btn:hover { background: #ececec; }\
+        #custom-titlebar #hxd-window-close-btn:hover { background: #e81123; color: #fff; }\
+        #custom-titlebar #hxd-window-max-btn .hxd-icon-restore { display: none; }\
+        #custom-titlebar #hxd-window-max-btn.is-maximized .hxd-icon-max { display: none; }\
+        #custom-titlebar #hxd-window-max-btn.is-maximized .hxd-icon-restore { display: block; }\
+        #custom-titlebar .hxd-min-line {\
+            display: block; width: 10px; height: 0; border: none; border-top: 1px solid currentColor;\
+        }\
         #custom-header {\
             position: fixed; top: ' + tbPx + 'px; left: 0; right: 0; height: ' + darkNavPx + 'px;\
             background: var(--theme-bg-primary, #1A2125);\
@@ -390,17 +406,13 @@
         document.head.appendChild(fontLink);
 
         var shellUsesNativeFrame = hxdDetectWindowsNativeShell();
-        var TITLEBAR_PX = 0;
+        var TITLEBAR_PX = shellUsesNativeFrame ? 0 : 32;
         var DARK_HEADER_PX = HEADER_BAR_PX;
         var CONTENT_TOP_PX = TITLEBAR_PX + DARK_HEADER_PX + HEADER_GAME_GAP_PX;
-        var spotifyPanelTopPx = CONTENT_TOP_PX + 4;
         Injector.injectCSS(
             'header-css',
-            buildHeaderCss(TITLEBAR_PX, DARK_HEADER_PX) +
-                HXD_SPOTIFY_EXTRA_CSS_TEMPLATE.split('__PANEL_TOP__').join(String(spotifyPanelTopPx))
+            buildHeaderCss(TITLEBAR_PX, DARK_HEADER_PX)
         );
-
-        // Version badge removed
 
         // Observer para detectar quando iframes são adicionados e aplicar estilos
         var iframeObserver = new MutationObserver(function(mutations) {
@@ -655,24 +667,22 @@
             setTimeout(pingGameFramesAppearanceReady, 400);
         }
 
-        // Escuta mudanças de tema do iframe
+        window.addEventListener('themeChanged', function(e) {
+            var detail = e && e.detail ? e.detail : null;
+            if (!detail || !detail.theme) return;
+            try {
+                if (detail.theme) localStorage.setItem('haxball-theme', String(detail.theme));
+            } catch (errThemeEv) {}
+            applyThemeToMainFrame(detail.theme, detail.colors);
+        });
+
+        // Escuta mudanças de tema del iframe (o del mismo documento vía postMessage)
         window.addEventListener('message', function(e) {
             if (e.data && e.data.type === 'themeChanged') {
                 try {
                     if (e.data.theme) localStorage.setItem('haxball-theme', String(e.data.theme));
                 } catch (err) {}
                 applyThemeToMainFrame(e.data.theme, e.data.colors);
-                try {
-                    if (e.data.theme) {
-                        var ct = JSON.parse(localStorage.getItem('haxball-custom-theme-base') || '{}');
-                        shellAppearanceDiskCache = {
-                            version: 1,
-                            theme: e.data.theme,
-                            customThemeBase: ct || {},
-                            wallpaper: localStorage.getItem('haxball-app-wallpaper') || ''
-                        };
-                    }
-                } catch (eUpd) {}
             }
             if (e.data && e.data.type === 'hxd-appearance-sync-parent-ls' && e.data.payload) {
                 var p = e.data.payload;
@@ -698,7 +708,6 @@
                 applyThemeToMainFrame(localStorage.getItem('haxball-theme') || 'dark');
                 pingGameFramesAppearanceReady();
             }
-            // Version visibility removed
         });
 
         // Escuta mudanças no localStorage (quando tema muda no iframe)
@@ -714,7 +723,42 @@
         var oldHeader = document.querySelector('.header');
         if (oldHeader) oldHeader.style.display = 'none';
 
-        if (document.getElementById('custom-header')) return;
+        if (shellUsesNativeFrame) {
+            var staleTb = document.getElementById('custom-titlebar');
+            if (staleTb && staleTb.parentNode) {
+                staleTb.parentNode.removeChild(staleTb);
+            }
+        }
+
+        if (document.getElementById('custom-header') || document.getElementById('custom-titlebar')) return;
+
+        var titlebar = null;
+        var tbLogoSrc = 'http://127.0.0.1:5483/app-assets/logoapp.ico';
+        if (!shellUsesNativeFrame) {
+            titlebar = document.createElement('div');
+            titlebar.id = 'custom-titlebar';
+            titlebar.setAttribute('role', 'banner');
+            titlebar.innerHTML =
+                '\
+                <div class="hxd-titlebar-brand">\
+                    <img class="hxd-titlebar-logo" src="' +
+                tbLogoSrc +
+                '" alt="" width="18" height="18" decoding="async" draggable="false" />\
+                    <span class="hxd-titlebar-text">zEro</span>\
+                </div>\
+                <div class="hxd-titlebar-controls">\
+                    <button type="button" id="hxd-window-min-btn" class="hxd-win-btn hxd-win-btn-min" data-translate-title="Minimizar" aria-label="Minimizar"><span class="hxd-min-line"></span></button>\
+                    <button type="button" id="hxd-window-max-btn" class="hxd-win-btn" data-translate-title="Maximizar" aria-label="Maximizar">\
+                        <svg class="hxd-icon-max" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="1"/></svg>\
+                        <svg class="hxd-icon-restore" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="12" height="12" rx="1"/><rect x="3" y="9" width="12" height="12" rx="1"/></svg>\
+                    </button>\
+                    <button type="button" id="hxd-window-close-btn" class="hxd-win-btn" data-translate-title="Cerrar ventana" aria-label="Cerrar ventana">\
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>\
+                    </button>\
+                </div>\
+            ';
+            document.body.insertBefore(titlebar, document.body.firstChild);
+        }
 
         var header = document.createElement('div');
         header.id = 'custom-header';
@@ -738,18 +782,16 @@
                 <button type="button" id="ghost-mode-btn" data-translate-title="Modo Anônimo" aria-pressed="false" title="">\
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 10h.01M15 10h.01M12 2a8 8 0 0 0-8 8v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10a8 8 0 0 0-8-8z"/></svg>\
                 </button>\
-                <div id="hxd-spotify-header-slot" class="hxd-spotify-header-slot">\
-                <button type="button" id="spotify-header-btn" data-translate-title="Spotify" title="Spotify" style="display:flex!important;align-items:center;justify-content:center;min-width:28px;min-height:28px;padding:4px;background:transparent;border:none;color:#1db954;cursor:pointer;visibility:visible!important;opacity:1!important;flex-shrink:0;">' +
-            HXD_SPOTIFYToolbar_SVG +
-            '</button>\
-                </div>\
                 <button type="button" id="hxd-toggle-chrome-btn" data-translate-title="Ocultar barra de menú" aria-label="Toggle menu bar">\
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>\
                 </button>\
             </div>\
         ';
-        hxdEnsureSpotifyToolbarButton(header);
-        document.body.insertBefore(header, document.body.firstChild);
+        if (titlebar) {
+            document.body.insertBefore(header, titlebar.nextSibling);
+        } else {
+            document.body.insertBefore(header, document.body.firstChild);
+        }
 
         var headerSpacer = document.createElement('div');
         headerSpacer.id = 'custom-header-spacer';
@@ -826,6 +868,21 @@
             }
         }
 
+        ['hxd-window-min-btn', 'hxd-window-close-btn'].forEach(function(id) {
+            var b = document.getElementById(id);
+            if (b) {
+                var tk = b.getAttribute('data-translate-title');
+                if (tk) b.title = t(tk);
+            }
+        });
+
+        var maxBtnTr2 = document.getElementById('hxd-window-max-btn');
+        if (maxBtnTr2) {
+            var maxOn = maxBtnTr2.classList.contains('is-maximized');
+            var maxTitle = t(maxOn ? 'Restaurar ventana' : 'Maximizar');
+            maxBtnTr2.title = maxTitle;
+            maxBtnTr2.setAttribute('aria-label', maxTitle);
+        }
         syncGhostModeButton();
     }
 
@@ -859,13 +916,6 @@
         }
         var LOCAL_HEADER_API = hxdShellLocalOrigin();
 
-        var hxdSpotifyPanelEl = null;
-        var hxdSpotifyBtnEl = null;
-        var hxdSpotifySlotEl = null;
-        /** Intervalo GET playback (navbar + panel); sigue activo con Client ID aunque el panel esté cerrado. */
-        var hxdSpotifyPollTimer = null;
-        var hxdSpotifyUiTimer = null;
-        var hxdSpotifyLastState = { progress_ms: 0, duration_ms: 0, is_playing: false, fetchedAt: 0 };
 
         var codeRegex = /^[a-zA-Z0-9_-]{6,64}$/;
 
@@ -1005,6 +1055,74 @@
             return true;
         };
 
+        var winMinBtn = document.getElementById('hxd-window-min-btn');
+        var winMaxBtn = document.getElementById('hxd-window-max-btn');
+        var winCloseBtn = document.getElementById('hxd-window-close-btn');
+
+        function minimizeWindowNow() {
+            if (window.electronAPI && typeof window.electronAPI.minimizeWindow === 'function') {
+                window.electronAPI.minimizeWindow();
+            } else {
+                fetch(LOCAL_HEADER_API + '/window/minimize', { method: 'POST' }).catch(function() {});
+            }
+        }
+
+        function setMaximizeBtnUi(maximized) {
+            if (!winMaxBtn) return;
+            if (maximized) winMaxBtn.classList.add('is-maximized');
+            else winMaxBtn.classList.remove('is-maximized');
+            applyHeaderTranslations();
+        }
+
+        if (winMinBtn) {
+            winMinBtn.addEventListener('click', function() {
+                minimizeWindowNow();
+            });
+        }
+        if (winMaxBtn) {
+            winMaxBtn.addEventListener('click', function() {
+                if (window.electronAPI && typeof window.electronAPI.toggleMaximizeWindow === 'function') {
+                    window.electronAPI
+                        .toggleMaximizeWindow()
+                        .then(function(r) {
+                            if (r && typeof r.maximized === 'boolean') setMaximizeBtnUi(r.maximized);
+                        })
+                        .catch(function() {});
+                } else {
+                    fetch(LOCAL_HEADER_API + '/window/toggle-maximize', { method: 'POST' })
+                        .then(function(res) {
+                            return res.json();
+                        })
+                        .then(function(data) {
+                            if (data && typeof data.maximized === 'boolean') setMaximizeBtnUi(data.maximized);
+                        })
+                        .catch(function() {});
+                }
+            });
+            if (window.electronAPI && typeof window.electronAPI.onWindowMaximizedChanged === 'function') {
+                window.electronAPI.onWindowMaximizedChanged(function(m) {
+                    setMaximizeBtnUi(m);
+                });
+            }
+            if (window.electronAPI && typeof window.electronAPI.isWindowMaximized === 'function') {
+                window.electronAPI
+                    .isWindowMaximized()
+                    .then(function(r) {
+                        if (r && typeof r.maximized === 'boolean') setMaximizeBtnUi(r.maximized);
+                    })
+                    .catch(function() {});
+            }
+        }
+        if (winCloseBtn) {
+            winCloseBtn.addEventListener('click', function() {
+                if (window.electronAPI && typeof window.electronAPI.closeApp === 'function') {
+                    window.electronAPI.closeApp();
+                } else {
+                    fetch(LOCAL_HEADER_API + '/quit-app', { method: 'POST' }).catch(function() {});
+                }
+            });
+        }
+
         document.getElementById('discord-btn').addEventListener('click', function() {
             window.__hxdOpenExternalUrl('https://discord.gg/haxzero');
         });
@@ -1034,815 +1152,6 @@
             syncGhostModeButton();
         }
 
-        hxdSpotifySlotEl = document.getElementById('hxd-spotify-header-slot');
-        hxdSpotifyBtnEl = document.getElementById('spotify-header-btn');
-        function hxdLocalApiOrigin() {
-            var doc = document;
-            try {
-                if (window.top && window.top !== window) {
-                    doc = window.top.document;
-                }
-            } catch (eTop) {
-                doc = document;
-            }
-            try {
-                var meta = doc.querySelector('meta[name="hxd-local-api"]');
-                if (meta && meta.getAttribute('content')) {
-                    return String(meta.getAttribute('content')).replace(/\/+$/, '');
-                }
-            } catch (eM) {}
-            try {
-                if (window.HaxDesktopConfig && window.HaxDesktopConfig.LOCAL_SERVER) {
-                    return String(window.HaxDesktopConfig.LOCAL_SERVER).replace(/\/+$/, '');
-                }
-            } catch (eH) {}
-            return 'http://127.0.0.1:5483';
-        }
-        var hxdSpotifyBridge = (function() {
-            if (window.electronAPI && typeof window.electronAPI.spotifyGetPlayback === 'function') {
-                return {
-                    getConfig: function() {
-                        return window.electronAPI.spotifyGetConfig();
-                    },
-                    startAuth: function() {
-                        return window.electronAPI.spotifyStartAuth();
-                    },
-                    logout: function() {
-                        return window.electronAPI.spotifyLogout();
-                    },
-                    openWebPlayer: function() {
-                        return window.electronAPI.spotifyOpenWebPlayer();
-                    },
-                    getPlayback: function() {
-                        return window.electronAPI.spotifyGetPlayback();
-                    },
-                    control: function(p) {
-                        return window.electronAPI.spotifyControl(p);
-                    },
-                    onAuthChanged: function(cb) {
-                        if (typeof window.electronAPI.onSpotifyAuthChanged === 'function') {
-                            return window.electronAPI.onSpotifyAuthChanged(cb);
-                        }
-                        return function() {};
-                    }
-                };
-            }
-            var base = hxdLocalApiOrigin();
-            var hxdElectronShell =
-                typeof navigator !== 'undefined' && /electron/i.test(String(navigator.userAgent || ''));
-
-            function hxdSpotifyPostMsgInvoke(op, payload) {
-                return new Promise(function(resolve) {
-                    var rid = 'hxdsp-' + Date.now() + '-' + Math.random().toString(36).slice(2, 11);
-                    var finished = false;
-                    function done(val) {
-                        if (finished) return;
-                        finished = true;
-                        clearTimeout(tmo);
-                        try {
-                            window.removeEventListener('message', onReply);
-                        } catch (eRm) {}
-                        resolve(val);
-                    }
-                    function onReply(ev) {
-                        var d = ev.data;
-                        if (!d || d.__hxd !== 1 || d.ns !== 'spotify-ipc' || d.rid !== rid || d.res !== true) return;
-                        if (d.error) {
-                            done({
-                                ok: false,
-                                error: String(d.error),
-                                hasClientId: true,
-                                loggedIn: false
-                            });
-                        } else {
-                            done(
-                                d.result != null
-                                    ? d.result
-                                    : { ok: false, error: 'empty_ipc', hasClientId: true, loggedIn: false }
-                            );
-                        }
-                    }
-                    var tmo = setTimeout(function() {
-                        done({
-                            ok: false,
-                            error: 'spotify_postmsg_timeout',
-                            hasClientId: true,
-                            loggedIn: false
-                        });
-                    }, 28000);
-                    window.addEventListener('message', onReply);
-                    try {
-                        window.postMessage(
-                            {
-                                __hxd: 1,
-                                ns: 'spotify-ipc',
-                                rid: rid,
-                                op: op,
-                                payload: payload == null ? null : payload
-                            },
-                            '*'
-                        );
-                    } catch (eP) {
-                        done({
-                            ok: false,
-                            error: String(eP && eP.message ? eP.message : eP),
-                            hasClientId: true,
-                            loggedIn: false
-                        });
-                    }
-                });
-            }
-
-            function hxdSpotifyRacePostThenFetch(invokePromise, fetchFn) {
-                if (!hxdElectronShell) return fetchFn();
-                return Promise.race([
-                    invokePromise,
-                    new Promise(function(resolve) {
-                        setTimeout(function() {
-                            resolve({ __hxdSkip: true });
-                        }, 4500);
-                    })
-                ]).then(function(v) {
-                    if (v && v.__hxdSkip) return fetchFn();
-                    return v;
-                });
-            }
-
-            function hxdSpotifyFetchPlaybackResponse(r) {
-                if (!r || !r.ok) {
-                    return Promise.resolve({
-                        ok: false,
-                        error: 'http_' + (r && r.status != null ? r.status : 0),
-                        loggedIn: true,
-                        hasClientId: true
-                    });
-                }
-                return r.text().then(function(txt) {
-                    try {
-                        return txt
-                            ? JSON.parse(txt)
-                            : { ok: false, error: 'empty_body', loggedIn: true, hasClientId: true };
-                    } catch (eJ) {
-                        return { ok: false, error: 'invalid_json', loggedIn: true, hasClientId: true };
-                    }
-                });
-            }
-
-            return {
-                getConfig: function() {
-                    return hxdSpotifyRacePostThenFetch(hxdSpotifyPostMsgInvoke('getConfig', null), function() {
-                        return fetch(base + '/spotify/config', { credentials: 'omit' }).then(function(r) {
-                            return r.json();
-                        });
-                    });
-                },
-                startAuth: function() {
-                    return hxdSpotifyRacePostThenFetch(hxdSpotifyPostMsgInvoke('startAuth', null), function() {
-                        return fetch(base + '/spotify/start-auth', {
-                            method: 'POST',
-                            credentials: 'omit'
-                        }).then(function(r) {
-                            return r.json();
-                        });
-                    });
-                },
-                logout: function() {
-                    return hxdSpotifyRacePostThenFetch(hxdSpotifyPostMsgInvoke('logout', null), function() {
-                        return fetch(base + '/spotify/logout', {
-                            method: 'POST',
-                            credentials: 'omit'
-                        }).then(function(r) {
-                            return r.json();
-                        });
-                    });
-                },
-                openWebPlayer: function() {
-                    return hxdSpotifyPostMsgInvoke('openWebPlayer', null);
-                },
-                getPlayback: function() {
-                    /** HTTP al bridge local; si el fetch cuelga (Electron), fallback a IPC del preload. */
-                    var viaFetch = fetch(base + '/spotify/playback', { credentials: 'omit' }).then(
-                        hxdSpotifyFetchPlaybackResponse
-                    );
-                    if (!hxdElectronShell) return viaFetch;
-                    return Promise.race([
-                        viaFetch,
-                        new Promise(function(resolve) {
-                            setTimeout(function() {
-                                resolve({ __hxdPlaybackFetchSlow: true });
-                            }, 6500);
-                        })
-                    ]).then(function(v) {
-                        if (v && v.__hxdPlaybackFetchSlow) {
-                            return hxdSpotifyPostMsgInvoke('getPlayback', null);
-                        }
-                        return v;
-                    });
-                },
-                control: function(p) {
-                    return hxdSpotifyRacePostThenFetch(hxdSpotifyPostMsgInvoke('control', p), function() {
-                        return fetch(base + '/spotify/control', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            credentials: 'omit',
-                            body: JSON.stringify(p || {})
-                        }).then(function(r) {
-                            return r.json();
-                        });
-                    });
-                },
-                onAuthChanged: function(cb) {
-                    if (!hxdElectronShell) return function() {};
-                    function onMsg(ev) {
-                        var d = ev.data;
-                        if (!d || d.__hxd !== 1 || d.ns !== 'spotify-ipc' || d.ev !== 'auth-changed') return;
-                        try {
-                            cb(d.payload);
-                        } catch (eC) {}
-                    }
-                    window.addEventListener('message', onMsg);
-                    return function() {
-                        try {
-                            window.removeEventListener('message', onMsg);
-                        } catch (eR) {}
-                    };
-                }
-            };
-        })();
-        if (hxdSpotifyBtnEl) {
-            var HXD_SPOTIFY_ANCHOR_LS = 'hxd_spotify_panel_anchor';
-            function hxdGetSpotifyPanelAnchor() {
-                try {
-                    var vA = localStorage.getItem(HXD_SPOTIFY_ANCHOR_LS);
-                    if (vA === 'tr' || vA === 'tl' || vA === 'br' || vA === 'bl' || vA === 'mr' || vA === 'ml') return vA;
-                } catch (eAnch) {}
-                return 'tr';
-            }
-            function hxdApplySpotifyPanelAnchor() {
-                if (!hxdSpotifyPanelEl) return;
-                var anchList = ['tr', 'tl', 'br', 'bl', 'mr', 'ml'];
-                for (var ai = 0; ai < anchList.length; ai++) {
-                    hxdSpotifyPanelEl.classList.remove('hxd-spotify-anchor-' + anchList[ai]);
-                }
-                hxdSpotifyPanelEl.classList.add('hxd-spotify-anchor-' + hxdGetSpotifyPanelAnchor());
-            }
-            window.addEventListener('hxd-spotify-panel-anchor-changed', hxdApplySpotifyPanelAnchor);
-            hxdSpotifyPanelEl = document.createElement('div');
-            hxdSpotifyPanelEl.id = 'hxd-spotify-panel';
-            hxdSpotifyPanelEl.innerHTML =
-                '<div class="hxd-spotify-dd-head">' +
-                '<span id="hxd-spotify-head-title">Spotify</span>' +
-                '<button type="button" class="hxd-spotify-ctrl-btn" id="hxd-spotify-close" aria-label="Cerrar">' +
-                '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
-                '</button></div>' +
-                '<div class="hxd-spotify-dd-body">' +
-                '<div id="hxd-spotify-no-client" class="hxd-spotify-dd-gutter" style="display:none"></div>' +
-                '<div id="hxd-spotify-login-block" class="hxd-spotify-dd-gutter" style="display:none">' +
-                '<button type="button" class="hxd-spotify-connect-box" id="hxd-spotify-connect-btn">' +
-                '<span class="hxd-spotify-connect-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.52 17.34c-.24.36-.66.48-1.02.24-2.82-1.74-6.36-2.1-10.56-1.14-.42.12-.78-.18-.9-.54-.12-.42.18-.78.54-.9 4.56-1.02 8.52-.6 11.64 1.32.42.18.48.66.3 1.02z"/></svg></span>' +
-                '<span id="hxd-spotify-connect-label">Conectar tu Spotify</span></button>' +
-                '<p class="hxd-spotify-login-sub" id="hxd-spotify-login-hint"></p>' +
-                '</div>' +
-                '<p id="hxd-spotify-loading" class="hxd-spotify-loading hxd-spotify-dd-gutter" style="display:none;text-align:center;padding:8px 6px;font-size:11px;">…</p>' +
-                '<div id="hxd-spotify-player-wrap" class="hxd-spotify-player-wrap hxd-spotify-dd-gutter">' +
-                '<div class="hxd-spotify-card">' +
-                '<div class="hxd-spotify-card-row">' +
-                '<img class="hxd-spotify-art-sm" id="hxd-spotify-art" alt="" />' +
-                '<div class="hxd-spotify-card-col">' +
-                '<div class="hxd-spotify-meta">' +
-                '<div class="hxd-spotify-title" id="hxd-spotify-track-title"></div>' +
-                '<div class="hxd-spotify-artist" id="hxd-spotify-track-artist"></div>' +
-                '</div>' +
-                '<div class="hxd-spotify-progress-track">' +
-                '<div class="hxd-spotify-progress-wrap" id="hxd-spotify-progress-hit">' +
-                '<div class="hxd-spotify-progress-bar" id="hxd-spotify-progress-bar"></div>' +
-                '</div></div>' +
-                '<div class="hxd-spotify-time-row">' +
-                '<span id="hxd-spotify-t-elapsed">0:00</span>' +
-                '<span id="hxd-spotify-t-total">0:00</span>' +
-                '</div>' +
-                '<div class="hxd-spotify-transport">' +
-                '<button type="button" class="hxd-spotify-trans-btn hxd-spotify-trans-side" id="hxd-spotify-prev" aria-label="Anterior">' +
-                '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5-6v12z"/></svg></button>' +
-                '<button type="button" class="hxd-spotify-trans-btn hxd-spotify-play-main" id="hxd-spotify-play-toggle" aria-label="Play/Pause">' +
-                '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" id="hxd-spotify-icon-play"><path d="M8 5v14l11-7z"/></svg>' +
-                '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" id="hxd-spotify-icon-pause" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg></button>' +
-                '<button type="button" class="hxd-spotify-trans-btn hxd-spotify-trans-side" id="hxd-spotify-next" aria-label="Siguiente">' +
-                '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 18h2V6h-2v12zm-11-6l8.5 6V6z"/></svg></button>' +
-                '</div>' +
-                '</div></div>' +
-                '<div id="hxd-spotify-idle-msg" style="display:none"></div>' +
-                '</div></div>' +
-                '<button type="button" class="hxd-spotify-dd-item" id="hxd-spotify-disconnect-btn"></button>' +
-                '<div id="hxd-spotify-err" class="hxd-spotify-dd-gutter" style="display:none"></div>' +
-                '</div>';
-            document.body.appendChild(hxdSpotifyPanelEl);
-            hxdApplySpotifyPanelAnchor();
-
-            function hxdFormatMs(ms) {
-                var totalSec = Math.max(0, Math.floor((Number(ms) || 0) / 1000));
-                var m = Math.floor(totalSec / 60);
-                var s = totalSec % 60;
-                return m + ':' + (s < 10 ? '0' : '') + s;
-            }
-
-            function hxdStopSpotifyPoll() {
-                /* El polling sigue activo para sincronizar el panel al abrirlo. */
-            }
-
-            function hxdUpdateSpotifyProgressVisual() {
-                var bar = document.getElementById('hxd-spotify-progress-bar');
-                var tEl = document.getElementById('hxd-spotify-t-elapsed');
-                var tTot = document.getElementById('hxd-spotify-t-total');
-                var dur = hxdSpotifyLastState.duration_ms || 0;
-                if (!bar) return;
-                var base = hxdSpotifyLastState.progress_ms || 0;
-                if (dur > 0 && hxdSpotifyLastState.is_playing && hxdSpotifyLastState.fetchedAt) {
-                    base = Math.min(dur, base + (Date.now() - hxdSpotifyLastState.fetchedAt));
-                }
-                var pct = 0;
-                if (dur > 0) {
-                    pct = Math.min(100, Math.max(0, (base / dur) * 100));
-                }
-                bar.style.width = dur > 0 ? pct + '%' : '0%';
-                if (tEl) tEl.textContent = hxdFormatMs(base);
-                if (tTot) tTot.textContent = hxdFormatMs(dur);
-            }
-
-            function hxdSetSpotifyPlayerVisible(on) {
-                var playerWrap = document.getElementById('hxd-spotify-player-wrap');
-                if (!playerWrap) return;
-                if (on) playerWrap.classList.add('hxd-spotify-player-wrap--visible');
-                else playerWrap.classList.remove('hxd-spotify-player-wrap--visible');
-            }
-
-            function hxdSyncNavStripContent(data, lang) {
-                /* Navbar: solo icono; el estado detallado está en el panel (#hxd-spotify-panel). */
-            }
-
-            function hxdApplySpotifyPlaybackPayload(data) {
-                var lang = localStorage.getItem('haxball_language') || 'es';
-                var loadEl = document.getElementById('hxd-spotify-loading');
-                if (loadEl) loadEl.style.display = 'none';
-                var noClient = document.getElementById('hxd-spotify-no-client');
-                var loginBlock = document.getElementById('hxd-spotify-login-block');
-                var errEl = document.getElementById('hxd-spotify-err');
-                var idleMsg = document.getElementById('hxd-spotify-idle-msg');
-                if (errEl) {
-                    errEl.style.display = 'none';
-                    errEl.textContent = '';
-                }
-                if (!data || data.ok === false) {
-                    if (noClient) {
-                        noClient.style.display = 'block';
-                        if (!data || data.error === 'missing_client_id') {
-                            noClient.innerHTML =
-                                '<p style="margin:0;line-height:1.45;">Configurá un Client ID de Spotify: variable <code style="font-size:10px;">HXD_SPOTIFY_CLIENT_ID</code> o archivo <code style="font-size:10px;">spotify-client-id.txt</code> en la carpeta de datos de la app. En el panel de Spotify Developers añadí la redirect: <code style="font-size:10px;word-break:break-all;">' +
-                                (data && data.redirectUri ? data.redirectUri : 'http://127.0.0.1:5483/spotify-callback') +
-                                '</code></p>';
-                        } else {
-                            noClient.innerHTML = '';
-                            var pErr = document.createElement('p');
-                            pErr.style.margin = '0';
-                            pErr.style.lineHeight = '1.45';
-                            pErr.style.whiteSpace = 'pre-line';
-                            var codeRaw = data && data.error ? String(data.error) : '';
-                            var isTimeoutErr =
-                                codeRaw.indexOf('spotify_request_timeout') !== -1 ||
-                                codeRaw.indexOf('spotify_postmsg_timeout') !== -1;
-                            var devModeMaybe =
-                                /invalid[_ ]?grant|not\s+registered|development|user\s+not\s+in|401:\s*invalid/i.test(
-                                    codeRaw
-                                );
-                            var spotifyDevDash =
-                                lang === 'en'
-                                    ? 'If the Spotify app is in Development mode, add each user under Users and Access, or request Extended Quota / Production so anyone can connect.'
-                                    : lang === 'pt'
-                                      ? 'Se a app do Spotify está em Development, adicione cada usuário em Users and Access ou peça modo público/cota estendida.'
-                                      : 'Si la app de Spotify está en modo Development, agregá cada cuenta en Users and Access o pedí modo público/cuota extendida para que cualquiera pueda conectar.';
-                            var friendly =
-                                codeRaw === 'session_expired'
-                                    ? lang === 'en'
-                                        ? 'Session expired. Use “Connect your Spotify” again.'
-                                        : lang === 'pt'
-                                          ? 'Sessão expirada. Use “Conectar seu Spotify” de novo.'
-                                          : 'Sesión expirada. Volvé a usar “Conectar tu Spotify”.'
-                                    : codeRaw === 'not_logged_in'
-                                      ? lang === 'en'
-                                          ? 'Not logged in to Spotify.'
-                                          : lang === 'pt'
-                                            ? 'Não conectado ao Spotify.'
-                                            : 'No iniciaste sesión en Spotify.'
-                                      : isTimeoutErr
-                                        ? lang === 'en'
-                                          ? 'Spotify took too long to respond. Check your connection and open the panel again.'
-                                          : lang === 'pt'
-                                            ? 'O Spotify demorou demais. Verifique a conexão e abra o painel de novo.'
-                                            : 'Spotify tardó demasiado. Revisá tu conexión y volvé a abrir el panel.'
-                                        : lang === 'en'
-                                          ? 'Could not load Spotify.'
-                                          : lang === 'pt'
-                                            ? 'Não foi possível carregar o Spotify.'
-                                            : 'No se pudo cargar Spotify.';
-                            if (devModeMaybe) {
-                                friendly = friendly + '\n\n' + spotifyDevDash;
-                            }
-                            pErr.textContent =
-                                friendly +
-                                (codeRaw &&
-                                !isTimeoutErr &&
-                                codeRaw !== 'session_expired' &&
-                                codeRaw !== 'not_logged_in'
-                                    ? ' (' + codeRaw + ')'
-                                    : '');
-                            noClient.appendChild(pErr);
-                        }
-                    }
-                    if (loginBlock) loginBlock.style.display = 'none';
-                    hxdSetSpotifyPlayerVisible(false);
-                    if (hxdSpotifyBtnEl) hxdSpotifyBtnEl.classList.remove('connected');
-                    hxdSyncNavStripContent(data, lang);
-                    return;
-                }
-                if (!data.hasClientId) {
-                    if (noClient) {
-                        noClient.style.display = 'block';
-                        noClient.innerHTML =
-                            '<p style="margin:0;line-height:1.45;">Configurá un Client ID de Spotify: variable <code style="font-size:10px;">HXD_SPOTIFY_CLIENT_ID</code> o archivo <code style="font-size:10px;">spotify-client-id.txt</code> en la carpeta de datos de la app. En el panel de Spotify Developers añadí la redirect: <code style="font-size:10px;word-break:break-all;">' +
-                            (data.redirectUri || 'http://127.0.0.1:5483/spotify-callback') +
-                            '</code></p>';
-                    }
-                    if (loginBlock) loginBlock.style.display = 'none';
-                    hxdSetSpotifyPlayerVisible(false);
-                    if (hxdSpotifyBtnEl) hxdSpotifyBtnEl.classList.remove('connected');
-                    hxdSyncNavStripContent(data, lang);
-                    return;
-                }
-                if (noClient) {
-                    noClient.style.display = 'none';
-                    noClient.innerHTML = '';
-                }
-                if (!data.loggedIn) {
-                    if (loginBlock) loginBlock.style.display = 'block';
-                    hxdSetSpotifyPlayerVisible(false);
-                    if (hxdSpotifyBtnEl) hxdSpotifyBtnEl.classList.remove('connected');
-                    hxdSyncNavStripContent(data, lang);
-                    return;
-                }
-                if (hxdSpotifyBtnEl) hxdSpotifyBtnEl.classList.add('connected');
-                if (loginBlock) loginBlock.style.display = 'none';
-                hxdSetSpotifyPlayerVisible(true);
-
-                if (data.premium_hint && errEl) {
-                    errEl.style.display = 'block';
-                    errEl.textContent = data.message || '';
-                }
-
-                var art = document.getElementById('hxd-spotify-art');
-                var titleEl = document.getElementById('hxd-spotify-track-title');
-                var artistEl = document.getElementById('hxd-spotify-track-artist');
-                var iconPlay = document.getElementById('hxd-spotify-icon-play');
-                var iconPause = document.getElementById('hxd-spotify-icon-pause');
-
-                var noPb = data.no_active_playback || !data.track;
-                var idleCopy =
-                    lang === 'en'
-                        ? 'Open Spotify on this PC (app or web) and press play — the bar will update here.'
-                        : lang === 'pt'
-                          ? 'Abra o Spotify neste PC (app ou web) e dê play — a barra atualiza aqui.'
-                          : 'Abrí Spotify en esta PC (app o web) y dale play — la barra se actualiza sola.';
-                var reauthTail =
-                    lang === 'en'
-                        ? ' If it still fails: use “Disconnect Spotify” here, then connect again (refreshes permissions).'
-                        : lang === 'pt'
-                          ? ' Se ainda falhar: use “Desconectar Spotify” aqui e conecte de novo (atualiza permissões).'
-                          : ' Si sigue igual: “Desconectar Spotify” acá y volvé a conectar (actualiza permisos).';
-
-                if (idleMsg) {
-                    if (noPb && !data.premium_hint) {
-                        idleMsg.style.display = 'block';
-                        idleMsg.textContent = idleCopy + (data.spotify_reauth_hint ? reauthTail : '');
-                    } else {
-                        idleMsg.style.display = 'none';
-                    }
-                }
-
-                if (!noPb && data.track) {
-                    if (art) {
-                        if (data.track.image_url) {
-                            art.src = data.track.image_url;
-                            art.style.visibility = 'visible';
-                        } else {
-                            art.removeAttribute('src');
-                            art.style.visibility = 'hidden';
-                        }
-                    }
-                    if (titleEl) titleEl.textContent = data.track.name || '';
-                    if (artistEl) artistEl.textContent = (data.track.artists || []).join(', ');
-                } else {
-                    if (titleEl) {
-                        titleEl.textContent =
-                            lang === 'en'
-                                ? 'Waiting for Spotify…'
-                                : lang === 'pt'
-                                  ? 'Aguardando Spotify…'
-                                  : 'Esperando a Spotify…';
-                    }
-                    if (artistEl) {
-                        artistEl.textContent =
-                            lang === 'en'
-                                ? 'No active playback on this account'
-                                : lang === 'pt'
-                                  ? 'Sem reprodução ativa nesta conta'
-                                  : 'Sin reproducción activa en esta cuenta';
-                    }
-                    if (art) {
-                        art.removeAttribute('src');
-                        art.style.visibility = 'hidden';
-                    }
-                }
-
-                var dur = data.duration_ms || 0;
-                var prog = data.progress_ms || 0;
-                hxdSpotifyLastState = {
-                    progress_ms: prog,
-                    duration_ms: dur,
-                    is_playing: !!data.is_playing && !noPb,
-                    fetchedAt: Date.now()
-                };
-                if (iconPlay && iconPause) {
-                    if (hxdSpotifyLastState.is_playing) {
-                        iconPlay.style.display = 'none';
-                        iconPause.style.display = 'block';
-                    } else {
-                        iconPlay.style.display = 'block';
-                        iconPause.style.display = 'none';
-                    }
-                }
-                hxdUpdateSpotifyProgressVisual();
-                hxdSyncNavStripContent(data, lang);
-            }
-
-            function hxdFetchSpotifyPlayback() {
-                hxdSpotifyBridge
-                    .getPlayback()
-                    .then(hxdApplySpotifyPlaybackPayload)
-                    .catch(function() {
-                        var loadEl2 = document.getElementById('hxd-spotify-loading');
-                        if (loadEl2) loadEl2.style.display = 'none';
-                        var errEl = document.getElementById('hxd-spotify-err');
-                        var lgE = localStorage.getItem('haxball_language') || 'es';
-                        if (errEl) {
-                            errEl.style.display = 'block';
-                            errEl.textContent =
-                                lgE === 'en'
-                                    ? 'Could not reach Spotify (network). Retrying…'
-                                    : lgE === 'pt'
-                                      ? 'Não foi possível falar com o Spotify (rede). Tentando de novo…'
-                                      : 'No se pudo contactar a Spotify (red). Reintentando…';
-                        }
-                    });
-            }
-
-            function hxdStartSpotifyPoll() {
-                if (!hxdSpotifyPollTimer) {
-                    hxdSpotifyPollTimer = setInterval(hxdFetchSpotifyPlayback, 2800);
-                }
-                if (!hxdSpotifyUiTimer) {
-                    hxdSpotifyUiTimer = setInterval(hxdUpdateSpotifyProgressVisual, 380);
-                }
-                hxdFetchSpotifyPlayback();
-            }
-
-            function hxdSpotifyControlErrorLine(r) {
-                var lang = localStorage.getItem('haxball_language') || 'es';
-                if (!r || typeof r !== 'object') {
-                    return lang === 'en'
-                        ? 'No response from Spotify control.'
-                        : lang === 'pt'
-                          ? 'Sem resposta do controle do Spotify.'
-                          : 'Sin respuesta al controlar Spotify.';
-                }
-                var err = r.error != null ? String(r.error) : '';
-                var sm = r.spotify_message ? String(r.spotify_message).trim() : '';
-                var tail = '';
-                if (sm) tail = sm.length <= 220 ? ' — ' + sm : ' — ' + sm.slice(0, 200) + '…';
-                if (err === 'premium_required' || err === 'premium_or_device_required') {
-                    if (lang === 'en')
-                        return 'Spotify could not start remote playback. Open Spotify on this PC, press play once, then try again.' + tail;
-                    if (lang === 'pt')
-                        return 'O Spotify não conseguiu iniciar a reprodução remota. Abra o Spotify neste PC, dê play uma vez e tente de novo.' + tail;
-                    return 'Spotify no pudo iniciar la reproducción remota. Abrí Spotify en esta PC, dale play una vez y volvé a intentar.' + tail;
-                }
-                if (err === 'no_active_device') {
-                    if (lang === 'en')
-                        return 'No active Spotify device on this PC. Open Spotify, press play once, then try again.' + tail;
-                    if (lang === 'pt')
-                        return 'Nenhum dispositivo Spotify ativo neste PC. Abra o Spotify, dê play uma vez e tente de novo.' + tail;
-                    return 'No hay dispositivo activo de Spotify en esta PC. Abrí Spotify, dale play una vez y volvé a intentar.' + tail;
-                }
-                if (err === 'insufficient_scope') {
-                    if (lang === 'en')
-                        return 'Spotify needs updated permissions: “Disconnect Spotify”, then connect again.' + tail;
-                    if (lang === 'pt')
-                        return 'O Spotify precisa de permissões novas: “Desconectar Spotify” e conectar de novo.' + tail;
-                    return 'Spotify necesita permisos nuevos: “Desconectar Spotify” y volvé a conectar.' + tail;
-                }
-                if (err === 'session_expired') {
-                    if (lang === 'en') return 'Session expired. Connect your Spotify again.';
-                    if (lang === 'pt') return 'Sessão expirada. Conecte o Spotify de novo.';
-                    return 'Sesión expirada. Volvé a conectar Spotify.';
-                }
-                if (err === 'playback_denied') {
-                    if (lang === 'en')
-                        return 'Spotify did not allow this command. Start playback in the Spotify app on this PC, then try again.' + tail;
-                    if (lang === 'pt')
-                        return 'O Spotify não permitiu o comando. Inicie a reprodução no app neste PC e tente de novo.' + tail;
-                    return 'Spotify no permitió el comando. Iniciá la reproducción en la app en esta PC y volvé a intentar.' + tail;
-                }
-                if (err === 'spotify_error') {
-                    var st = r.spotify_status != null ? String(r.spotify_status) : '?';
-                    if (lang === 'en') return 'Spotify error (HTTP ' + st + ').' + tail;
-                    if (lang === 'pt') return 'Erro do Spotify (HTTP ' + st + ').' + tail;
-                    return 'Error de Spotify (HTTP ' + st + ').' + tail;
-                }
-                if (err === 'no_state') {
-                    if (lang === 'en') return 'Could not read playback state. Open Spotify on this PC and try again.';
-                    if (lang === 'pt') return 'Não foi possível ler o estado. Abra o Spotify neste PC e tente de novo.';
-                    return 'No se pudo leer el estado de reproducción. Abrí Spotify en esta PC y probá de nuevo.';
-                }
-                if (lang === 'en') return 'Could not control Spotify (' + (err || '?') + ').' + tail;
-                if (lang === 'pt') return 'Não foi possível controlar o Spotify (' + (err || '?') + ').' + tail;
-                return 'No se pudo controlar Spotify (' + (err || '?') + ').' + tail;
-            }
-
-            function hxdApplySpotifyControlResult(r) {
-                var errElCtrl = document.getElementById('hxd-spotify-err');
-                if (r && r.ok === true) {
-                    if (errElCtrl) {
-                        errElCtrl.style.display = 'none';
-                        errElCtrl.textContent = '';
-                    }
-                    return true;
-                }
-                if (errElCtrl) {
-                    errElCtrl.style.display = 'block';
-                    errElCtrl.textContent = hxdSpotifyControlErrorLine(r);
-                }
-                return false;
-            }
-
-            document.getElementById('hxd-spotify-close').addEventListener('click', function(e) {
-                e.stopPropagation();
-                hxdSpotifyPanelEl.classList.remove('open');
-                if (hxdSpotifyBtnEl) hxdSpotifyBtnEl.classList.remove('open');
-            });
-
-            hxdSpotifyBtnEl.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                var open = hxdSpotifyPanelEl.classList.toggle('open');
-                if (hxdSpotifyBtnEl) {
-                    if (open) hxdSpotifyBtnEl.classList.add('open');
-                    else hxdSpotifyBtnEl.classList.remove('open');
-                }
-                if (open) {
-                    hxdApplySpotifyPanelAnchor();
-                    var loadOpen = document.getElementById('hxd-spotify-loading');
-                    if (loadOpen) {
-                        var lg0 = localStorage.getItem('haxball_language') || 'es';
-                        loadOpen.style.display = 'block';
-                        loadOpen.textContent =
-                            lg0 === 'en' ? 'Loading…' : lg0 === 'pt' ? 'Carregando…' : 'Cargando…';
-                    }
-                    hxdStartSpotifyPoll();
-                    hxdSpotifyBridge
-                        .getConfig()
-                        .then(function(cfg) {
-                            var hintEl = document.getElementById('hxd-spotify-login-hint');
-                            if (hintEl) {
-                                hintEl.textContent =
-                                    cfg && cfg.developmentModeHint
-                                        ? String(cfg.developmentModeHint)
-                                        : '';
-                            }
-                            if (!cfg || !cfg.hasClientId) {
-                                hxdApplySpotifyPlaybackPayload({
-                                    ok: true,
-                                    hasClientId: false,
-                                    redirectUri: cfg && cfg.redirectUri
-                                });
-                            } else {
-                                hxdFetchSpotifyPlayback();
-                            }
-                        })
-                        .catch(function() {});
-                }
-            });
-
-            document.getElementById('hxd-spotify-connect-btn').addEventListener('click', function() {
-                hxdSpotifyBridge.startAuth().then(function(r) {
-                    if (r && !r.success && r.error === 'missing_client_id') {
-                        var errEl = document.getElementById('hxd-spotify-err');
-                        if (errEl) {
-                            errEl.style.display = 'block';
-                            errEl.textContent =
-                                'Falta el Client ID. Configurá HXD_SPOTIFY_CLIENT_ID o spotify-client-id.txt.';
-                        }
-                    }
-                });
-            });
-
-            document.getElementById('hxd-spotify-disconnect-btn').addEventListener('click', function() {
-                hxdSpotifyBridge.logout().then(function() {
-                    hxdApplySpotifyPlaybackPayload({ ok: true, hasClientId: true, loggedIn: false });
-                });
-            });
-
-            document.getElementById('hxd-spotify-play-toggle').addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                hxdSpotifyBridge.control({ action: 'toggle' }).then(function(r) {
-                    if (!hxdApplySpotifyControlResult(r)) return;
-                    hxdFetchSpotifyPlayback();
-                });
-            });
-
-            document.getElementById('hxd-spotify-next').addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                hxdSpotifyBridge.control({ action: 'next' }).then(function(r) {
-                    if (!hxdApplySpotifyControlResult(r)) return;
-                    hxdFetchSpotifyPlayback();
-                });
-            });
-
-            document.getElementById('hxd-spotify-prev').addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                hxdSpotifyBridge.control({ action: 'previous' }).then(function(r) {
-                    if (!hxdApplySpotifyControlResult(r)) return;
-                    hxdFetchSpotifyPlayback();
-                });
-            });
-
-            document.getElementById('hxd-spotify-progress-hit').addEventListener('click', function(ev) {
-                var dur = hxdSpotifyLastState.duration_ms || 0;
-                if (!dur) return;
-                var rect = ev.currentTarget.getBoundingClientRect();
-                var x = ev.clientX - rect.left;
-                var ratio = Math.max(0, Math.min(1, x / rect.width));
-                var pos = Math.floor(ratio * dur);
-                hxdSpotifyBridge.control({ action: 'seek', position_ms: pos }).then(function(r) {
-                    if (!hxdApplySpotifyControlResult(r)) return;
-                    hxdSpotifyLastState.progress_ms = pos;
-                    hxdSpotifyLastState.fetchedAt = Date.now();
-                    hxdUpdateSpotifyProgressVisual();
-                    hxdFetchSpotifyPlayback();
-                });
-            });
-
-            hxdSpotifyBridge.onAuthChanged(function() {
-                hxdFetchSpotifyPlayback();
-            });
-
-            function hxdSyncSpotifyLoginCopy() {
-                var lang = localStorage.getItem('haxball_language') || 'es';
-                var connectLabel =
-                    lang === 'en'
-                        ? 'Connect your Spotify'
-                        : lang === 'pt'
-                          ? 'Conectar seu Spotify'
-                          : 'Conectar tu Spotify';
-                var connectHint =
-                    lang === 'en'
-                        ? 'Then keep Spotify open on this PC — this panel syncs your playback (start music once in Spotify if controls fail).'
-                        : lang === 'pt'
-                          ? 'Depois mantenha o Spotify aberto neste PC — o painel acompanha a reprodução (inicie uma faixa no Spotify se os botões falharem).'
-                          : 'Después mantené Spotify abierto en esta PC — el panel sigue tu reproducción (iniciá música en Spotify si los botones fallan).';
-                var disconnectTxt =
-                    lang === 'en' ? 'Disconnect Spotify' : lang === 'pt' ? 'Desconectar Spotify' : 'Desconectar Spotify';
-                var hint = document.getElementById('hxd-spotify-login-hint');
-                if (hint) hint.textContent = connectHint;
-                var disc = document.getElementById('hxd-spotify-disconnect-btn');
-                if (disc) disc.textContent = disconnectTxt;
-                var lbl = document.getElementById('hxd-spotify-connect-label');
-                if (lbl) lbl.textContent = connectLabel;
-            }
-            hxdSyncSpotifyLoginCopy();
-            hxdSpotifyBridge
-                .getConfig()
-                .then(function(cfgBoot) {
-                    var hintBoot = document.getElementById('hxd-spotify-login-hint');
-                    if (hintBoot && cfgBoot && cfgBoot.developmentModeHint) {
-                        hintBoot.textContent = String(cfgBoot.developmentModeHint);
-                    }
-                })
-                .catch(function() {})
-                .finally(function() {
-                    hxdStartSpotifyPoll();
-                });
-        }
 
         // Dropdown de idiomas
         var langBtn = document.getElementById('lang-btn');
@@ -1880,15 +1189,6 @@
         
         document.addEventListener('click', function(ev) {
             langDropdown.style.display = 'none';
-            try {
-                var inSpotifyChrome =
-                    (hxdSpotifySlotEl && hxdSpotifySlotEl.contains(ev.target)) ||
-                    (hxdSpotifyPanelEl && hxdSpotifyPanelEl.contains(ev.target));
-                if (hxdSpotifyPanelEl && hxdSpotifyPanelEl.classList.contains('open') && !inSpotifyChrome) {
-                    hxdSpotifyPanelEl.classList.remove('open');
-                    if (hxdSpotifyBtnEl) hxdSpotifyBtnEl.classList.remove('open');
-                }
-            } catch (eCl) {}
         });
         var chromeToggle = document.getElementById('hxd-toggle-chrome-btn');
         if (chromeToggle) chromeToggle.addEventListener('click', hideHeader);

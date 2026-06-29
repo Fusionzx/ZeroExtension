@@ -49,7 +49,15 @@
             accessDenied: { pt: 'Acesso Negado', es: 'Acceso denegado', en: 'Access denied' },
             playAnonymous: { pt: 'Jogar Anônimo', es: 'Jugar en anónimo', en: 'Play anonymously' },
             ghostNickPlaceholder: { pt: 'Digite seu nick...', es: 'Escribe tu apodo...', en: 'Enter your nickname...' },
-            ghostTooltipAnonymous: { pt: 'Anônimo', es: 'Anónimo', en: 'Anonymous' }
+            ghostTooltipAnonymous: { pt: 'Anônimo', es: 'Anónimo', en: 'Anonymous' },
+            authTitle: { pt: 'Bem-vindo ao HaxBall Zero', es: 'Bienvenido a HaxBall Zero', en: 'Welcome to HaxBall Zero' },
+            authConnected: { pt: 'sua sessão ficou vinculada ao Discord.', es: 'tu sesión quedó vinculada con Discord.', en: 'your session is linked with Discord.' },
+            authDisconnected: { pt: 'Entre com Discord para sincronizar seu perfil.', es: 'Entrá con Discord para sincronizar tu perfil.', en: 'Sign in with Discord to sync your profile.' },
+            authHint: { pt: 'Escolha seu nick de partida e entre no jogo.', es: 'Elegí tu apodo de partida y entrá al juego.', en: 'Choose your match nickname and enter the game.' },
+            guestHint: { pt: 'Jogá sem conta usando um nick local.', es: 'Jugá sin cuenta usando un apodo local.', en: 'Play without an account using a local nickname.' },
+            nickLabel: { pt: 'Apelido', es: 'Apodo', en: 'Nickname' },
+            enterGame: { pt: 'Entrar no jogo', es: 'Entrar al juego', en: 'Enter game' },
+            logout: { pt: 'Sair', es: 'Salir', en: 'Log out' }
         };
         var entry = messages[key];
         if (!entry) return key;
@@ -68,6 +76,12 @@
                     try {
                         var data = JSON.parse(xhr.responseText);
                         if (data.logged_in) {
+                            if (data.discord_id) {
+                                try {
+                                    localStorage.removeItem('hxd_anonymous_mode');
+                                    localStorage.removeItem('ghost_mode');
+                                } catch (eAnonClear) {}
+                            }
                             discordNick = data.nick;
                             discordUsername = data.username;
                             discordId = data.discord_id;
@@ -178,7 +192,7 @@
     }
 
     function stripDiscordInjectionsFromDialog(dialog) {
-        var ids = ['#discord-logged', '#discord-login-btn', '#ghost-mode-login-btn', '#ghost-mode-container', '#hxd-nick-wait-status'];
+        var ids = ['#discord-logged', '#discord-login-shell', '#discord-login-btn', '#ghost-mode-login-btn', '#ghost-mode-container', '#hxd-nick-wait-status'];
         for (var si = 0; si < ids.length; si++) {
             var el = dialog.querySelector(ids[si]);
             if (el) el.remove();
@@ -195,6 +209,50 @@
         if (h1) h1.style.setProperty('display', 'none', 'important');
         if (li) li.style.setProperty('display', 'none', 'important');
         if (ok) ok.style.setProperty('display', 'none', 'important');
+    }
+
+    function ensureNickDialogStyles(iframeDoc) {
+        if (!iframeDoc || !iframeDoc.head || iframeDoc.getElementById('hxd-zero-auth-styles')) return;
+        var style = iframeDoc.createElement('style');
+        style.id = 'hxd-zero-auth-styles';
+        style.textContent =
+            '.choose-nickname-view{background:radial-gradient(ellipse 80% 60% at 50% 100%,color-mix(in srgb,var(--theme-border-light,#333) 35%,transparent),transparent 55%),radial-gradient(ellipse 50% 40% at 80% 20%,color-mix(in srgb,var(--theme-text-muted,#666) 18%,transparent),transparent 50%),linear-gradient(180deg,var(--theme-bg-tertiary,#272727) 0%,var(--theme-bg-primary,#141414) 58%,var(--theme-bg-primary,#141414) 100%)!important;color:var(--theme-text-primary,#fff)!important;font-family:Inter,system-ui,sans-serif!important;-webkit-font-smoothing:antialiased!important;}' +
+            '.choose-nickname-view>img{display:none!important}' +
+            '.choose-nickname-view .dialog.hxd-zero-auth{width:min(340px,calc(100vw - 40px))!important;min-width:0!important;max-width:min(340px,calc(100vw - 40px))!important;padding:24px 24px 20px!important;border-radius:16px!important;border:1px solid var(--theme-border,#232323)!important;background:color-mix(in srgb,var(--theme-bg-secondary,#1a1a1a) 86%,transparent)!important;box-shadow:var(--shadow-soft,0 20px 60px rgba(0,0,0,.35))!important;text-align:center!important;overflow:visible!important;}' +
+            '.hxd-zero-auth-shell{display:flex;flex-direction:column;align-items:stretch;gap:13px;width:100%;}' +
+            '.hxd-zero-auth-brand{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:1px;}' +
+            '.hxd-zero-auth-logo{width:50px;height:50px;border-radius:50%;object-fit:cover;border:1px solid var(--theme-border-light,#333);box-shadow:0 0 0 4px color-mix(in srgb,var(--theme-bg-tertiary,#272727) 72%,transparent);background:var(--theme-bg-tertiary,#272727);}' +
+            '.hxd-zero-auth-kicker{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--theme-text-muted,#666);}' +
+            '.hxd-zero-auth-title{margin:0;color:var(--theme-text-primary,#fff);font-size:18px;font-weight:700;letter-spacing:-.02em;line-height:1.15;}' +
+            '.hxd-zero-auth-copy{margin:0;color:var(--theme-text-secondary,#888);font-size:12px;line-height:1.45;}' +
+            '.hxd-zero-auth-copy strong{color:var(--theme-text-primary,#fff);font-weight:700;}' +
+            '.hxd-zero-field{text-align:left;display:flex;flex-direction:column;gap:7px;}' +
+            '.hxd-zero-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--theme-text-muted,#666);}' +
+            '.hxd-zero-input-wrap{position:relative;display:flex;align-items:center;}' +
+            '.hxd-zero-input{width:100%!important;height:40px!important;padding:0 42px 0 12px!important;border-radius:10px!important;border:1px solid var(--theme-border,#232323)!important;background:var(--theme-bg-primary,#141414)!important;color:var(--theme-text-primary,#fff)!important;font:inherit!important;font-size:13px!important;outline:none!important;box-shadow:none!important;}' +
+            '.hxd-zero-input:focus{border-color:var(--theme-border-light,#333)!important;background:var(--theme-bg-secondary,#1a1a1a)!important;}' +
+            '.hxd-zero-field-icon{position:absolute;right:12px;display:flex;align-items:center;justify-content:center;color:#5865f2;}' +
+            '.hxd-zero-tooltip{position:absolute;right:0;bottom:calc(100% + 9px);min-width:130px;padding:8px 10px;border:1px solid var(--theme-border,#232323);border-radius:10px;background:var(--theme-bg-secondary,#1a1a1a);box-shadow:var(--shadow-nav,0 8px 32px rgba(0,0,0,.18));opacity:0;transform:translateY(2px);pointer-events:none;transition:opacity .14s ease,transform .14s ease;z-index:20;text-align:left;}' +
+            '.hxd-zero-field-icon:hover .hxd-zero-tooltip{opacity:1;transform:translateY(0);}' +
+            '.hxd-zero-tooltip-k{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#5865f2;margin-bottom:2px;}' +
+            '.hxd-zero-tooltip-v{font-size:12px;color:var(--theme-text-primary,#fff);white-space:nowrap;}' +
+            '.hxd-zero-actions{display:flex;gap:8px;width:100%;}' +
+            '.hxd-zero-btn{height:40px;border-radius:10px!important;border:1px solid var(--theme-border,#232323)!important;background:var(--theme-bg-tertiary,#272727)!important;color:var(--theme-text-primary,#fff)!important;font:inherit!important;font-size:13px!important;font-weight:700!important;cursor:pointer!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:9px!important;transition:background .14s ease,border-color .14s ease,color .14s ease,transform .1s ease!important;}' +
+            '.hxd-zero-btn:hover:not(:disabled){background:var(--theme-bg-hover,#333)!important;border-color:var(--theme-border-light,#333)!important;}' +
+            '.hxd-zero-btn:active:not(:disabled){transform:scale(.985);}' +
+            '.hxd-zero-btn:disabled{opacity:.65!important;cursor:default!important;}' +
+            '.hxd-zero-btn-primary{flex:1;background:var(--theme-bg-tertiary,#272727)!important;}' +
+            '.hxd-zero-btn-discord{width:100%!important;background:#5865f2!important;border-color:#5865f2!important;color:#fff!important;}' +
+            '.hxd-zero-btn-discord:hover:not(:disabled){background:#4752c4!important;border-color:#4752c4!important;}' +
+            '.hxd-zero-btn-ghost{width:100%!important;background:rgba(139,92,246,.12)!important;border-color:rgba(139,92,246,.28)!important;color:#c4b5fd!important;}' +
+            '.hxd-zero-btn-ghost:hover:not(:disabled){background:rgba(139,92,246,.2)!important;color:#ddd6fe!important;}' +
+            '.hxd-zero-btn-icon{width:42px;flex:0 0 42px;padding:0!important;color:var(--theme-text-secondary,#888)!important;}' +
+            '.hxd-zero-btn-icon:hover:not(:disabled){color:var(--theme-text-primary,#fff)!important;}' +
+            '.hxd-zero-separator{height:1px;background:var(--theme-border,#232323);margin:0;}' +
+            '.hxd-zero-hint{display:none!important;}' +
+            '.hxd-zero-auth-login{gap:10px;}' +
+            '.hxd-zero-auth-login .hxd-zero-auth-copy{margin-bottom:2px;}';
+        iframeDoc.head.appendChild(style);
     }
 
     // Atualiza presença (sala atual) - não envia no modo anônimo
@@ -262,6 +320,9 @@
             (titleText.indexOf('cambi') !== -1 && titleText.indexOf('nombre') !== -1);
         if (!isNickDialog) return;
 
+        ensureNickDialogStyles(iframeDoc);
+        dialog.classList.add('hxd-zero-auth');
+
         var shellAnonymous = isShellAnonymousMode();
 
         if (!userStatusReady && !shellAnonymous) {
@@ -298,38 +359,41 @@
 
             var containerGh = iframeDoc.createElement('div');
             containerGh.id = 'ghost-mode-container';
-            containerGh.style.cssText = 'padding:12px 0 0;background:transparent;';
+            containerGh.className = 'hxd-zero-auth-shell';
+
+            var brandGh = iframeDoc.createElement('div');
+            brandGh.className = 'hxd-zero-auth-brand';
+            brandGh.innerHTML =
+                '<div class="hxd-zero-auth-kicker">HaxBall Zero</div>' +
+                '<h2 class="hxd-zero-auth-title">' + t('playAnonymous') + '</h2>';
+            containerGh.appendChild(brandGh);
 
             var fieldGroupGh = iframeDoc.createElement('div');
-            fieldGroupGh.style.cssText = 'text-align:left;margin-bottom:16px;';
+            fieldGroupGh.className = 'hxd-zero-field';
 
             var nickLabelGh = iframeDoc.createElement('label');
-            nickLabelGh.textContent = 'Nick';
-            nickLabelGh.style.cssText = 'display:block;color:#888;font-size:13px;margin-bottom:6px;';
+            nickLabelGh.textContent = t('nickLabel');
+            nickLabelGh.className = 'hxd-zero-label';
             fieldGroupGh.appendChild(nickLabelGh);
 
             var inputWrapperGh = iframeDoc.createElement('div');
-            inputWrapperGh.style.cssText = 'position:relative;display:flex;align-items:center;';
+            inputWrapperGh.className = 'hxd-zero-input-wrap';
 
             var customNickGhost = iframeDoc.createElement('input');
             customNickGhost.type = 'text';
             customNickGhost.value = savedGhostNick;
             customNickGhost.maxLength = 50;
             customNickGhost.placeholder = t('ghostNickPlaceholder');
-            customNickGhost.style.cssText = 'width:100%;padding:10px 40px 10px 12px;background:var(--theme-bg-secondary, #1a1a1a);border:1px solid var(--theme-border-light, #333);border-radius:4px;color:var(--theme-text-primary, #fff);font-size:15px;outline:none;box-sizing:border-box;';
-            customNickGhost.onfocus = function() { customNickGhost.style.borderColor = 'var(--theme-border-light, #444)'; };
-            customNickGhost.onblur = function() { customNickGhost.style.borderColor = 'var(--theme-border-light, #333)'; };
+            customNickGhost.className = 'hxd-zero-input';
             inputWrapperGh.appendChild(customNickGhost);
 
             var ghostIconGh = iframeDoc.createElement('div');
-            ghostIconGh.style.cssText = 'position:absolute;right:10px;cursor:default;display:flex;align-items:center;';
+            ghostIconGh.className = 'hxd-zero-field-icon';
             ghostIconGh.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 10h.01M15 10h.01M12 2a8 8 0 0 0-8 8v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10a8 8 0 0 0-8-8z"/></svg>';
             var tooltipGh = iframeDoc.createElement('div');
-            tooltipGh.style.cssText = 'position:absolute;bottom:calc(100% + 8px);right:0;background:var(--theme-bg-secondary, #1a1a1a);border:1px solid var(--theme-border-light, #333);border-radius:4px;padding:8px 12px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.15s;z-index:100;';
-            tooltipGh.innerHTML = '<div style="color:#8b5cf6 !important;font-size:13px;font-weight:600;">' + t('ghostTooltipAnonymous') + '</div>';
+            tooltipGh.className = 'hxd-zero-tooltip';
+            tooltipGh.innerHTML = '<div class="hxd-zero-tooltip-k">' + t('ghostTooltipAnonymous') + '</div>';
             ghostIconGh.appendChild(tooltipGh);
-            ghostIconGh.onmouseenter = function() { tooltipGh.style.opacity = '1'; };
-            ghostIconGh.onmouseleave = function() { tooltipGh.style.opacity = '0'; };
             inputWrapperGh.appendChild(ghostIconGh);
 
             fieldGroupGh.appendChild(inputWrapperGh);
@@ -337,10 +401,8 @@
 
             var enterBtnGh = iframeDoc.createElement('button');
             enterBtnGh.type = 'button';
-            enterBtnGh.style.cssText = 'width:100%;padding:10px;background:#272727;border:none;border-radius:4px;color:#fff;font-size:14px;cursor:pointer;transition:background 0.15s;';
-            enterBtnGh.textContent = 'Ok';
-            enterBtnGh.onmouseenter = function() { enterBtnGh.style.background = '#333'; };
-            enterBtnGh.onmouseleave = function() { enterBtnGh.style.background = '#272727'; };
+            enterBtnGh.className = 'hxd-zero-btn hxd-zero-btn-primary';
+            enterBtnGh.textContent = t('enterGame');
             enterBtnGh.onclick = function() {
                 var cn = customNickGhost.value.trim();
                 if (!cn) return;
@@ -373,20 +435,33 @@
             // Usuário logado - design com ícone Discord no input
             var container = iframeDoc.createElement('div');
             container.id = 'discord-logged';
-            container.style.cssText = 'padding:12px 0 0;background:transparent;';
+            container.className = 'hxd-zero-auth-shell';
+
+            var brand = iframeDoc.createElement('div');
+            brand.className = 'hxd-zero-auth-brand';
+            var avatarUrl = '';
+            try {
+                avatarUrl = window.__hxdMyAvatarUrl || localStorage.getItem('hxd_settings_preview_avatar') || '';
+            } catch (eAv) {}
+            brand.innerHTML =
+                '<div class="hxd-zero-auth-kicker">HaxBall Zero</div>' +
+                (avatarUrl ? '<img class="hxd-zero-auth-logo" src="' + avatarUrl.replace(/"/g, '&quot;') + '" alt=""/>' : '') +
+                '<h2 class="hxd-zero-auth-title">' + t('authTitle') + '</h2>' +
+                '<p class="hxd-zero-auth-copy"><strong>' + (discordNick || discordUsername || 'Player') + '</strong>, ' + t('authConnected') + '</p>';
+            container.appendChild(brand);
 
             // Campo de nick com label
             var fieldGroup = iframeDoc.createElement('div');
-            fieldGroup.style.cssText = 'text-align:left;margin-bottom:16px;';
+            fieldGroup.className = 'hxd-zero-field';
             
             var nickLabel = iframeDoc.createElement('label');
-            nickLabel.textContent = 'Nick';
-            nickLabel.style.cssText = 'display:block;color:#888;font-size:13px;margin-bottom:6px;';
+            nickLabel.textContent = t('nickLabel');
+            nickLabel.className = 'hxd-zero-label';
             fieldGroup.appendChild(nickLabel);
 
             // Wrapper do input com ícone
             var inputWrapper = iframeDoc.createElement('div');
-            inputWrapper.style.cssText = 'position:relative;display:flex;align-items:center;';
+            inputWrapper.className = 'hxd-zero-input-wrap';
 
             var customNickInput = iframeDoc.createElement('input');
             customNickInput.type = 'text';
@@ -395,24 +470,19 @@
             customNickInput.value = savedNick;
             customNickInput.placeholder = discordNick;
             customNickInput.maxLength = 50;
-            customNickInput.style.cssText = 'width:100%;padding:10px 40px 10px 12px;background:var(--theme-bg-secondary, #1a1a1a);border:1px solid var(--theme-border-light, #333);border-radius:4px;color:var(--theme-text-primary, #fff);font-size:15px;outline:none;box-sizing:border-box;';
-            customNickInput.onfocus = function() { customNickInput.style.borderColor = 'var(--theme-border-light, #444)'; };
-            customNickInput.onblur = function() { customNickInput.style.borderColor = 'var(--theme-border-light, #333)'; };
+            customNickInput.className = 'hxd-zero-input';
             inputWrapper.appendChild(customNickInput);
 
             // Ícone Discord à direita do input com tooltip
             var discordIcon = iframeDoc.createElement('div');
-            discordIcon.style.cssText = 'position:absolute;right:10px;cursor:pointer;display:flex;align-items:center;';
+            discordIcon.className = 'hxd-zero-field-icon';
             discordIcon.innerHTML = '<svg width="18" height="18" viewBox="0 0 71 55" fill="#5865F2"><path d="M60.1 4.9A58.5 58.5 0 0045.4.2a.2.2 0 00-.2.1 40.8 40.8 0 00-1.8 3.7 54 54 0 00-16.2 0A37.4 37.4 0 0025.4.3a.2.2 0 00-.2-.1 58.4 58.4 0 00-14.7 4.6.2.2 0 00-.1.1C1.5 18.7-.9 32 .3 45.2v.1a58.7 58.7 0 0017.9 9.1.2.2 0 00.3-.1 42 42 0 003.6-5.9.2.2 0 00-.1-.3 38.7 38.7 0 01-5.5-2.6.2.2 0 01 0-.4l1.1-.9a.2.2 0 01.2 0 41.9 41.9 0 0035.6 0 .2.2 0 01.2 0l1.1.9a.2.2 0 010 .4 36.3 36.3 0 01-5.5 2.6.2.2 0 00-.1.3 47.2 47.2 0 003.6 5.9.2.2 0 00.3.1 58.5 58.5 0 0018-9.1v-.1c1.4-15-2.3-28-9.8-39.6a.2.2 0 00-.1-.1zM23.7 37.1c-3.4 0-6.2-3.1-6.2-7s2.7-7 6.2-7 6.3 3.2 6.2 7-2.8 7-6.2 7zm23 0c-3.4 0-6.2-3.1-6.2-7s2.7-7 6.2-7 6.3 3.2 6.2 7-2.8 7-6.2 7z"/></svg>';
             
             // Tooltip customizado - mostra username
             var tooltip = iframeDoc.createElement('div');
-            tooltip.style.cssText = 'position:absolute;bottom:calc(100% + 8px);right:0;background:var(--theme-bg-secondary, #1a1a1a);border:1px solid var(--theme-border-light, #333);border-radius:4px;padding:8px 12px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.15s;z-index:100;';
-            tooltip.innerHTML = '<div style="color:#5865F2 !important;font-size:11px;margin-bottom:2px;">Discord</div><div style="color:var(--theme-text-primary, #fff);font-size:13px;">' + (discordUsername || discordNick) + '</div>';
+            tooltip.className = 'hxd-zero-tooltip';
+            tooltip.innerHTML = '<div class="hxd-zero-tooltip-k">Discord</div><div class="hxd-zero-tooltip-v">' + (discordUsername || discordNick) + '</div>';
             discordIcon.appendChild(tooltip);
-
-            discordIcon.onmouseenter = function() { tooltip.style.opacity = '1'; };
-            discordIcon.onmouseleave = function() { tooltip.style.opacity = '0'; };
             inputWrapper.appendChild(discordIcon);
 
             fieldGroup.appendChild(inputWrapper);
@@ -420,14 +490,12 @@
 
             // Container dos botões (Ok + Sair)
             var btnContainer = iframeDoc.createElement('div');
-            btnContainer.style.cssText = 'display:flex;gap:8px;width:100%;';
+            btnContainer.className = 'hxd-zero-actions';
 
             // Botão Ok
             var enterBtn = iframeDoc.createElement('button');
-            enterBtn.style.cssText = 'flex:1;padding:10px;background:#272727;border:none;border-radius:4px;color:#fff;font-size:14px;cursor:pointer;transition:background 0.15s;';
-            enterBtn.textContent = 'Ok';
-            enterBtn.onmouseenter = function() { enterBtn.style.background = '#333'; };
-            enterBtn.onmouseleave = function() { enterBtn.style.background = '#272727'; };
+            enterBtn.className = 'hxd-zero-btn hxd-zero-btn-primary';
+            enterBtn.textContent = t('enterGame');
             enterBtn.onclick = function() {
                 if (enterBtn.disabled) return;
                 enterBtn.disabled = true;
@@ -455,10 +523,9 @@
 
             // Botão Sair (só ícone)
             var logoutBtn = iframeDoc.createElement('button');
-            logoutBtn.style.cssText = 'width:42px;padding:10px;background:#272727;border:none;border-radius:4px;cursor:pointer;transition:background 0.15s;display:flex;align-items:center;justify-content:center;';
-            logoutBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>';
-            logoutBtn.onmouseenter = function() { logoutBtn.style.background = '#333'; logoutBtn.querySelector('svg').style.stroke = '#fff'; };
-            logoutBtn.onmouseleave = function() { logoutBtn.style.background = '#272727'; logoutBtn.querySelector('svg').style.stroke = '#888'; };
+            logoutBtn.className = 'hxd-zero-btn hxd-zero-btn-icon';
+            logoutBtn.title = t('logout');
+            logoutBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>';
             logoutBtn.onclick = function() {
                 var xhr = new XMLHttpRequest();
                 xhr.open('POST', LOCAL_SERVER + '/logout', true);
@@ -484,19 +551,27 @@
         } else {
             stripDiscordInjectionsFromDialog(dialog);
             hideNativeNickDialogChrome(dialog);
+            var loginShell = iframeDoc.createElement('div');
+            loginShell.id = 'discord-login-shell';
+            loginShell.className = 'hxd-zero-auth-shell hxd-zero-auth-login';
+            var loginBrand = iframeDoc.createElement('div');
+            loginBrand.className = 'hxd-zero-auth-brand';
+            loginBrand.innerHTML =
+                '<div class="hxd-zero-auth-kicker">HaxBall Zero</div>' +
+                '<h2 class="hxd-zero-auth-title">' + t('authTitle') + '</h2>' +
+                '<p class="hxd-zero-auth-copy">' + t('authDisconnected') + '</p>';
+            loginShell.appendChild(loginBrand);
+
             // Não logado - mostra botão de login (design igual Electron)
             var discordBtn = iframeDoc.createElement('button');
             discordBtn.id = 'discord-login-btn';
-            discordBtn.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px 20px;background:#5865F2;border:none;border-radius:6px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:8px;';
+            discordBtn.className = 'hxd-zero-btn hxd-zero-btn-discord';
             discordBtn.innerHTML = '' +
                 '<svg width="24" height="24" viewBox="0 0 71 55" fill="#fff"><path d="M60.1 4.9A58.5 58.5 0 0045.4.2a.2.2 0 00-.2.1 40.8 40.8 0 00-1.8 3.7 54 54 0 00-16.2 0A37.4 37.4 0 0025.4.3a.2.2 0 00-.2-.1 58.4 58.4 0 00-14.7 4.6.2.2 0 00-.1.1C1.5 18.7-.9 32 .3 45.2v.1a58.7 58.7 0 0017.9 9.1.2.2 0 00.3-.1 42 42 0 003.6-5.9.2.2 0 00-.1-.3 38.7 38.7 0 01-5.5-2.6.2.2 0 01 0-.4l1.1-.9a.2.2 0 01.2 0 41.9 41.9 0 0035.6 0 .2.2 0 01.2 0l1.1.9a.2.2 0 010 .4 36.3 36.3 0 01-5.5 2.6.2.2 0 00-.1.3 47.2 47.2 0 003.6 5.9a.2.2 0 00.3.1 58.5 58.5 0 0018-9.1v-.1c1.4-15-2.3-28-9.8-39.6a.2.2 0 00-.1-.1zM23.7 37.1c-3.4 0-6.2-3.1-6.2-7s2.7-7 6.2-7 6.3 3.2 6.2 7-2.8 7-6.2 7zm23 0c-3.4 0-6.2-3.1-6.2-7s2.7-7 6.2-7 6.3 3.2 6.2 7-2.8 7-6.2 7z"/></svg>' +
                 t('loginDiscord');
-            discordBtn.onmouseenter = function() { discordBtn.style.background = '#4752C4'; };
-            discordBtn.onmouseleave = function() { discordBtn.style.background = '#5865F2'; };
             discordBtn.onclick = function() {
                 function restoreDiscordLoginButton(message) {
                     discordBtn.disabled = false;
-                    discordBtn.style.background = '#5865F2';
                     discordBtn.innerHTML = '' +
                         '<svg width="24" height="24" viewBox="0 0 71 55" fill="#fff"><path d="M60.1 4.9A58.5 58.5 0 0045.4.2a.2.2 0 00-.2.1 40.8 40.8 0 00-1.8 3.7 54 54 0 00-16.2 0A37.4 37.4 0 0025.4.3a.2.2 0 00-.2-.1 58.4 58.4 0 00-14.7 4.6.2.2 0 00-.1.1C1.5 18.7-.9 32 .3 45.2v.1a58.7 58.7 0 0017.9 9.1.2.2 0 00.3-.1 42 42 0 003.6-5.9.2.2 0 00-.1-.3 38.7 38.7 0 01-5.5-2.6.2.2 0 01 0-.4l1.1-.9a.2.2 0 01.2 0 41.9 41.9 0 0035.6 0 .2.2 0 01.2 0l1.1.9a.2.2 0 010 .4 36.3 36.3 0 01-5.5 2.6.2.2 0 00-.1.3 47.2 47.2 0 003.6 5.9a.2.2 0 00.3.1 58.5 58.5 0 0018-9.1v-.1c1.4-15-2.3-28-9.8-39.6a.2.2 0 00-.1-.1zM23.7 37.1c-3.4 0-6.2-3.1-6.2-7s2.7-7 6.2-7 6.3 3.2 6.2 7-2.8 7-6.2 7zm23 0c-3.4 0-6.2-3.1-6.2-7s2.7-7 6.2-7 6.3 3.2 6.2 7-2.8 7-6.2 7z"/></svg>' +
                         t('loginDiscord');
@@ -554,23 +629,23 @@
                 });
             };
 
-            dialog.appendChild(discordBtn);
+            loginShell.appendChild(discordBtn);
 
             var ghostLoginBtn = iframeDoc.createElement('button');
             ghostLoginBtn.id = 'ghost-mode-login-btn';
             ghostLoginBtn.type = 'button';
-            ghostLoginBtn.style.cssText = 'display:flex !important;align-items:center !important;justify-content:center !important;gap:10px !important;width:100% !important;padding:12px 20px !important;background:#8b5cf6 !important;border:none !important;border-radius:6px !important;color:#fff !important;font-size:15px !important;font-weight:600 !important;cursor:pointer !important;outline:none !important;box-shadow:none !important;';
+            ghostLoginBtn.className = 'hxd-zero-btn hxd-zero-btn-ghost';
             ghostLoginBtn.innerHTML = '\
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 10h.01M15 10h.01M12 2a8 8 0 0 0-8 8v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10a8 8 0 0 0-8-8z"/></svg>\
                 ' + t('playAnonymous') + '\
             ';
-            ghostLoginBtn.onmouseenter = function() { ghostLoginBtn.style.setProperty('background', '#7c3aed', 'important'); };
-            ghostLoginBtn.onmouseleave = function() { ghostLoginBtn.style.setProperty('background', '#8b5cf6', 'important'); };
             ghostLoginBtn.onclick = function(ev) {
                 if (ev) {
                     ev.preventDefault();
                     ev.stopPropagation();
                 }
+                if (ghostLoginBtn.disabled) return;
+                ghostLoginBtn.disabled = true;
                 try {
                     localStorage.setItem('hxd_anonymous_mode', '1');
                     localStorage.setItem('ghost_mode', 'true');
@@ -593,13 +668,30 @@
                         }
                     } catch (ePm) {}
                 }
-                window.setTimeout(function() {
+                function reloadAnonymousSession() {
                     try {
                         window.location.reload();
                     } catch (eRl) {}
-                }, 150);
+                }
+                try {
+                    var anonXhr = new XMLHttpRequest();
+                    anonXhr.open('POST', LOCAL_SERVER + '/session/anonymous', true);
+                    anonXhr.setRequestHeader('Content-Type', 'application/json');
+                    anonXhr.onreadystatechange = function() {
+                        if (anonXhr.readyState === 4) {
+                            window.setTimeout(reloadAnonymousSession, 80);
+                        }
+                    };
+                    anonXhr.onerror = function() {
+                        window.setTimeout(reloadAnonymousSession, 80);
+                    };
+                    anonXhr.send(JSON.stringify({ anonymous: true }));
+                } catch (eSess) {
+                    window.setTimeout(reloadAnonymousSession, 80);
+                }
             };
-            dialog.appendChild(ghostLoginBtn);
+            loginShell.appendChild(ghostLoginBtn);
+            dialog.appendChild(loginShell);
 
             dialog.dataset.discordSetup = 'done';
         }
@@ -954,7 +1046,7 @@
 
     // Detecta entrada em sala (chamado do game iframe)
     function detectRoomEntry(iframeDoc) {
-        // Presença é gerenciada pelo friends.js - não precisa duplicar aqui
+        // Presença Discord gerida neste módulo
         return;
     }
 

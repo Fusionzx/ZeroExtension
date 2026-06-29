@@ -113,6 +113,7 @@
         }\
         /* Barra del cliente (Electron): no pintar cajas grises sobre los iconos del header/titlebar. */\
         #custom-header button,\
+        #custom-titlebar .hxd-win-btn,\
         #show-header-btn {\
             background: transparent !important;\
             border: none !important;\
@@ -136,18 +137,6 @@
         }\
         #custom-header #ghost-mode-btn.active:hover {\
             color: #c4b5fd !important;\
-        }\
-        #custom-header #spotify-header-btn {\
-            color: var(--theme-text-muted, #666) !important;\
-        }\
-        #custom-header #spotify-header-btn:hover {\
-            color: #1ed760 !important;\
-        }\
-        #custom-header #spotify-header-btn.open {\
-            color: #1db954 !important;\
-        }\
-        #custom-header #spotify-header-btn.open:hover {\
-            color: #1ed760 !important;\
         }\
         #custom-header #ghost-mode-btn.active {\
             color: #8b5cf6 !important;\
@@ -324,6 +313,185 @@
         html:not([data-theme]) .game-state-view .fps-limit-fix {\
             background: transparent !important;\
         }\
+        /* Replay player: mismo lenguaje visual que roomlist/settings preview */\
+        .game-view.replayer .replay-controls-view {\
+            position: fixed !important;\
+            left: var(--hxd-replay-left, 50%) !important;\
+            bottom: var(--hxd-replay-bottom, 156px) !important;\
+            transform: none !important;\
+            z-index: 100 !important;\
+            display: flex !important;\
+            align-items: center !important;\
+            gap: 8px !important;\
+            width: var(--hxd-replay-width, min(760px, calc(100vw - 48px))) !important;\
+            min-height: 50px !important;\
+            padding: 8px 10px !important;\
+            background: var(--theme-bg-secondary, #1a1a1a) !important;\
+            border: 1px solid var(--theme-border, #232323) !important;\
+            border-radius: 14px !important;\
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08) !important;\
+            color: var(--theme-text-primary, #fff) !important;\
+            font-family: Inter, system-ui, sans-serif !important;\
+            box-sizing: border-box !important;\
+        }\
+        .game-view.replayer .replay-controls-view button {\
+            width: 34px !important;\
+            height: 34px !important;\
+            min-width: 34px !important;\
+            padding: 0 !important;\
+            display: inline-flex !important;\
+            align-items: center !important;\
+            justify-content: center !important;\
+            border: 1px solid var(--theme-border, #232323) !important;\
+            border-radius: 999px !important;\
+            background: var(--theme-bg-tertiary, #272727) !important;\
+            color: var(--theme-text-primary, #fff) !important;\
+            font-size: 13px !important;\
+            font-weight: 700 !important;\
+            line-height: 1 !important;\
+            cursor: pointer !important;\
+            transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.12s !important;\
+        }\
+        .game-view.replayer .replay-controls-view button:hover {\
+            background: var(--theme-bg-hover, #333) !important;\
+            border-color: var(--theme-border-light, #333) !important;\
+        }\
+        .game-view.replayer .replay-controls-view button:active {\
+            transform: translateY(1px) !important;\
+        }\
+        .game-view.replayer .replay-controls-view button[data-hook="leave"] {\
+            width: auto !important;\
+            min-width: 76px !important;\
+            padding: 0 14px !important;\
+            border-radius: 999px !important;\
+        }\
+        .game-view.replayer .replay-controls-view [data-hook="spd"],\
+        .game-view.replayer .replay-controls-view [data-hook="time"] {\
+            min-width: 50px !important;\
+            height: 32px !important;\
+            display: inline-flex !important;\
+            align-items: center !important;\
+            justify-content: center !important;\
+            padding: 0 10px !important;\
+            border: 1px solid var(--theme-border, #232323) !important;\
+            border-radius: 999px !important;\
+            background: var(--theme-bg-primary, #141414) !important;\
+            color: var(--theme-text-secondary, #888) !important;\
+            font-size: 12px !important;\
+            font-weight: 800 !important;\
+            letter-spacing: 0.02em !important;\
+            white-space: nowrap !important;\
+        }\
+        .game-view.replayer .replay-controls-view [data-hook="time"] {\
+            min-width: 62px !important;\
+            color: var(--theme-text-primary, #fff) !important;\
+        }\
+        .game-view.replayer .replay-controls-view .timebar {\
+            position: relative !important;\
+            flex: 1 1 auto !important;\
+            min-width: 120px !important;\
+            height: 32px !important;\
+            display: flex !important;\
+            align-items: center !important;\
+            padding: 0 10px !important;\
+            border: 1px solid var(--theme-border, #232323) !important;\
+            border-radius: 999px !important;\
+            background: var(--theme-bg-primary, #141414) !important;\
+            cursor: pointer !important;\
+            overflow: hidden !important;\
+        }\
+        .game-view.replayer .replay-controls-view .timebar .barbg {\
+            width: 100% !important;\
+            height: 6px !important;\
+            border-radius: 999px !important;\
+            background: var(--theme-bg-tertiary, #272727) !important;\
+            overflow: hidden !important;\
+        }\
+        .game-view.replayer .replay-controls-view .timebar .bar {\
+            height: 100% !important;\
+            border-radius: 999px !important;\
+            background: var(--theme-text-primary, #fff) !important;\
+            box-shadow: 0 0 16px color-mix(in srgb, var(--theme-text-primary, #fff) 28%, transparent) !important;\
+        }\
+        .game-view.replayer .replay-controls-view .timebar .marker {\
+            position: absolute !important;\
+            top: 50% !important;\
+            width: 4px !important;\
+            height: 18px !important;\
+            margin-left: -2px !important;\
+            border-radius: 999px !important;\
+            background: rgba(255, 255, 255, 0.72) !important;\
+            border: 1px solid rgba(0, 0, 0, 0.26) !important;\
+            box-shadow: 0 0 0 2px rgba(var(--theme-bg-primary-rgb, 20, 20, 20), 0.75), 0 0 10px rgba(255, 255, 255, 0.28) !important;\
+            transform: translateY(-50%) !important;\
+            pointer-events: none !important;\
+            z-index: 4 !important;\
+        }\
+        .game-view.replayer .replay-controls-view .timebar .marker.k0 {\
+            background: #22c55e !important;\
+            box-shadow: 0 0 0 2px rgba(var(--theme-bg-primary-rgb, 20, 20, 20), 0.75), 0 0 12px rgba(34, 197, 94, 0.55) !important;\
+        }\
+        .game-view.replayer .replay-controls-view .timebar .marker.k1 {\
+            background: #38bdf8 !important;\
+            box-shadow: 0 0 0 2px rgba(var(--theme-bg-primary-rgb, 20, 20, 20), 0.75), 0 0 12px rgba(56, 189, 248, 0.55) !important;\
+        }\
+        .game-view.replayer .replay-controls-view .timebar .marker.k2 {\
+            background: #f59e0b !important;\
+            box-shadow: 0 0 0 2px rgba(var(--theme-bg-primary-rgb, 20, 20, 20), 0.75), 0 0 12px rgba(245, 158, 11, 0.55) !important;\
+        }\
+        .game-view.replayer .replay-controls-view .timetooltip {\
+            display: none !important;\
+        }\
+        @media (max-height: 640px) {\
+            .game-view.replayer .replay-controls-view {\
+                bottom: var(--hxd-replay-bottom, 128px) !important;\
+            }\
+        }\
+        @media (max-width: 760px) {\
+            .game-view.replayer .replay-controls-view {\
+                width: var(--hxd-replay-width, calc(100vw - 24px)) !important;\
+                gap: 6px !important;\
+                padding: 7px 8px !important;\
+            }\
+            .game-view.replayer .replay-controls-view [data-hook="spd"] {\
+                min-width: 42px !important;\
+                padding: 0 7px !important;\
+            }\
+            .game-view.replayer .replay-controls-view [data-hook="time"] {\
+                min-width: 54px !important;\
+                padding: 0 7px !important;\
+            }\
+            .game-view.replayer .replay-controls-view button[data-hook="leave"] {\
+                min-width: 64px !important;\
+                padding: 0 10px !important;\
+            }\
+        }\
+        .disconnected-view .dialog.basic-dialog,\
+        .simple-dialog-view .dialog.basic-dialog {\
+            min-width: min(420px, calc(100vw - 48px)) !important;\
+            padding: 24px !important;\
+            border-radius: 16px !important;\
+            background: var(--theme-bg-primary, #141414) !important;\
+            border: 1px solid var(--theme-border, #232323) !important;\
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35) !important;\
+        }\
+        .disconnected-view .dialog.basic-dialog .buttons,\
+        .simple-dialog-view .dialog.basic-dialog .buttons {\
+            display: flex !important;\
+            justify-content: flex-end !important;\
+            gap: 10px !important;\
+            margin-top: 18px !important;\
+        }\
+        .disconnected-view .dialog.basic-dialog button,\
+        .simple-dialog-view .dialog.basic-dialog button {\
+            height: 38px !important;\
+            padding: 0 16px !important;\
+            border-radius: 999px !important;\
+            border: 1px solid var(--theme-border, #232323) !important;\
+            background: var(--theme-bg-tertiary, #272727) !important;\
+            color: var(--theme-text-primary, #fff) !important;\
+            font-weight: 700 !important;\
+        }\
         .scoreboard, .scoreboard *, .game-timer-view, .game-timer-view * {\
             font-family: "Space Grotesk", sans-serif !important;\
         }\
@@ -409,9 +577,34 @@
             background-size: cover !important;\
             background-position: center center !important;\
             background-repeat: no-repeat !important;\
+            opacity: 0.58 !important;\
             transform: translateZ(0) !important;\
             backface-visibility: hidden !important;\
             contain: strict !important;\
+        }\
+        html[data-app-bg-image="1"]::after {\
+            content: "" !important;\
+            position: fixed !important;\
+            inset: 0 !important;\
+            z-index: 0 !important;\
+            pointer-events: none !important;\
+            background: rgba(0, 0, 0, 0.38) !important;\
+        }\
+        html[data-app-bg-image="1"]:has(.game-view):not(:has(.roomlist-view)):not(:has(.choose-nickname-view))::before,\
+        html[data-app-bg-image="1"]:has(.game-view):not(:has(.roomlist-view)):not(:has(.choose-nickname-view))::after {\
+            display: none !important;\
+            content: none !important;\
+        }\
+        html[data-app-bg-image="1"]:has(.roomlist-view) .game-view,\
+        html[data-app-bg-image="1"]:has(.choose-nickname-view) .game-view {\
+            background: transparent !important;\
+            background-color: transparent !important;\
+            background-image: none !important;\
+        }\
+        html[data-app-bg-image="1"]:has(.roomlist-view) .game-view canvas,\
+        html[data-app-bg-image="1"]:has(.choose-nickname-view) .game-view canvas {\
+            visibility: hidden !important;\
+            opacity: 0 !important;\
         }\
         html[data-app-bg-image="1"] body {\
             position: relative !important;\
@@ -422,18 +615,37 @@
         }\
         html[data-app-bg-image="1"] .view-wrapper,\
         html[data-app-bg-image="1"] .roomlist-view,\
-        html[data-app-bg-image="1"] .choose-nickname-view,\
-        html[data-app-bg-image="1"] .game-view {\
+        html[data-app-bg-image="1"] .choose-nickname-view {\
             background: transparent !important;\
             background-color: transparent !important;\
+            background-image: none !important;\
+        }\
+        html[data-app-bg-image="1"] .game-view {\
+            background: #000 !important;\
+            background-color: #000 !important;\
             background-image: none !important;\
         }\
         html[data-app-bg-image="1"] .dialog,\
         html[data-app-bg-image="1"] .dialog.section {\
             background-image: none !important;\
-            background-color: rgba(15, 15, 18, 0.78) !important;\
+            background-color: rgba(var(--theme-bg-primary-rgb, 15, 15, 18), 0.92) !important;\
             border-color: var(--theme-border, #3a4148) !important;\
             color: var(--theme-text-primary, #fff) !important;\
+        }\
+        html[data-app-bg-image="1"] .roomlist-view .dialog {\
+            background-color: rgba(var(--theme-bg-primary-rgb, 15, 15, 18), 0.94) !important;\
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.46) !important;\
+        }\
+        html[data-app-bg-image="1"] .roomlist-view .splitter,\
+        html[data-app-bg-image="1"] .roomlist-view .list,\
+        html[data-app-bg-image="1"] .roomlist-view .content,\
+        html[data-app-bg-image="1"] .roomlist-view table.header {\
+            background-color: rgba(var(--theme-bg-primary-rgb, 15, 15, 18), 0.88) !important;\
+        }\
+        html[data-app-bg-image="1"] .roomlist-view #room-search,\
+        html[data-app-bg-image="1"] .roomlist-view #room-search input,\
+        html[data-app-bg-image="1"] .roomlist-view #sidebar-panel {\
+            background-color: rgba(var(--theme-bg-secondary-rgb, 18, 18, 22), 0.94) !important;\
         }\
         .dialog * {\
             user-select: none !important;\
@@ -628,7 +840,7 @@
         /* Room list */\
         .roomlist-view .dialog > p:not([data-hook]) { display: none !important; }\
         .roomlist-view span.bool { display: none !important; }\
-        .roomlist-view .dialog { width: 900px !important; max-width: 95vw !important; }\
+        .roomlist-view .dialog:not(.hxd-roomlist-preview-dialog) { width: 900px !important; max-width: 95vw !important; }\
         .roomlist-view table.header {\
             background: #1a1a1a !important;\
             border-radius: 6px !important;\
@@ -730,6 +942,7 @@
         #pro-sidebar-btn {\
             color: #a5b4fc !important;\
         }\
+        .room-view [data-hook="friends-room-btn"] { display: none !important; }\
         .roomlist-view .dialog.zero-profile-mode { overflow: hidden auto !important; max-height: 85vh !important; }\
         .roomlist-view .dialog.zero-profile-mode > h1,\
         .roomlist-view .dialog.zero-profile-mode > p:not([data-hook]),\
@@ -738,36 +951,14 @@
         .roomlist-view .dialog.zero-profile-mode > .content {\
             display: none !important;\
         }\
-        .roomlist-view .dialog.zero-friends-mode,\
         .roomlist-view .dialog.zero-pro-mode,\
         .roomlist-view .dialog.zero-kit-mode { overflow: visible !important; max-height: 85vh !important; }\
-        .roomlist-view .dialog.zero-teams-mode { overflow: visible !important; max-height: 92vh !important; min-height: 480px !important; }\
-        .roomlist-view .dialog.zero-teams-mode > h1,\
-        .roomlist-view .dialog.zero-teams-mode > p:not([data-hook]),\
-        .roomlist-view .dialog.zero-teams-mode #room-search,\
-        .roomlist-view .dialog.zero-teams-mode table.header,\
-        .roomlist-view .dialog.zero-teams-mode > .content,\
-        .roomlist-view .dialog.zero-teams-mode #zero-inpanel-profile,\
-        .roomlist-view .dialog.zero-teams-mode #zero-inpanel-friends,\
-        .roomlist-view .dialog.zero-teams-mode #zero-inpanel-pro,\
-        .roomlist-view .dialog.zero-teams-mode #zero-inpanel-jersey,\
-        .roomlist-view .dialog.zero-friends-mode > h1,\
-        .roomlist-view .dialog.zero-friends-mode > p:not([data-hook]),\
-        .roomlist-view .dialog.zero-friends-mode #room-search,\
-        .roomlist-view .dialog.zero-friends-mode table.header,\
-        .roomlist-view .dialog.zero-friends-mode > .content,\
-        .roomlist-view .dialog.zero-friends-mode #zero-inpanel-profile,\
-        .roomlist-view .dialog.zero-friends-mode #zero-inpanel-teams,\
-        .roomlist-view .dialog.zero-friends-mode #zero-inpanel-pro,\
-        .roomlist-view .dialog.zero-friends-mode #zero-inpanel-jersey,\
         .roomlist-view .dialog.zero-pro-mode > h1,\
         .roomlist-view .dialog.zero-pro-mode > p:not([data-hook]),\
         .roomlist-view .dialog.zero-pro-mode #room-search,\
         .roomlist-view .dialog.zero-pro-mode table.header,\
         .roomlist-view .dialog.zero-pro-mode > .content,\
         .roomlist-view .dialog.zero-pro-mode #zero-inpanel-profile,\
-        .roomlist-view .dialog.zero-pro-mode #zero-inpanel-teams,\
-        .roomlist-view .dialog.zero-pro-mode #zero-inpanel-friends,\
         .roomlist-view .dialog.zero-pro-mode #zero-inpanel-jersey {\
             display: none !important;\
         }\
@@ -777,9 +968,7 @@
         .roomlist-view .dialog.zero-kit-mode table.header,\
         .roomlist-view .dialog.zero-kit-mode > .content,\
         .roomlist-view .dialog.zero-kit-mode #zero-inpanel-profile,\
-        .roomlist-view .dialog.zero-kit-mode #zero-inpanel-friends,\
-        .roomlist-view .dialog.zero-kit-mode #zero-inpanel-pro,\
-        .roomlist-view .dialog.zero-kit-mode #zero-inpanel-teams {\
+        .roomlist-view .dialog.zero-kit-mode #zero-inpanel-pro {\
             display: none !important;\
         }\
         #zero-inpanel-profile {\
@@ -810,8 +999,6 @@
             --zip-rsm: 5px;\
         }\
         .roomlist-view .dialog.zero-profile-mode #zero-inpanel-profile { display: flex !important; }\
-        .roomlist-view .dialog.zero-profile-mode #zero-inpanel-teams { display: none !important; }\
-        .roomlist-view .dialog.zero-profile-mode #zero-inpanel-friends { display: none !important; }\
         .roomlist-view .dialog.zero-profile-mode #zero-inpanel-pro { display: none !important; }\
         .roomlist-view .dialog.zero-profile-mode #zero-inpanel-jersey { display: none !important; }\
         #zero-inpanel-pro {\
@@ -1422,24 +1609,6 @@
         }\
         .prx-toast--ok { color: #a3a3a3; }\
         .prx-toast--err { color: #f87171; }\
-        #zero-inpanel-teams {\
-            display: none;\
-            width: 100%;\
-            height: 100%;\
-            box-sizing: border-box;\
-            margin: 0;\
-            padding: 0;\
-            flex-direction: column;\
-            min-height: 0;\
-            max-height: none;\
-            font-size: 12px;\
-            color: #fff;\
-            background: var(--theme-bg-primary, #141414);\
-            border-radius: 0;\
-            overflow: hidden;\
-            pointer-events: auto;\
-        }\
-        .roomlist-view .dialog.zero-teams-mode #zero-inpanel-teams { display: flex !important; }\
         #zero-inpanel-jersey {\
             display: none;\
             width: 100%;\
@@ -2728,28 +2897,6 @@
             font-family: inherit;\
             cursor: pointer;\
         }\
-        #zero-inpanel-friends {\
-            display: none;\
-            width: 100%;\
-            height: 100%;\
-            box-sizing: border-box;\
-            margin: 0;\
-            padding: 0;\
-            flex-direction: column;\
-            min-height: 0;\
-            max-height: none;\
-            font-size: 12px;\
-            color: #fff;\
-            background: transparent;\
-            border-radius: 0;\
-            overflow: hidden;\
-            pointer-events: auto;\
-            font-family: "Space Grotesk", sans-serif;\
-            user-select: none;\
-        }\
-        .roomlist-view .dialog.zero-friends-mode #zero-inpanel-friends { display: flex !important; }\
-        .roomlist-view .dialog.zero-teams-mode #sidebar-panel,\
-        .roomlist-view .dialog.zero-friends-mode #sidebar-panel,\
         .roomlist-view .dialog.zero-pro-mode #sidebar-panel,\
         .roomlist-view .dialog.zero-kit-mode #sidebar-panel {\
             display: flex !important;\
@@ -2875,6 +3022,168 @@
             padding: 12px 14px 10px;\
             border-bottom: 1px solid var(--zip-border);\
             margin: 0;\
+        }\
+        #zero-inpanel-profile .zip-profile-zero {\
+            flex: 1;\
+            min-height: 0;\
+            overflow: auto;\
+            padding: 4px 2px 16px;\
+        }\
+        #zero-inpanel-profile .zip-profile-h2 {\
+            font-size: 24px;\
+            font-weight: 700;\
+            letter-spacing: -0.03em;\
+            color: #fff;\
+            margin: 0 0 6px;\
+        }\
+        #zero-inpanel-profile .zip-profile-lead {\
+            font-size: 14px;\
+            color: var(--zip-muted);\
+            line-height: 1.5;\
+            margin: 0 0 24px;\
+            max-width: 520px;\
+        }\
+        #zero-inpanel-profile .zip-list-block + .zip-list-block { margin-top: 24px; }\
+        #zero-inpanel-profile .zip-section-title {\
+            font-size: 11px;\
+            font-weight: 700;\
+            letter-spacing: 0.08em;\
+            text-transform: uppercase;\
+            color: var(--zip-muted);\
+            margin: 0 0 12px;\
+        }\
+        #zero-inpanel-profile .zip-zero-list {\
+            border: 1px solid var(--zip-border);\
+            border-radius: 10px;\
+            overflow: hidden;\
+            background: var(--zip-card);\
+        }\
+        #zero-inpanel-profile .zip-zero-row {\
+            display: flex;\
+            align-items: center;\
+            justify-content: space-between;\
+            gap: 20px;\
+            padding: 16px 18px;\
+            border-bottom: 1px solid var(--zip-border);\
+            background: var(--zip-inset);\
+        }\
+        #zero-inpanel-profile .zip-zero-row:last-child { border-bottom: none; }\
+        #zero-inpanel-profile .zip-row-label {\
+            font-size: 13px;\
+            font-weight: 600;\
+            color: #fff;\
+            flex-shrink: 0;\
+        }\
+        #zero-inpanel-profile .zip-row-hint {\
+            font-size: 13px;\
+            color: var(--zip-muted);\
+            text-align: right;\
+            word-break: break-word;\
+        }\
+        #zero-inpanel-profile .zip-profile-identity-row {\
+            justify-content: flex-start;\
+            gap: 16px;\
+            padding: 18px;\
+        }\
+        #zero-inpanel-profile .zip-profile-meta {\
+            min-width: 0;\
+            flex: 1;\
+        }\
+        #zero-inpanel-profile .zip-profile-name-row {\
+            display: flex;\
+            flex-wrap: wrap;\
+            align-items: center;\
+            gap: 8px;\
+        }\
+        #zero-inpanel-profile .zip-profile-avatar-wrap {\
+            position: relative;\
+            flex-shrink: 0;\
+            width: 56px;\
+            height: 56px;\
+        }\
+        #zero-inpanel-profile .zip-profile-avatar-wrap img {\
+            width: 56px;\
+            height: 56px;\
+            border-radius: 10px;\
+            object-fit: cover;\
+            border: 1px solid var(--zip-border);\
+            display: block;\
+        }\
+        #zero-inpanel-profile .zip-avatar-fb {\
+            width: 56px;\
+            height: 56px;\
+            border-radius: 10px;\
+            display: flex;\
+            align-items: center;\
+            justify-content: center;\
+            font-size: 18px;\
+            font-weight: 700;\
+            color: #fff;\
+            background: var(--zip-inset);\
+            border: 1px solid var(--zip-border);\
+        }\
+        #zero-inpanel-profile .zip-dot {\
+            position: absolute;\
+            bottom: -2px;\
+            right: -2px;\
+            width: 11px;\
+            height: 11px;\
+            border-radius: 50%;\
+            background: #4ade80;\
+            border: 2px solid var(--zip-inset);\
+            box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.35);\
+        }\
+        #zero-inpanel-profile .zip-profile-name-row .zip-name {\
+            font-size: 18px;\
+            font-weight: 700;\
+            letter-spacing: -0.03em;\
+            word-break: break-word;\
+            color: #fff;\
+        }\
+        #zero-inpanel-profile .zip-pp-handle {\
+            margin: 4px 0 0;\
+            font-size: 13px;\
+            color: var(--zip-muted);\
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;\
+        }\
+        #zero-inpanel-profile .zip-tier {\
+            display: inline-block;\
+            padding: 2px 8px;\
+            border-radius: 999px;\
+            font-size: 10px;\
+            font-weight: 700;\
+            letter-spacing: 0.06em;\
+            text-transform: uppercase;\
+            vertical-align: middle;\
+        }\
+        #zero-inpanel-profile .zip-tier--pro {\
+            color: #1a1200;\
+            background: linear-gradient(135deg, #ffd76a, #ffb347);\
+        }\
+        #zero-inpanel-profile .zip-tier--vip {\
+            color: #fef3c7;\
+            background: rgba(245, 158, 11, 0.2);\
+            border: 1px solid rgba(251, 191, 36, 0.35);\
+        }\
+        #zero-inpanel-profile .zip-tier--default {\
+            color: var(--zip-muted);\
+            background: var(--zip-card);\
+            border: 1px solid var(--zip-border);\
+        }\
+        #zero-inpanel-profile .zip-meta-list .zip-kv span {\
+            display: block;\
+            font-size: 11px;\
+            letter-spacing: 0.06em;\
+            text-transform: uppercase;\
+            color: var(--zip-muted);\
+        }\
+        #zero-inpanel-profile .zip-meta-list .zip-kv strong {\
+            display: block;\
+            margin-top: 3px;\
+            font-size: 14px;\
+            font-weight: 500;\
+            color: #fff;\
+            word-break: break-word;\
         }\
         #zero-inpanel-profile .zip-columns {\
             display: grid;\
@@ -3086,6 +3395,70 @@
         #country-dropdown::-webkit-scrollbar-thumb:hover { background: var(--theme-scrollbar-thumb-hover) !important; }\
         \
         /* Choose nickname: só esconde UI nativa depois do módulo Discord injetar o custom (evita retângulo vazio enquanto /user demora) */\
+        .choose-nickname-view.hxd-zero-nickname-view {\
+            background: radial-gradient(ellipse 80% 60% at 50% 100%, color-mix(in srgb, var(--theme-border-light, #333) 35%, transparent), transparent 55%), radial-gradient(ellipse 50% 40% at 80% 20%, color-mix(in srgb, var(--theme-text-muted, #666) 18%, transparent), transparent 50%), linear-gradient(180deg, var(--theme-bg-tertiary, #272727) 0%, var(--theme-bg-primary, #141414) 58%, var(--theme-bg-primary, #141414) 100%) !important;\
+            font-family: Inter, system-ui, sans-serif !important;\
+            -webkit-font-smoothing: antialiased !important;\
+        }\
+        .choose-nickname-view .hxd-zero-native-logo {\
+            display: none !important;\
+        }\
+        .choose-nickname-view .dialog.hxd-zero-native-auth {\
+            width: min(340px, calc(100vw - 40px)) !important;\
+            min-width: 0 !important;\
+            max-width: min(340px, calc(100vw - 40px)) !important;\
+            padding: 24px !important;\
+            border-radius: 16px !important;\
+            border: 1px solid var(--theme-border, #232323) !important;\
+            background: color-mix(in srgb, var(--theme-bg-secondary, #1a1a1a) 86%, transparent) !important;\
+            box-shadow: var(--shadow-soft, 0 20px 60px rgba(0,0,0,.35)) !important;\
+            text-align: center !important;\
+        }\
+        .choose-nickname-view .dialog.hxd-zero-native-auth h1 {\
+            margin: 0 0 14px !important;\
+            color: var(--theme-text-primary, #fff) !important;\
+            font-size: 18px !important;\
+            font-weight: 700 !important;\
+            letter-spacing: -0.02em !important;\
+        }\
+        .choose-nickname-view .hxd-zero-native-field {\
+            margin: 0 0 12px !important;\
+            text-align: left !important;\
+        }\
+        .choose-nickname-view .hxd-zero-native-field label {\
+            display: block !important;\
+            margin: 0 0 7px !important;\
+            color: var(--theme-text-muted, #666) !important;\
+            font-size: 11px !important;\
+            font-weight: 700 !important;\
+            letter-spacing: .06em !important;\
+            text-transform: uppercase !important;\
+        }\
+        .choose-nickname-view .hxd-zero-native-field input {\
+            width: 100% !important;\
+            height: 40px !important;\
+            padding: 0 12px !important;\
+            border-radius: 10px !important;\
+            border: 1px solid var(--theme-border, #232323) !important;\
+            background: var(--theme-bg-primary, #141414) !important;\
+            color: var(--theme-text-primary, #fff) !important;\
+            font: inherit !important;\
+            font-size: 13px !important;\
+            outline: none !important;\
+            box-shadow: none !important;\
+        }\
+        .choose-nickname-view .hxd-zero-native-btn {\
+            width: 100% !important;\
+            height: 40px !important;\
+            border-radius: 10px !important;\
+            border: 1px solid var(--theme-border, #232323) !important;\
+            background: var(--theme-bg-tertiary, #272727) !important;\
+            color: var(--theme-text-primary, #fff) !important;\
+            font: inherit !important;\
+            font-size: 13px !important;\
+            font-weight: 700 !important;\
+            cursor: pointer !important;\
+        }\
         .choose-nickname-view .dialog[data-discord-setup="done"] h1,\
         .choose-nickname-view .dialog[data-discord-setup="done"] .label-input,\
         .choose-nickname-view .dialog[data-discord-setup="done"] button[data-hook="ok"] {\
@@ -3454,7 +3827,7 @@
         .player-list-item.pro-banner:hover {\
             filter: brightness(1.1) !important;\
         }\
-        /* Logo do equipamento à direita (antes do ping), injetado por teams.js */\
+        /* Logo do equipamento à direita (antes do ping) */\
         .player-list-item .hxd-team-logo-wrap {\
             display: inline-flex !important;\
             align-items: center !important;\
@@ -3549,6 +3922,7 @@
             background: #3a4148 !important;\
         }\
         html[data-theme="default"] #custom-header button,\
+        html[data-theme="default"] #custom-titlebar .hxd-win-btn,\
         html[data-theme="default"] #show-header-btn {\
             background: transparent !important;\
             border: none !important;\
@@ -3570,18 +3944,6 @@
         }\
         html[data-theme="default"] #custom-header #ghost-mode-btn.active:hover {\
             color: #c4b5fd !important;\
-        }\
-        html[data-theme="default"] #custom-header #spotify-header-btn {\
-            color: #888 !important;\
-        }\
-        html[data-theme="default"] #custom-header #spotify-header-btn:hover {\
-            color: #1ed760 !important;\
-        }\
-        html[data-theme="default"] #custom-header #spotify-header-btn.open {\
-            color: #1db954 !important;\
-        }\
-        html[data-theme="default"] #custom-header #spotify-header-btn.open:hover {\
-            color: #1ed760 !important;\
         }\
         html[data-theme="default"] #custom-header #ghost-mode-btn.active {\
             color: #8b5cf6 !important;\
@@ -3865,9 +4227,170 @@
                 };
                 window.__hxdApplyGlassUiFromStorage();
             } catch (eGlassBoot) {}
+            installReplayControlsAligner();
+            installReplayHideShortcut();
             
             Injector.log('Custom styles injected');
         });
+    }
+
+    function installReplayControlsAligner() {
+        if (document.hxdReplayControlsAlignerInstalled) return;
+        document.hxdReplayControlsAlignerInstalled = true;
+
+        var raf = 0;
+
+        function getChatBoxRect() {
+            var chat = document.querySelector('.game-view.replayer .chatbox-view .chatbox-view-contents') ||
+                document.querySelector('.game-view.replayer .chatbox-view');
+            if (!chat) return null;
+            var rect = chat.getBoundingClientRect();
+            if (!rect || rect.width < 80 || rect.height < 20) return null;
+            return rect;
+        }
+
+        function clampTooltip(ctrl) {
+            var bar = ctrl && ctrl.querySelector ? ctrl.querySelector('.timebar') : null;
+            var tip = ctrl && ctrl.querySelector ? ctrl.querySelector('.timetooltip') : null;
+            if (!bar || !tip) return;
+
+            var rawLeft = parseFloat(tip.style.left || '');
+            var barW = bar.clientWidth || 0;
+            var tipW = tip.offsetWidth || 0;
+            if (!(barW > 0)) return;
+
+            var min = 8 + (tipW / 2);
+            var max = Math.max(min, barW - 8 - (tipW / 2));
+            var left = isNaN(rawLeft) ? (barW / 2) : rawLeft;
+            if (left < min) left = min;
+            if (left > max) left = max;
+            bar.style.setProperty('--hxd-replay-tooltip-left', left + 'px');
+        }
+
+        function alignNow() {
+            raf = 0;
+            var ctrl = document.querySelector('.game-view.replayer .replay-controls-view');
+            if (!ctrl) return;
+
+            var chatRect = getChatBoxRect();
+            if (chatRect) {
+                var width = Math.max(260, Math.round(chatRect.width));
+                var left = Math.round(chatRect.left);
+                var bottom = Math.max(12, Math.round(window.innerHeight - chatRect.top + 8));
+                ctrl.style.setProperty('--hxd-replay-left', left + 'px');
+                ctrl.style.setProperty('--hxd-replay-width', width + 'px');
+                ctrl.style.setProperty('--hxd-replay-bottom', bottom + 'px');
+            } else {
+                ctrl.style.removeProperty('--hxd-replay-left');
+                ctrl.style.removeProperty('--hxd-replay-width');
+                ctrl.style.removeProperty('--hxd-replay-bottom');
+            }
+
+            clampTooltip(ctrl);
+        }
+
+        function scheduleAlign() {
+            if (raf) return;
+            raf = requestAnimationFrame(alignNow);
+        }
+
+        window.addEventListener('resize', scheduleAlign);
+        window.addEventListener('mousemove', function(e) {
+            var bar = e.target && e.target.closest ? e.target.closest('.game-view.replayer .replay-controls-view .timebar') : null;
+            if (bar) scheduleAlign();
+        }, true);
+        window.addEventListener('mouseup', scheduleAlign, true);
+        window.addEventListener('scroll', scheduleAlign, true);
+
+        var mo = new MutationObserver(scheduleAlign);
+        mo.observe(document.documentElement, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class', 'style']
+        });
+
+        setInterval(scheduleAlign, 500);
+        scheduleAlign();
+    }
+
+    // Tecla H en replays: oculta/muestra la línea de tiempo y los controles.
+    // Muestra un aviso fijo abajo a la izquierda con el atajo.
+    function installReplayHideShortcut() {
+        if (document.hxdReplayHideInstalled) return;
+        document.hxdReplayHideInstalled = true;
+
+        var hidden = false;
+        var hint = null;
+
+        function isReplay() {
+            return !!document.querySelector('.game-view.replayer');
+        }
+        function getCtrl() {
+            return document.querySelector('.game-view.replayer .replay-controls-view');
+        }
+        function ensureHint() {
+            if (hint && document.body && document.body.contains(hint)) return hint;
+            hint = document.createElement('div');
+            hint.className = 'hxd-replay-hide-hint';
+            hint.style.cssText = [
+                'position:fixed', 'left:14px', 'bottom:12px', 'z-index:2147483646',
+                'font:600 11px/1.2 Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif',
+                'letter-spacing:.5px', 'color:rgba(255,255,255,.82)',
+                'background:rgba(0,0,0,.45)', 'padding:6px 10px', 'border-radius:8px',
+                'pointer-events:none', 'user-select:none', 'text-transform:uppercase',
+                'box-shadow:0 4px 16px rgba(0,0,0,.25)',
+                'transition:opacity .2s ease', 'opacity:0', 'display:none'
+            ].join(';');
+            if (document.body) document.body.appendChild(hint);
+            return hint;
+        }
+        function updateHintText() {
+            var h = ensureHint();
+            h.textContent = hidden
+                ? 'Muestra la línea de tiempo con la H'
+                : 'Oculta la línea de tiempo con la H';
+        }
+        function applyHidden() {
+            var ctrl = getCtrl();
+            if (ctrl) {
+                if (hidden) ctrl.style.setProperty('display', 'none', 'important');
+                else ctrl.style.removeProperty('display');
+            }
+            updateHintText();
+        }
+        function refreshPresence() {
+            var h = ensureHint();
+            if (isReplay()) {
+                h.style.display = 'block';
+                h.style.opacity = '1';
+                updateHintText();
+                var ctrl = getCtrl();
+                if (ctrl && hidden) ctrl.style.setProperty('display', 'none', 'important');
+            } else {
+                h.style.opacity = '0';
+                h.style.display = 'none';
+                hidden = false;
+            }
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (!isReplay()) return;
+            var k = (e.key || '').toLowerCase();
+            if (k !== 'h') return;
+            var ae = document.activeElement;
+            if (ae) {
+                var tag = (ae.tagName || '').toLowerCase();
+                if (tag === 'input' || tag === 'textarea' || ae.isContentEditable) return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            hidden = !hidden;
+            applyHidden();
+        }, true);
+
+        setInterval(refreshPresence, 600);
+        refreshPresence();
     }
 
     if (document.readyState === 'loading') {

@@ -4,21 +4,9 @@
 (function() {
     if (Injector.isMainFrame() && !Injector.isGameDocument()) return;
 
-    var API_BASE = (function resolveProApiBase() {
-        try {
-            var meta = document.querySelector('meta[name="hxd-local-api"]');
-            if (meta && meta.content) return String(meta.content).replace(/\/+$/, '');
-        } catch (eMeta) {}
-        try {
-            var parentMeta = window.parent.document.querySelector('meta[name="hxd-local-api"]');
-            if (parentMeta && parentMeta.content) return String(parentMeta.content).replace(/\/+$/, '');
-        } catch (eParent) {}
-        return 'http://127.0.0.1:5483';
-    })();
-    var proStatus = { is_pro: true, is_vip: true, allpro: true };
+    var API_BASE = 'http://127.0.0.1:5483';
+    var proStatus = null;
     var proSettings = null;
-    window.__proStatus = proStatus;
-    window.__vipStatus = { is_vip: true };
 
     function t(key) { return window.__t ? window.__t(key) : key; }
 
@@ -82,25 +70,60 @@
 
     function applyProSnapshotFromStorage() {
         try {
-            localStorage.setItem('haxclient_pro_snapshot', JSON.stringify({ is_pro: true, is_vip: true, allpro: true, at: Date.now() }));
+            var snap = JSON.parse(localStorage.getItem('haxclient_pro_snapshot') || 'null');
+            if (snap && (snap.is_pro || snap.is_vip)) {
+                proStatus = { is_pro: !!snap.is_pro, is_vip: !!snap.is_vip };
+                window.__proStatus = proStatus;
+                return true;
+            }
         } catch (e) {}
-        proStatus = { is_pro: true, is_vip: true, allpro: true };
-        window.__proStatus = proStatus;
-        window.__vipStatus = { is_vip: true };
-        return true;
+        return false;
     }
 
     function loadProStatus() {
         return fetch(API_BASE + '/vip/status').then(function(r) { return r.json(); }).then(function(data) {
-            proStatus = Object.assign({}, data || {}, { is_pro: true, is_vip: true, allpro: true });
-            window.__proStatus = proStatus;
-            window.__vipStatus = { is_vip: true };
+            proStatus = data;
+            window.__proStatus = data;
+            window.__vipStatus = { is_vip: data.is_vip || data.is_pro };
             try {
-                localStorage.setItem('haxclient_pro_snapshot', JSON.stringify(Object.assign({}, proStatus, { at: Date.now() })));
-            } catch (eSnap) {}
-            return proStatus;
+                if (data.is_pro || data.is_vip) {
+                    localStorage.setItem(
+                        'haxclient_pro_snapshot',
+                        JSON.stringify({
+                            is_pro: !!data.is_pro,
+                            is_vip: !!data.is_vip,
+                            at: Date.now()
+                        })
+                    );
+                } else {
+                    localStorage.removeItem('haxclient_pro_snapshot');
+                    if (window.__hxdClearProCustomSoundsLocal) {
+                        try {
+                            window.__hxdClearProCustomSoundsLocal();
+                        } catch (eClr) {}
+                    }
+                }
+            } catch (eSnap) {
+                if (!(data.is_pro || data.is_vip) && window.__hxdClearProCustomSoundsLocal) {
+                    try {
+                        window.__hxdClearProCustomSoundsLocal();
+                    } catch (eClr0) {}
+                }
+            }
+            return data;
         }).catch(function() {
-            applyProSnapshotFromStorage();
+            if (applyProSnapshotFromStorage()) {
+                window.__vipStatus = { is_vip: !!(proStatus && proStatus.is_vip) };
+                return proStatus;
+            }
+            if (proStatus && (proStatus.is_pro || proStatus.is_vip)) {
+                window.__proStatus = proStatus;
+                window.__vipStatus = { is_vip: !!(proStatus.is_vip || proStatus.is_pro) };
+                return proStatus;
+            }
+            proStatus = { is_pro: false, is_vip: false };
+            window.__proStatus = proStatus;
+            window.__vipStatus = { is_vip: false };
             return proStatus;
         });
     }
@@ -138,19 +161,6 @@
         });
     }
 
-    function saveProSettingsLocally(settings) {
-        proSettings = Object.assign({}, proSettings || {}, settings || {});
-        window.__proSettings = proSettings;
-        try { localStorage.setItem('haxclient_pro_settings', JSON.stringify(proSettings)); } catch(e) {}
-        if (window.__hxdSyncLocalPersonalizationCache) {
-            try { window.__hxdSyncLocalPersonalizationCache(); } catch (eSync) {}
-        }
-        if (window.__refreshVerifiedBadges) window.__refreshVerifiedBadges();
-        if (window.__refreshProBanners) window.__refreshProBanners();
-        if (window.__refreshProFonts) window.__refreshProFonts();
-        return { success: true, local: true, settings: proSettings };
-    }
-
     function saveProSettings(settings) {
         return fetch(API_BASE + '/vip/settings', {
             method: 'POST',
@@ -159,12 +169,15 @@
         }).then(function(r) {
             return r.json().then(function(data) {
                 if (!r.ok) {
-                    return saveProSettingsLocally(settings);
+                    return { success: false, error: (data && data.error) || r.statusText || 'HTTP ' + r.status };
                 }
                 if (isProSettingsSaveResponseOk(data)) {
                     proSettings = Object.assign({}, proSettings, settings);
                     window.__proSettings = proSettings;
                     try { localStorage.setItem('haxclient_pro_settings', JSON.stringify(proSettings)); } catch(e) {}
+                    if (window.__hxdInvalidateProSettingsCache) {
+                        try { window.__hxdInvalidateProSettingsCache(); } catch (eInv) {}
+                    }
                     if (window.__hxdSyncLocalPersonalizationCache) {
                         try {
                             window.__hxdSyncLocalPersonalizationCache();
@@ -176,8 +189,6 @@
                 }
                 return data;
             });
-        }).catch(function() {
-            return saveProSettingsLocally(settings);
         });
     }
 
@@ -214,6 +225,12 @@
     function renderProIntoInpanel(iframeDoc, proWrap) {
         var content = proWrap && proWrap.querySelector('#pro-inpanel-content');
         if (!content || !iframeDoc) return;
+        if (window.__hxdIsAnonymousMode && window.__hxdIsAnonymousMode()) {
+            if (typeof window.showToast === 'function') {
+                window.showToast(t('Anonymous mode block pro'), 'info', 2800);
+            }
+            return;
+        }
         proInpanelContext = { iframeDoc: iframeDoc, proWrap: proWrap };
         content.innerHTML = '';
         var popup = iframeDoc.createElement('div');
@@ -224,7 +241,18 @@
         renderProPopupLoading(popup, false);
         popup.style.minHeight = '0';
         loadProStatus().then(function(status) {
-            renderProContent(popup, status);
+            if (status.is_pro || status.is_vip) {
+                renderProContent(popup, status);
+            } else {
+                renderNonProContent(popup);
+            }
+        }).catch(function() {
+            var fallback = proStatus || window.__proStatus || { is_pro: false, is_vip: false };
+            if (fallback.is_pro || fallback.is_vip) {
+                renderProContent(popup, fallback);
+            } else {
+                renderNonProContent(popup);
+            }
         });
     }
 
@@ -295,6 +323,12 @@
     }
 
     function showProPopup() {
+        if (window.__hxdIsAnonymousMode && window.__hxdIsAnonymousMode()) {
+            if (typeof window.showToast === 'function') {
+                window.showToast(t('Anonymous mode block pro'), 'info', 2800);
+            }
+            return;
+        }
         clearProInpanelContext();
         closePopup();
         var overlay = document.createElement('div');
@@ -306,7 +340,18 @@
             'background:#0a0a0a;border:1px solid rgba(255,255,255,0.08);border-radius:10px;width:min(420px,96vw);max-width:96vw;max-height:90vh;min-height:0;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.55);';
         renderProPopupLoading(popup, false);
         loadProStatus().then(function(status) {
-            renderProContent(popup, status);
+            if (status.is_pro || status.is_vip) {
+                renderProContent(popup, status);
+            } else {
+                renderNonProContent(popup);
+            }
+        }).catch(function() {
+            var fallback = proStatus || window.__proStatus || { is_pro: false, is_vip: false };
+            if (fallback.is_pro || fallback.is_vip) {
+                renderProContent(popup, fallback);
+            } else {
+                renderNonProContent(popup);
+            }
         });
         overlay.appendChild(popup);
         document.body.appendChild(overlay);
@@ -1232,7 +1277,10 @@
         window.__hxdClearProInpanelContext = clearProInpanelContext;
         window.__proLoadStatus = loadProStatus;
         window.__proLoadSettings = loadProSettings;
-        window.__proIsPro = function() { return true; };
+        window.__proIsPro = function() {
+            if (proStatus && (proStatus.is_pro || proStatus.is_vip)) return true;
+            return applyProSnapshotFromStorage();
+        };
     }
 
     if (document.readyState === 'loading') {

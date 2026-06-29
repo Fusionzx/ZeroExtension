@@ -1,28 +1,114 @@
-﻿'use strict';
+'use strict';
 
 (function(pa) {
     const _TWO_PI = 2 * Math.PI;
 
     const _proSettingsState = { lastRead: 0, data: null };
+    function _invalidateProSettingsCache() {
+        _proSettingsState.lastRead = 0;
+    }
     function _readProSettings() {
-        if (window.__proSettings) {
-            _proSettingsState.data = window.__proSettings;
+        const now = Date.now();
+        if (now - _proSettingsState.lastRead < 250 && _proSettingsState.data) {
             return _proSettingsState.data;
         }
-        const now = Date.now();
-        if (now - _proSettingsState.lastRead < 500) return _proSettingsState.data;
         _proSettingsState.lastRead = now;
+        var merged = null;
         try {
-            _proSettingsState.data = JSON.parse(localStorage.getItem('haxclient_pro_settings') || 'null');
-        } catch(e) {
-            _proSettingsState.data = null;
+            var fromLs = JSON.parse(localStorage.getItem('haxclient_pro_settings') || 'null');
+            if (fromLs && typeof fromLs === 'object') merged = Object.assign({}, fromLs);
+        } catch (eLs) {}
+        if (window.__proSettings && typeof window.__proSettings === 'object') {
+            merged = Object.assign({}, window.__proSettings, merged || {});
         }
-        return _proSettingsState.data;
+        _proSettingsState.data = merged;
+        if (merged) window.__proSettings = merged;
+        return merged;
     }
+    window.__hxdInvalidateProSettingsCache = _invalidateProSettingsCache;
     /** Pro real: en el game script no dependemos solo de window.__proIsPro porque vip.js corre como content script. */
     function __hxdClientHasProAccess() {
-        return true;
+        try {
+            if (window.__proIsPro && typeof window.__proIsPro === 'function') return !!window.__proIsPro();
+        } catch (e) {}
+        try {
+            var st = window.__proStatus || window.__vipStatus || null;
+            if (st && (st.is_pro || st.is_vip)) return true;
+        } catch (eSt) {}
+        try {
+            var snap = JSON.parse(localStorage.getItem('haxclient_pro_snapshot') || 'null');
+            if (snap && (snap.is_pro || snap.is_vip)) return true;
+        } catch (eSnap) {}
+        return false;
     }
+    window.__hxdClientHasProAccess = __hxdClientHasProAccess;
+    try {
+        window.addEventListener('storage', function(e) {
+            if (!e || !e.key) return;
+            if (e.key === 'haxclient_pro_settings' || e.key === 'haxclient_pro_snapshot' || e.key === 'haxclient_pro_custom_sounds') {
+                _invalidateProSettingsCache();
+                if (e.key === 'haxclient_pro_settings' && e.newValue) {
+                    try { window.__proSettings = JSON.parse(e.newValue); } catch (ex) {}
+                }
+            }
+        });
+        window.addEventListener('message', function(e) {
+            if (!e || !e.data || typeof e.data !== 'object') return;
+            if (e.data.type === 'hxd-pro-settings-changed') {
+                _invalidateProSettingsCache();
+                if (e.data.settings) window.__proSettings = e.data.settings;
+            }
+        });
+    } catch (eProListen) {}
+    function __hxdNormalizeChatShortcutList(raw) {
+        var list = [];
+        try {
+            list = JSON.parse(raw || "[]")
+        } catch (e) {
+            list = []
+        }
+        if (!Array.isArray(list))
+            list = [];
+        list = list.map(function(a) {
+            return {
+                trigger: String(a && a.trigger || "").trim(),
+                expansion: String(a && (a.expansion || a.command) || "").trim()
+            }
+        }).filter(function(a) {
+            return a.trigger && a.expansion
+        });
+        if (!list.some(function(a) {
+            return "/e number" === a.trigger.toLowerCase()
+        }))
+            list.unshift({
+                trigger: "/e number",
+                expansion: "/extrapolation number"
+            });
+        return list
+    }
+    function __hxdChatShortcutLimit() {
+        return __hxdClientHasProAccess() ? 10 : 2
+    }
+    function __hxdExpandChatShortcutText(a) {
+        try {
+            var b = String(a || "").trim();
+            if (!b)
+                return a;
+            var c = __hxdNormalizeChatShortcutList(localStorage.getItem("hax_chat_command_shortcuts")).slice(0, __hxdChatShortcutLimit());
+            for (var d = 0; d < c.length; d++) {
+                var q = c[d];
+                if (-1 !== q.trigger.indexOf("number") && -1 !== q.expansion.indexOf("number")) {
+                    var g = q.trigger.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/number/g, "(-?\\d+(?:\\.\\d+)?)")
+                      , h = b.match(new RegExp("^" + g + "$", "i"));
+                    if (h)
+                        return q.expansion.replace(/number/g, h[1])
+                } else if (b.toLowerCase() === q.trigger.toLowerCase())
+                    return q.expansion
+            }
+        } catch (k) {}
+        return a
+    }
+    window.__hxdExpandChatShortcutText = __hxdExpandChatShortcutText;
     function __hxdProActiveForSounds() {
         return __hxdClientHasProAccess();
     }
@@ -71,44 +157,45 @@
         } catch (eH) {}
     }
     function __hxdPlayProCustomDataUrl(nc, url) {
-        if (!nc || !nc.c || !nc.qg || !url || typeof url !== 'string') return false;
+        if (!url || typeof url !== 'string') return false;
         url = url.trim();
         if (url.indexOf('data:') !== 0) return false;
-        var ctx = nc.c;
-        var gain = nc.qg;
-        var vol = gain && gain.gain ? Math.max(0, Math.min(1, gain.gain.value)) : 1;
+        var vol = 1;
         try {
-            if (ctx.state === 'suspended') ctx.resume().catch(function() {});
-        } catch (eR) {}
-        var ab = __hxdDecodeDataUrlToArrayBuffer(url);
-        if (!ab) {
-            __hxdPlayHtml5AudioFallback(url, vol);
-            return true;
-        }
-        function playBuf(audioBuf) {
-            try {
-                var src = ctx.createBufferSource();
-                src.buffer = audioBuf;
-                src.connect(gain);
-                src.start(0);
-            } catch (e3) {
-                __hxdPlayHtml5AudioFallback(url, vol);
+            if (nc && nc.qg && nc.qg.gain) vol = Math.max(0, Math.min(1, nc.qg.gain.value));
+        } catch (eVol) {}
+        var canUseWebAudio = nc && nc.c && nc.qg && nc.c.state === 'running';
+        if (canUseWebAudio) {
+            var ab = __hxdDecodeDataUrlToArrayBuffer(url);
+            if (ab) {
+                try {
+                    var ctx = nc.c;
+                    var gain = nc.qg;
+                    var playBuf = function(audioBuf) {
+                        try {
+                            var src = ctx.createBufferSource();
+                            src.buffer = audioBuf;
+                            src.connect(gain);
+                            src.start(0);
+                        } catch (e3) {
+                            __hxdPlayHtml5AudioFallback(url, vol);
+                        }
+                    };
+                    var dec = ctx.decodeAudioData(ab.slice(0));
+                    if (dec && typeof dec.then === 'function') {
+                        dec.then(playBuf).catch(function() {
+                            __hxdPlayHtml5AudioFallback(url, vol);
+                        });
+                        return true;
+                    }
+                    ctx.decodeAudioData(ab.slice(0), playBuf, function() {
+                        __hxdPlayHtml5AudioFallback(url, vol);
+                    });
+                    return true;
+                } catch (e4) {}
             }
         }
-        try {
-            var dec = ctx.decodeAudioData(ab.slice(0));
-            if (dec && typeof dec.then === 'function') {
-                dec.then(playBuf).catch(function() {
-                    __hxdPlayHtml5AudioFallback(url, vol);
-                });
-            } else {
-                ctx.decodeAudioData(ab.slice(0), playBuf, function() {
-                    __hxdPlayHtml5AudioFallback(url, vol);
-                });
-            }
-        } catch (e4) {
-            __hxdPlayHtml5AudioFallback(url, vol);
-        }
+        __hxdPlayHtml5AudioFallback(url, vol);
         return true;
     }
     window.__hxdProCustomSoundTryPlay = function(nc, buffer) {
@@ -123,7 +210,7 @@
             buffer === nc.Mp ? 'leave' : null;
         if (!slot) return false;
         var url = cfg[slot];
-        if (!url) return true;
+        if (!url || !String(url).trim()) return false;
         return __hxdPlayProCustomDataUrl(nc, url || '');
     };
     function _createBallGradient(ctx, posX, posY, radius, colorA, colorB) {
@@ -3622,7 +3709,7 @@
                 if (!qm) return;
                 var savedMode = localStorage.getItem("quality_mode") || "1";
                 qm.selectedIndex = parseInt(savedMode);
-                // Aplica o multiplicador baseado na seleÃ§Ã£o
+                // Aplica o multiplicador baseado na seleção
                 function applyQualityMode() {
                     var idx = qm.selectedIndex;
                     localStorage.setItem("quality_mode", idx.toString());
@@ -3639,7 +3726,7 @@
             g("tmisc-showavatars", m.j.Km);
             g("tmisc-lowqualitycircles", m.j.Ym);
             g("tmisc-showindicator", m.j.Rm);
-            g("tmisc-indicator-name", m.j.Nm);
+            g("tmisc-indicator-name", m.j.Om);
             g("tmisc-simplelines", m.j.Sm);
             g("tmisc-ultrasimplelines", m.j.Xm);
             g("tmisc-simplefield", m.j.Tm);
@@ -4276,14 +4363,19 @@
                 k.appendChild(z)
             }
             k.onclick = function(t) {
-                a.Or((t.pageX - k.offsetLeft) / k.clientWidth * a.vh * a.Bf);
+                let z = k.getBoundingClientRect();
+                let y = (t.clientX - z.left) / z.width;
+                y = Math.max(0, Math.min(1, y));
+                a.Or(y * a.vh * a.Bf);
                 d.lg || (d.lg = !0,
                 d.Eq(),
                 d.Dl())
             }
             ;
             k.onmousemove = function(t) {
-                t = (t.pageX - k.offsetLeft) / k.clientWidth;
+                let z = k.getBoundingClientRect();
+                t = (t.clientX - z.left) / z.width;
+                t = Math.max(0, Math.min(1, t));
                 l.textContent = Oa.pl(a.Bf * a.vh * t);
                 return l.style.left = "calc(" + 100 * t + "% - 30px)"
             }
@@ -4448,6 +4540,18 @@
                 a.preventDefault());
                 break;
             case 27:
+                if (__hxdHasSettingsPopup()) {
+                    try {
+                        if (typeof window.__hxdCloseSettingsPreview === "function") window.__hxdCloseSettingsPreview();
+                        else if (typeof window.__hxdCloseSettingsPopup === "function") window.__hxdCloseSettingsPopup();
+                        else this.l.ab(null);
+                    } catch (hxdEscCloseE) {
+                        this.l.ab(null);
+                    }
+                    a.preventDefault();
+                    a.stopPropagation();
+                    return;
+                }
                 c ? this.W.Fa(a) : (this.l.Zk() ? this.l.ab(null) : (b = this.l,
                 b.we(!b.od)));
                 a.preventDefault();
@@ -4621,11 +4725,29 @@
                 b.si.blur()
             }
             ;
+            try {
+                window.__hxdCloseSettingsPopup = function() {
+                    b.ab(null);
+                    __hxdRestoreGameFocusAfterSettingsClose();
+                };
+                window.__hxdRestoreGameFocusAfterSettingsClose = __hxdRestoreGameFocusAfterSettingsClose;
+                window.addEventListener("hxd-close-settings-request", function() {
+                    b.ab(null);
+                    __hxdRestoreGameFocusAfterSettingsClose();
+                });
+                __hxdInstallSettingsEscGuard(function() {
+                    b.ab(null);
+                    __hxdRestoreGameFocusAfterSettingsClose();
+                });
+            } catch (hxdCloseSettingsE) {}
             new mc(a.get("sound"));
+            a.get("settings").onmousedown = __hxdMarkSettingsOpening;
             a.get("settings").onclick = function() {
+                __hxdMarkSettingsOpening();
                 let c = new na;
                 c.rb = function() {
-                    b.ab(null)
+                    b.ab(null);
+                    __hxdRestoreGameFocusAfterSettingsClose();
                 }
                 ;
                 b.ab(c.f)
@@ -4844,7 +4966,7 @@
                     b.Fc.Qb.hidden ? b.$a.blur() : b.Fc.Wo();
                     break;
                 case 13:
-                    null != b.El && "" != b.$a.value && b.El(b.$a.value);
+                    null != b.El && "" != b.$a.value && b.El(__hxdExpandChatShortcutText(b.$a.value));
                     b.$a.value = "";
                     b.$a.blur();
                     break;
@@ -4938,7 +5060,7 @@
             null != b && (d.className = b);
             if (c && c.name && c.color) {
                 let nameSpan = window.document.createElement("span");
-                // Remove caractere invisÃ­vel (U+200B) do nome para exibiÃ§Ã£o no chat
+                // Remove caractere invisível (U+200B) do nome para exibição no chat
                 let cleanName = c.name.replace(/\u200B/g, '');
                 nameSpan.textContent = cleanName;
                 // Suporte a gradiente
@@ -4958,7 +5080,7 @@
                 d.appendChild(nameSpan);
                 d.appendChild(window.document.createTextNode(": " + c.message));
             } else {
-                // Remove caractere invisÃ­vel do texto geral tambÃ©m
+                // Remove caractere invisível do texto geral também
                 d.textContent = a ? a.replace(/\u200B/g, '') : a;
             }
             this.hl(d)
@@ -4969,6 +5091,257 @@
         static Ep(a) {
             return a.parentElement.querySelector(":hover") == a
         }
+    }
+    function __hxdIsLocalPlayerId(playerId) {
+        var ids = [window.__haxLocalPlayerId, window.__myLocalPlayerId];
+        for (var i = 0; i < ids.length; i++) {
+            if (ids[i] != null && String(ids[i]) === String(playerId)) return true;
+        }
+        return false;
+    }
+    function __hxdGetLocalAvatarUrl() {
+        var storedUrl = null;
+        try {
+            storedUrl = localStorage.getItem('hxd_settings_preview_avatar') || null;
+        } catch (e) {}
+        if (storedUrl && (window.__haxDiscordId || window.__hxdAvatarDiscordAllowed === true)) return storedUrl;
+        if (window.__hxdMyAvatarUrl) return window.__hxdMyAvatarUrl;
+        if (!window.__haxDiscordId && window.__hxdAvatarDiscordAllowed !== true) return null;
+        return storedUrl;
+    }
+    function __hxdGetLocalAvatarToggle(key, fallback) {
+        try {
+            var value = localStorage.getItem(key);
+            if (value !== null && value !== '') return value === '1';
+        } catch (e) {}
+        return Boolean(fallback);
+    }
+    function __hxdReadAvatarBool(value, fallback) {
+        if (value === undefined || value === null || value === '') return Boolean(fallback);
+        if (value === true || value === 1) return true;
+        if (value === false || value === 0) return false;
+        var s = String(value).trim().toLowerCase();
+        if (s === '1' || s === 'true' || s === 'yes' || s === 'on') return true;
+        if (s === '0' || s === 'false' || s === 'no' || s === 'off') return false;
+        return Boolean(fallback);
+    }
+    function __hxdGetLocalAvatarVisibleAll() {
+        return __hxdGetLocalAvatarToggle('hxd_avatar_visible_all', false) ||
+            (
+                __hxdGetLocalAvatarToggle('hxd_avatar_visible_team', window.__hxdAvatarVisibleTeam) &&
+                __hxdGetLocalAvatarToggle('hxd_avatar_visible_rival', window.__hxdAvatarVisibleRival)
+            );
+    }
+    function __hxdCanViewerSeeAvatar(profile, playerId, playerTeam, localTeam) {
+        if (!profile || !profile.avatar_url) return false;
+        if (__hxdReadAvatarBool(profile.avatar_disabled, false)) return false;
+        if (__hxdIsLocalPlayerId(playerId)) return true;
+        if (__hxdReadAvatarBool(profile.avatar_visible_self_only, false)) return false;
+        var showTeam = __hxdReadAvatarBool(profile.avatar_visible_team, false);
+        var showRival = __hxdReadAvatarBool(profile.avatar_visible_rival, false);
+        if (showTeam && showRival) return true;
+        if (playerTeam == null || localTeam == null) return showTeam || showRival;
+        if (playerTeam === localTeam) return showTeam;
+        return showRival;
+    }
+    function __hxdBuildLocalAvatarProfile() {
+        var localAvatarUrl = __hxdGetLocalAvatarUrl();
+        if (!localAvatarUrl) return null;
+        return {
+            avatar_url: localAvatarUrl,
+            is_local: true,
+            avatar_disabled: __hxdGetLocalAvatarToggle('hxd_avatar_disabled', window.__hxdAvatarDisabled),
+            avatar_visible_self_only: __hxdReadAvatarBool(window.__hxdAvatarVisibleSelfOnly, true),
+            avatar_visible_team: __hxdGetLocalAvatarVisibleAll(),
+            avatar_visible_rival: __hxdGetLocalAvatarVisibleAll(),
+            avatar_team_border: __hxdGetLocalAvatarToggle('hxd_avatar_team_border', window.__hxdAvatarTeamBorder),
+            avatar_team_border_red: __hxdGetLocalAvatarShade('hxd_avatar_team_border_red', window.__hxdAvatarTeamBorderRed),
+            avatar_team_border_blue: __hxdGetLocalAvatarShade('hxd_avatar_team_border_blue', window.__hxdAvatarTeamBorderBlue),
+            avatar_team_border_width: __hxdGetLocalAvatarWidth('hxd_avatar_team_border_width', window.__hxdAvatarTeamBorderWidth),
+            avatar_team_border_inset: __hxdGetLocalAvatarToggle('hxd_avatar_team_border_inset', window.__hxdAvatarTeamBorderInset),
+            isPro: __hxdClientHasProAccess()
+        };
+    }
+    function __hxdGetAvatarProfileForPlayer(playerId, playerTeam, localTeam) {
+        try {
+            if (__hxdIsLocalPlayerId(playerId)) {
+                var localProfile = __hxdBuildLocalAvatarProfile();
+                if (!localProfile || __hxdReadAvatarBool(localProfile.avatar_disabled, false)) return null;
+                if (!__hxdCanViewerSeeAvatar(localProfile, playerId, playerTeam, localTeam)) return null;
+                return localProfile;
+            }
+            var profiles = window.__hxdAvatarProfilesByPlayerId || null;
+            var profile = profiles && profiles[playerId];
+            if (!profile || !profile.avatar_url) return null;
+            if (__hxdReadAvatarBool(profile.avatar_disabled, false)) return null;
+            if (!__hxdCanViewerSeeAvatar(profile, playerId, playerTeam, localTeam)) return null;
+            return profile;
+        } catch (e) {
+            return null;
+        }
+    }
+    function __hxdGetAvatarImageForProfile(profile) {
+        try {
+            if (!profile || !profile.avatar_url) return null;
+            window.__hxdAvatarImageCache = window.__hxdAvatarImageCache || {};
+            var cached = window.__hxdAvatarImageCache[profile.avatar_url];
+            if (!cached) {
+                var img = new Image;
+                cached = window.__hxdAvatarImageCache[profile.avatar_url] = { img: img, loaded: false, failed: false };
+                img.onload = function() {
+                    cached.loaded = true;
+                    try { window.dispatchEvent(new Event('hxd-avatar-image-loaded')); } catch (eLoad) {}
+                };
+                img.onerror = function() { cached.failed = true };
+                img.src = profile.avatar_url;
+            }
+            return cached.loaded && !cached.failed ? cached.img : null;
+        } catch (e) {
+            return null;
+        }
+    }
+    function __hxdGetLocalAvatarShade(key, fallback) {
+        try {
+            var v = localStorage.getItem(key);
+            if (v !== null && v !== '') {
+                var n = parseInt(v, 10);
+                if (!isNaN(n)) return Math.min(2, Math.max(0, n));
+            }
+        } catch (e) {}
+        var fb = parseInt(fallback, 10);
+        return isNaN(fb) ? 1 : Math.min(2, Math.max(0, fb));
+    }
+    function __hxdGetLocalAvatarWidth(key, fallback) {
+        try {
+            var v = localStorage.getItem(key);
+            if (v !== null && v !== '') {
+                var n = parseInt(v, 10);
+                if (!isNaN(n)) return Math.min(8, Math.max(1, n));
+            }
+        } catch (e) {}
+        var fb = parseInt(fallback, 10);
+        return isNaN(fb) ? 3 : Math.min(8, Math.max(1, fb));
+    }
+    function __hxdGetTeamBorderColor(playerTeam) {
+        if (!__hxdGetLocalAvatarToggle('hxd_avatar_team_border', window.__hxdAvatarTeamBorder)) return null;
+        var palette = playerTeam === u.ia
+            ? ['#e56f57', '#cf3c47', '#ff0000']
+            : playerTeam === u.Da
+              ? ['#4099ff', '#0076ff', '#0026ff']
+              : null;
+        if (!palette) return null;
+        var shade = 1;
+        if (__hxdClientHasProAccess()) {
+            shade = playerTeam === u.ia
+                ? __hxdGetLocalAvatarShade('hxd_avatar_team_border_red', window.__hxdAvatarTeamBorderRed)
+                : __hxdGetLocalAvatarShade('hxd_avatar_team_border_blue', window.__hxdAvatarTeamBorderBlue);
+        }
+        return palette[shade] || palette[1];
+    }
+    function __hxdGetTeamBorderStyle() {
+        if (!__hxdGetLocalAvatarToggle('hxd_avatar_team_border', window.__hxdAvatarTeamBorder)) return null;
+        if (__hxdClientHasProAccess()) {
+            return {
+                width: __hxdGetLocalAvatarWidth('hxd_avatar_team_border_width', window.__hxdAvatarTeamBorderWidth),
+                inset: __hxdGetLocalAvatarToggle('hxd_avatar_team_border_inset', window.__hxdAvatarTeamBorderInset)
+            };
+        }
+        return { width: 3, inset: false };
+    }
+    function __hxdRestoreGameFocusAfterSettingsClose() {
+        try {
+            var doc = window.document;
+            var iframe = doc.getElementById("hxd-settings-preview-frame");
+            if (iframe) {
+                try {
+                    if (iframe.contentDocument && iframe.contentDocument.activeElement &&
+                        iframe.contentDocument.activeElement !== iframe.contentDocument.body) {
+                        iframe.contentDocument.activeElement.blur();
+                    }
+                } catch (iframeBlurE) {}
+                try { iframe.blur(); } catch (iframeBlurE2) {}
+            }
+            var active = doc.activeElement;
+            if (active && active !== doc.body && active !== doc.documentElement) {
+                var inSettings = active.closest &&
+                    active.closest(".dialog.settings-view, #hxd-settings-preview-root, #hxd-settings-preview-frame");
+                if (inSettings || active.tagName === "IFRAME") {
+                    try { active.blur(); } catch (activeBlurE) {}
+                }
+            }
+            if (!doc.body.hasAttribute("tabindex")) doc.body.setAttribute("tabindex", "-1");
+            doc.body.focus({ preventScroll: true });
+            window.setTimeout(function() {
+                try {
+                    if (doc.activeElement === doc.body) doc.body.blur();
+                } catch (bodyBlurE) {}
+            }, 0);
+        } catch (restoreFocusE) {}
+    }
+    function __hxdHasSettingsPopup() {
+        try {
+            return Boolean(window.document.querySelector('.dialog.settings-view, .settings-view, iframe[src*="settings-preview"]')) ||
+                (window.__hxdSettingsOpeningUntil && Date.now() < window.__hxdSettingsOpeningUntil) ||
+                (window.__hxdSuppressSettingsEscUntil && Date.now() < window.__hxdSuppressSettingsEscUntil);
+        } catch (e) {
+            return false;
+        }
+    }
+    function __hxdMarkSettingsOpening() {
+        try {
+            window.__hxdSettingsOpeningUntil = Date.now() + 1500;
+            window.__hxdSuppressSettingsEscUntil = Date.now() + 1500;
+        } catch (e) {}
+    }
+    function __hxdInstallSettingsEscGuard(closeFn) {
+        if (window.__hxdSettingsEscGuardInstalled) return;
+        window.__hxdSettingsEscGuardInstalled = true;
+        window.document.addEventListener("keydown", function(e) {
+            if (!e || (e.keyCode !== 27 && e.key !== "Escape")) return;
+            if (!__hxdHasSettingsPopup()) return;
+            try {
+                if (typeof closeFn === "function") closeFn();
+                else if (typeof window.__hxdCloseSettingsPopup === "function") window.__hxdCloseSettingsPopup();
+            } catch (closeE) {}
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+        }, true);
+    }
+    function __hxdDrawImageAvatar(ctx, img, x, y, radius, strokeColor, teamBorderColor, teamBorderStyle) {
+        var iw = img.naturalWidth || img.width;
+        var ih = img.naturalHeight || img.height;
+        if (!iw || !ih) return false;
+        var size = radius * 2;
+        var scale = Math.max(size / iw, size / ih);
+        var dw = iw * scale;
+        var dh = ih * scale;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, _TWO_PI, false);
+        ctx.clip();
+        ctx.drawImage(img, x - dw / 2, y - dh / 2, dw, dh);
+        ctx.restore();
+        if (teamBorderColor) {
+            var lw = teamBorderStyle && teamBorderStyle.width ? teamBorderStyle.width : 3;
+            var inset = teamBorderStyle && teamBorderStyle.inset;
+            ctx.save();
+            ctx.lineWidth = lw;
+            ctx.strokeStyle = teamBorderColor;
+            ctx.beginPath();
+            if (inset) {
+                ctx.arc(x, y, Math.max(0, radius - lw / 2), 0, _TWO_PI, false);
+            } else {
+                ctx.arc(x, y, radius + lw / 2, 0, _TWO_PI, false);
+            }
+            ctx.stroke();
+            ctx.restore();
+        }
+        ctx.strokeStyle = strokeColor || "black";
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, _TWO_PI, false);
+        ctx.stroke();
+        return true;
     }
     class V {
         constructor(a) {
@@ -5107,6 +5480,7 @@
                 this._localPlayerBody = g;
                 this.c.lineWidth = m.j.Sm.v() ? 1 : 2;
                 this.__hxdProBallDisc = c && c.va && c.va.H ? c.va.H[0] : null;
+                var hxdLocalTeam = f ? f.fa : null;
                 f = 0;
                 for (g = a.K; f < g.length; ) {
                     var player = g[f];
@@ -5115,7 +5489,7 @@
                     if (null != n) {
                         l = this.nd.get(player.Z);
                         
-                        this.km(n, l, player.fa);
+                        this.km(n, l, player.fa, player.Z, hxdLocalTeam);
                     }
                 }
                 f = 0;
@@ -5210,14 +5584,12 @@
             this.c.arc(a.x, a.y, 25, 0, _TWO_PI, !1);
             this.c.stroke();
             this.c.globalAlpha = 1;
-            if (m.j.Nm.v() && this._hxdIndName) {
-                this.c.save();
+            if (m.j.Om.v() && this._hxdIndName) {
                 this.c.font = "13px sans-serif";
-                this.c.fillStyle = "white";
                 this.c.textAlign = "center";
                 this.c.textBaseline = "top";
+                this.c.fillStyle = "white";
                 this.c.fillText(this._hxdIndName, a.x, a.y + 19);
-                this.c.restore();
             }
         }
         xr(a) {
@@ -5370,8 +5742,8 @@
                 f != b && m.j.Lm.v() && g.Yo(this.c, e.x, e.y + 50)
             }
         }
-        km(a, b, playerTeam) {
-            // Culling: nÃ£o desenha objetos fora da viewport
+        km(a, b, playerTeam, playerId, localTeam) {
+            // Culling: não desenha objetos fora da viewport
             if (m.j.Wm.v()) {
                 var dx = a.a.x;
                 var dy = a.a.y;
@@ -5385,7 +5757,7 @@
             }
             if (!m.j.Km.v() && this._localPlayerBody !== a) {
                 b = null;
-                // Usa cores padrÃ£o do time quando avatar desabilitado
+                // Usa cores padrão do time quando avatar desabilitado. Mantém avatar do próprio jogador.
                 // Red: #E56E56 (15036502), Blue: #5689E5 (5671397)
                 if (playerTeam) {
                     if (playerTeam === u.ia) a = {V: a.V, a: a.a, S: 15036502, B: a.B};
@@ -5399,6 +5771,21 @@
             var hxdIsBallDisc = a && this.__hxdProBallDisc && a === this.__hxdProBallDisc;
             var proBallStyle =
                 null == b && hxdIsBallDisc && __hxdClientHasProAccess() ? _getProBallStyle(this.c, posX, posY, radius) : null;
+            var hxdAvatarProfile = playerId != null ? __hxdGetAvatarProfileForPlayer(playerId, playerTeam, localTeam) : null;
+            var hxdAvatarImage = hxdAvatarProfile ? __hxdGetAvatarImageForProfile(hxdAvatarProfile) : null;
+            var hxdTeamBorderColor = hxdAvatarProfile ? __hxdGetTeamBorderColor(playerTeam) : null;
+            var hxdTeamBorderStyle = hxdAvatarProfile ? __hxdGetTeamBorderStyle() : null;
+            if (hxdAvatarImage && __hxdDrawImageAvatar(this.c, hxdAvatarImage, posX, posY, radius, b && b.Ro, hxdTeamBorderColor, hxdTeamBorderStyle)) {
+                return;
+            }
+            var hxdPendingAvatar = Boolean(hxdAvatarProfile);
+            if (hxdPendingAvatar && !hxdAvatarImage) {
+                b = null;
+                if (playerTeam) {
+                    if (playerTeam === u.ia) a = {V: a.V, a: a.a, S: 15036502, B: a.B};
+                    else if (playerTeam === u.Da) a = {V: a.V, a: a.a, S: 5671397, B: a.B};
+                }
+            }
             if (proBallStyle) {
                 this.c.save();
                 this.c.beginPath();
@@ -6088,8 +6475,6 @@
             a.Pa("ArrowRight", "Right");
             a.Pa("KeyD", "Right");
             a.Pa("KeyX", "Kick");
-            a.Pa("KeyI", "Kick");
-            a.Pa("KeyO", "Kick");
             a.Pa("Space", "Kick");
             a.Pa("ControlLeft", "Kick");
             a.Pa("ControlRight", "Kick");
@@ -6439,18 +6824,18 @@
             this.Lm = b("show_names", !0);
             this.Qm = b("image_smoothing", !0);
             this.Rm = b("show_player_indicator", !0);
-            this.Nm = b("player_indicator_name", !1);
+            this.Om = b("player_indicator_name", !1);
             this.Sm = b("simple_lines", !1);
-            this.Xm = b("ultra_simple_lines", !1);  // Nova opÃ§Ã£o: curvas viram linhas retas
+            this.Xm = b("ultra_simple_lines", !1);  // Nova opção: curvas viram linhas retas
             this.Tm = b("simple_field", !1);
             this.Um = b("show_animations", !0);
             this.Wm = b("viewport_culling", !1);
-            this.Ym = b("low_quality_circles", !1);  // Alta qualidade por padrÃ£o (arc); ativar = sprite cache (mais rÃ¡pido)
+            this.Ym = b("low_quality_circles", !1);  // Alta qualidade por padrão (arc); ativar = sprite cache (mais rápido)
             this.kk = d("chat_height", 160);
             this.Hh = d("chat_focus_height", 140);
             this.Ih = c("chat_opacity", .8);
             this.jk = e("chat_bg_mode", "compact", 50);
-            /* Igual que HaxBall web por defecto: canvas sin desynchronized salvo que el jugador active la opciÃ³n. */
+            /* Igual que HaxBall web por defecto: canvas sin desynchronized salvo que el jugador active la opción. */
             this.li = b("low_latency_canvas", !1);
             this.$e = a("geo");
             this.af = a("geo_override");
@@ -6553,90 +6938,6 @@
             a.B = this.B
         }
     }
-    function hxdFindPlayer(a, b) {
-        if (!a || !a.K)
-            return null;
-        for (var c = 0; c < a.K.length; c++) {
-            var d = a.K[c];
-            if (d && d.Z === b)
-                return d
-        }
-        return null
-    }
-    function hxdFindPlayerDisc(a, b) {
-        a = hxdFindPlayer(a, b);
-        return a && a.I ? a.I : null
-    }
-    function hxdCopyDiscVisual(a, b) {
-        if (!a || !b)
-            return;
-        a.a && b.a && (a.a.x = b.a.x,
-        a.a.y = b.a.y);
-        a.G && b.G && (a.G.x = b.G.x,
-        a.G.y = b.G.y);
-        a.ra && b.ra && (a.ra.x = b.ra.x,
-        a.ra.y = b.ra.y);
-        "number" == typeof b.V && (a.V = b.V);
-        "number" == typeof b.o && (a.o = b.o);
-        "number" == typeof b.ca && (a.ca = b.ca);
-        "number" == typeof b.Ea && (a.Ea = b.Ea);
-        "number" == typeof b.S && (a.S = b.S);
-        "number" == typeof b.i && (a.i = b.i);
-        "number" == typeof b.B && (a.B = b.B)
-    }
-    function hxdDiscCanCollide(a, b) {
-        return !!(a && b && 0 != (a.i & b.B) && 0 != (a.B & b.i))
-    }
-    function hxdDiscKickable(a) {
-        return !!(a && 0 != (a.B & 64))
-    }
-    function hxdDiscDynamic(a) {
-        return !!(a && 0 != a.ca)
-    }
-    function hxdDiscGap(a, b) {
-        if (!a || !a.a || !b || !b.a)
-            return 1 / 0;
-        var c = a.a.x - b.a.x
-          , d = a.a.y - b.a.y;
-        return Math.sqrt(c * c + d * d) - (a.V || 0) - (b.V || 0)
-    }
-    function hxdDiscSpeed2(a) {
-        return a && a.G ? a.G.x * a.G.x + a.G.y * a.G.y : 0
-    }
-    function hxdDiscSweptGap(a, b, c, d) {
-        if (!a || !a.a || !b || !b.a || !c || !c.a || !d || !d.a)
-            return 1 / 0;
-        var e = a.a.x - b.a.x
-          , f = a.a.y - b.a.y
-          , g = c.a.x - d.a.x - e
-          , h = c.a.y - d.a.y - f
-          , k = g * g + h * h
-          , l = 0;
-        1E-8 < k && (l = -(e * g + f * h) / k,
-        0 > l ? l = 0 : 1 < l && (l = 1));
-        e += g * l;
-        f += h * l;
-        return Math.sqrt(e * e + f * f) - Math.max((a.V || 0) + (b.V || 0), (c.V || 0) + (d.V || 0))
-    }
-    function hxdBlendDiscVisual(a, b, c) {
-        if (!a || !b || 0 >= c)
-            return;
-        if (1 <= c)
-            return hxdCopyDiscVisual(a, b);
-        a.a && b.a && (a.a.x += (b.a.x - a.a.x) * c,
-        a.a.y += (b.a.y - a.a.y) * c);
-        a.G && b.G && (a.G.x += (b.G.x - a.G.x) * c,
-        a.G.y += (b.G.y - a.G.y) * c);
-        a.ra && b.ra && (a.ra.x += (b.ra.x - a.ra.x) * c,
-        a.ra.y += (b.ra.y - a.ra.y) * c);
-        .5 <= c && ("number" == typeof b.V && (a.V = b.V),
-        "number" == typeof b.o && (a.o = b.o),
-        "number" == typeof b.ca && (a.ca = b.ca),
-        "number" == typeof b.Ea && (a.Ea = b.Ea),
-        "number" == typeof b.S && (a.S = b.S),
-        "number" == typeof b.i && (a.i = b.i),
-        "number" == typeof b.B && (a.B = b.B))
-    }
     class bc {
         constructor(a, b) {
             this.za = a;
@@ -6721,10 +7022,10 @@
                         this._startGif(emojis);
                         this.da('Avatar animado ativado: ' + emojis.join(' '));
                     } else {
-                        this.da('Use pelo menos 2 emojis. Ex: /gif ðŸ˜„ðŸ˜±ðŸ’–');
+                        this.da('Use pelo menos 2 emojis. Ex: /gif 😄😱💖');
                     }
                 } else {
-                    this.da('Use pelo menos 2 emojis. Ex: /gif ðŸ˜„ðŸ˜±ðŸ’–');
+                    this.da('Use pelo menos 2 emojis. Ex: /gif 😄😱💖');
                 }
                 break;
             case "ungif":
@@ -6739,7 +7040,7 @@
                         this._saveMuted();
                         this.da(nick + ' foi mutado');
                     } else {
-                        this.da(nick + ' jÃ¡ estÃ¡ mutado');
+                        this.da(nick + ' já está mutado');
                     }
                 } else {
                     this.da('Uso: /mute <nick>');
@@ -6754,7 +7055,7 @@
                         this._saveMuted();
                         this.da(nick2 + ' foi desmutado');
                     } else {
-                        this.da(nick2 + ' nÃ£o estÃ¡ mutado');
+                        this.da(nick2 + ' não está mutado');
                     }
                 } else {
                     this.da('Uso: /unmute <nick>');
@@ -6791,12 +7092,48 @@
                     "string" == typeof a && this.da(a)
                 }
                 break;
+            case "extrapolation":
+                2 == a.length ? (a = R.parseInt(a[1]),
+                null != a && -200 <= a && 1E3 >= a ? (m.j.Ad.ha(a),
+                this.za.Fm(a),
+                this.da("Extrapolation set to " + a + " msec")) : this.da("Extrapolation must be a value between -200 and 1000 milliseconds")) : this.da("Extrapolation requires a value in milliseconds.");
+                break;
+            case "splitextra":
+            case "splitextrap":
+            case "se":
+                // Split Extrapolation: você com valor X, outros com valor Y
+                if (a.length === 2 && a[1] === "off") {
+                    window._splitExtraEnabled = false;
+                    this.da("Split Extrapolation DESATIVADO");
+                } else if (a.length === 2 && a[1] === "debug") {
+                    window._splitExtraDebug = !window._splitExtraDebug;
+                    this.da("Debug: " + (window._splitExtraDebug ? "ON" : "OFF"));
+                } else if (a.length === 3) {
+                    var myExtra = R.parseInt(a[1]);
+                    var othersExtra = R.parseInt(a[2]);
+                    if (myExtra != null && othersExtra != null && 
+                        myExtra >= -200 && myExtra <= 1000 && 
+                        othersExtra >= -200 && othersExtra <= 1000) {
+                        window._splitExtraEnabled = true;
+                        window._splitExtraMy = myExtra;
+                        window._splitExtraOthers = othersExtra;
+                        // NÃO seta o extrapolation base - deixa o hg() controlar
+                        this.da("Split Extra ATIVO!");
+                        this.da("  Você: " + myExtra + "ms | Outros: " + othersExtra + "ms");
+                    } else {
+                        this.da("Valores devem estar entre -200 e 1000");
+                    }
+                } else {
+                    this.da("Uso: /splitextra <seu> <outros>");
+                    this.da("Ex: /se 200 0");
+                }
+                break;
             case "input":
                 2 == a.length ? (a = R.parseInt(a[1]),
                 null != a && 0 <= a && 2 >= a ? (
                 window.localStorage.setItem("input_tolerance", a),
                 this.za.setInputTolerance(a),
-                this.da("TolerÃ¢ncia de input definida para " + a)) : this.da("TolerÃ¢ncia de input deve ser 0, 1 ou 2")) : this.da("Uso: /input <0|1|2> (0=preciso, 2=tolerante)");
+                this.da("Tolerância de input definida para " + a)) : this.da("Tolerância de input deve ser 0, 1 ou 2")) : this.da("Uso: /input <0|1|2> (0=preciso, 2=tolerante)");
                 break;
             case "gif":
                 if (2 <= a.length) {
@@ -6817,7 +7154,7 @@
                         }, 500);
                         this.da("Avatar animado ativado: " + gifEmojis.join(" "));
                     } else {
-                        this.da("Use pelo menos 2 emojis. Ex: /gif ðŸ˜„ðŸ˜±ðŸ’–");
+                        this.da("Use pelo menos 2 emojis. Ex: /gif 😄😱💖");
                     }
                 } else {
                     this.da("Uso: /gif <emojis>");
@@ -6843,7 +7180,7 @@
                         window.localStorage.setItem("haxclient_muted_players", JSON.stringify(mutedList));
                         this.da(muteNick + " foi mutado");
                     } else {
-                        this.da(muteNick + " jÃ¡ estÃ¡ mutado");
+                        this.da(muteNick + " já está mutado");
                     }
                 } else {
                     this.da("Uso: /mute <nick>");
@@ -6860,7 +7197,7 @@
                         window.localStorage.setItem("haxclient_muted_players", JSON.stringify(mutedList2));
                         this.da(unmuteNick + " foi desmutado");
                     } else {
-                        this.da(unmuteNick + " nÃ£o estÃ¡ mutado");
+                        this.da(unmuteNick + " não está mutado");
                     }
                 } else {
                     this.da("Uso: /unmute <nick>");
@@ -8268,6 +8605,18 @@
                 a.preventDefault());
                 break;
             case 27:
+                if (__hxdHasSettingsPopup()) {
+                    try {
+                        if (typeof window.__hxdCloseSettingsPreview === "function") window.__hxdCloseSettingsPreview();
+                        else if (typeof window.__hxdCloseSettingsPopup === "function") window.__hxdCloseSettingsPopup();
+                        else this.l.ab(null);
+                    } catch (hxdEscCloseE) {
+                        this.l.ab(null);
+                    }
+                    a.preventDefault();
+                    a.stopPropagation();
+                    return;
+                }
                 c ? this.W.Fa(a) : (this.l.Zk() ? this.l.ab(null) : (b = this.l,
                 b.we(!b.od)));
                 a.preventDefault();
@@ -9046,7 +9395,6 @@
                 if (slot) {
                     var u = String(cfg[slot] || '').trim();
                     if (u.indexOf('data:') === 0 && __hxdPlayProCustomDataUrl(this, u)) return;
-                if (!u) return;
                 }
             }
             let b = this.c.createBufferSource();
@@ -9366,12 +9714,12 @@
                 if (mutedPlayers.indexOf(d.D.toLowerCase()) !== -1) return;
                 let f = null != c.di && -1 != e.indexOf(c.di);
                 
-                // Verifica cor e fonte Pro do jogador (lÃª do localStorage)
+                // Verifica cor e fonte Pro do jogador (lê do localStorage)
                 var proChatColor = null;
                 var proChatGradient = null;
                 var proChatFont = null;
                 var playerNameRaw = d.D;
-                // Remove caractere invisÃ­vel (U+200B) do nick para comparaÃ§Ã£o
+                // Remove caractere invisível (U+200B) do nick para comparação
                 var playerName = playerNameRaw ? playerNameRaw.replace(/\u200B/g, '') : playerNameRaw;
                 var myNick = null;
                 var proSettings = null;
@@ -9395,13 +9743,13 @@
                 
                 try {
                     myNick = localStorage.getItem('haxball_nick') || localStorage.getItem('haxclient_my_nick');
-                    // Limpa o myNick tambÃ©m (caso tenha sido salvo com o caractere)
+                    // Limpa o myNick também (caso tenha sido salvo com o caractere)
                     if (myNick) myNick = myNick.replace(/\u200B/g, '');
                     proSettings = JSON.parse(localStorage.getItem('haxclient_pro_settings') || 'null');
                     verifiedCache = JSON.parse(localStorage.getItem('haxclient_verified_cache') || 'null');
                 } catch(err) {}
                 
-                // UsuÃ¡rio local: cores/fonte Pro sÃ³ com assinatura ativa (nÃ£o basta cache em disco)
+                // Usuário local: cores/fonte Pro só com assinatura ativa (não basta cache em disco)
                 if (proSettings && playerName === myNick && __hxdClientHasProAccess()) {
                     if (proSettings.nick_color) proChatColor = proSettings.nick_color;
                     if (proSettings.nick_gradient) proChatGradient = proSettings.nick_gradient;
@@ -9409,7 +9757,7 @@
                         proChatFont = fontMap[proSettings.font];
                     }
                 } 
-                // Verifica se Ã© outro jogador Pro
+                // Verifica se é outro jogador Pro
                 else if (verifiedCache && verifiedCache[playerName]) {
                     if (verifiedCache[playerName].nick_color) proChatColor = verifiedCache[playerName].nick_color;
                     if (verifiedCache[playerName].nick_gradient) proChatGradient = verifiedCache[playerName].nick_gradient;
@@ -10407,8 +10755,7 @@
         hg() {
             if (!this.Ed()) return this.U;
             0 > this.dc && (this.dc = 0);
-            var renderBase = window.performance.now() * this.Ec + this.gj.mh() - this.Y + this.dc;
-            return this.Qk(renderBase + this.Ad, this.Hg)
+            return this.Qk(window.performance.now() * this.Ec + this.gj.mh() - this.Y + this.dc + this.Ad, this.Hg);
         }
         fk() {
             0 > this.ed && (this.ed = 0);
@@ -10697,8 +11044,7 @@
         }
         hg() {
             0 > this.dc && (this.dc = 0);
-            var renderBase = (window.performance.now() - this.bj) * this.Ec - this.Y + this.Od + this.dc;
-            return this.Qk(renderBase + this.Ad)
+            return this.Qk((window.performance.now() - this.bj) * this.Ec - this.Y + this.Od + this.dc + this.Ad)
         }
         up(a, b) {
             if (this.cc.length >= this.tg)
@@ -12389,7 +12735,7 @@
         ordered: !1
     }];
     Z.Lj = "application/x-www-form-urlencoded";
-    Ma.eb = ["Afghanistan", "AF", 33.3, 65.1, "Albania", "AL", 41.1, 20.1, "Algeria", "DZ", 28, 1.6, "American Samoa", "AS", -14.2, -170.1, "Andorra", "AD", 42.5, 1.6, "Angola", "AO", -11.2, 17.8, "Anguilla", "AI", 18.2, -63, "Antigua and Barbuda", "AG", 17, -61.7, "Argentina", "AR", -34.5, -58.4, "Armenia", "AM", 40, 45, "Aruba", "AW", 12.5, -69.9, "Australia", "AU", -25.2, 133.7, "Austria", "AT", 47.5, 14.5, "Azerbaijan", "AZ", 40.1, 47.5, "Bahamas", "BS", 25, -77.3, "Bahrain", "BH", 25.9, 50.6, "Bangladesh", "BD", 23.6, 90.3, "Barbados", "BB", 13.1, -59.5, "Belarus", "BY", 53.7, 27.9, "Belgium", "BE", 50.5, 4.4, "Belize", "BZ", 17.1, -88.4, "Benin", "BJ", 9.3, 2.3, "Bermuda", "BM", 32.3, -64.7, "Bhutan", "BT", 27.5, 90.4, "Bolivia", "BO", -16.2, -63.5, "Bosnia and Herzegovina", "BA", 43.9, 17.6, "Botswana", "BW", -22.3, 24.6, "Bouvet Island", "BV", -54.4, 3.4, "Brazil", "BR", -14.2, -51.9, "British Indian Ocean Territory", "IO", -6.3, 71.8, "British Virgin Islands", "VG", 18.4, -64.6, "Brunei", "BN", 4.5, 114.7, "Bulgaria", "BG", 42.7, 25.4, "Burkina Faso", "BF", 12.2, -1.5, "Burundi", "BI", -3.3, 29.9, "Cambodia", "KH", 12.5, 104.9, "Cameroon", "CM", 7.3, 12.3, "Canada", "CA", 56.1, -106.3, "Cape Verde", "CV", 16, -24, "Cayman Islands", "KY", 19.5, -80.5, "Central African Republic", "CF", 6.6, 20.9, "Chad", "TD", 15.4, 18.7, "Chile", "CL", -35.6, -71.5, "China", "CN", 35.8, 104.1, "Christmas Island", "CX", -10.4, 105.6, "Colombia", "CO", 4.5, -74.2, "Comoros", "KM", -11.8, 43.8, "Congo [DRC]", "CD", -4, 21.7, "Congo [Republic]", "CG", -.2, 15.8, "Cook Islands", "CK", -21.2, -159.7, "Costa Rica", "CR", 9.7, -83.7, "Croatia", "HR", 45.1, 15.2, "Cuba", "CU", 21.5, -77.7, "Cyprus", "CY", 35.1, 33.4, "Czech Republic", "CZ", 49.8, 15.4, "CÃ´te d'Ivoire", "CI", 7.5, -5.5, "Denmark", "DK", 56.2, 9.5, "Djibouti", "DJ", 11.8, 42.5, "Dominica", "DM", 15.4, -61.3, "Dominican Republic", "DO", 18.7, -70.1, "Ecuador", "EC", -1.8, -78.1, "Egypt", "EG", 26.8, 30.8, "El Salvador", "SV", 13.7, -88.8, "England", "ENG", 55.3, -3.4, "Equatorial Guinea", "GQ", 1.6, 10.2, "Eritrea", "ER", 15.1, 39.7, "Estonia", "EE", 58.5, 25, "Ethiopia", "ET", 9.1, 40.4, "Faroe Islands", "FO", 61.8, -6.9, "Fiji", "FJ", -16.5, 179.4, "Finland", "FI", 61.9, 25.7, "France", "FR", 46.2, 2.2, "French Guiana", "GF", 3.9, -53.1, "French Polynesia", "PF", -17.6, -149.4, "Gabon", "GA", -.8, 11.6, "Gambia", "GM", 13.4, -15.3, "Georgia", "GE", 42.3, 43.3, "Germany", "DE", 51.1, 10.4, "Ghana", "GH", 7.9, -1, "Gibraltar", "GI", 36.1, -5.3, "Greece", "GR", 39, 21.8, "Greenland", "GL", 71.7, -42.6, "Grenada", "GD", 12.2, -61.6, "Guadeloupe", "GP", 16.9, -62, "Guam", "GU", 13.4, 144.7, "Guatemala", "GT", 15.7, -90.2, "Guinea", "GN", 9.9, -9.6, "Guinea-Bissau", "GW", 11.8, -15.1, "Guyana", "GY", 4.8, -58.9, "Haiti", "HT", 18.9, -72.2, "Honduras", "HN", 15.1, -86.2, "Hong Kong", "HK", 22.3, 114.1, "Hungary", "HU", 47.1, 19.5, "Iceland", "IS", 64.9, -19, "India", "IN", 20.5, 78.9, "Indonesia", "ID", -.7, 113.9, "Iran", "IR", 32.4, 53.6, "Iraq", "IQ", 33.2, 43.6, "Ireland", "IE", 53.4, -8.2, "Israel", "IL", 31, 34.8, "Italy", "IT", 41.8, 12.5, "Jamaica", "JM", 18.1, -77.2, "Japan", "JP", 36.2, 138.2, "Jordan", "JO", 30.5, 36.2, "Kazakhstan", "KZ", 48, 66.9, "Kenya", "KE", -0, 37.9, "Kiribati", "KI", -3.3, -168.7, "Kosovo", "XK", 42.6, 20.9, "Kuwait", "KW", 29.3, 47.4, "Kyrgyzstan", "KG", 41.2, 74.7, "Laos", "LA", 19.8, 102.4, "Latvia", "LV", 56.8, 24.6, "Lebanon", "LB", 33.8, 35.8, "Lesotho", "LS", -29.6, 28.2, "Liberia", "LR", 6.4, -9.4, "Libya", "LY", 26.3, 17.2, "Liechtenstein", "LI", 47.1, 9.5, "Lithuania", "LT", 55.1, 23.8, "Luxembourg", "LU", 49.8, 6.1, "Macau", "MO", 22.1, 113.5, "Macedonia [FYROM]", "MK", 41.6, 21.7, "Madagascar", "MG", -18.7, 46.8, "Malawi", "MW", -13.2, 34.3, "Malaysia", "MY", 4.2, 101.9, "Maldives", "MV", 3.2, 73.2, "Mali", "ML", 17.5, -3.9, "Malta", "MT", 35.9, 14.3, "Marshall Islands", "MH", 7.1, 171.1, "Martinique", "MQ", 14.6, -61, "Mauritania", "MR", 21, -10.9, "Mauritius", "MU", -20.3, 57.5, "Mayotte", "YT", -12.8, 45.1, "Mexico", "MX", 23.6, -102.5, "Micronesia", "FM", 7.4, 150.5, "Moldova", "MD", 47.4, 28.3, "Monaco", "MC", 43.7, 7.4, "Mongolia", "MN", 46.8, 103.8, "Montenegro", "ME", 42.7, 19.3, "Montserrat", "MS", 16.7, -62.1, "Morocco", "MA", 31.7, -7, "Mozambique", "MZ", -18.6, 35.5, "Myanmar [Burma]", "MM", 21.9, 95.9, "Namibia", "NA", -22.9, 18.4, "Nauru", "NR", -.5, 166.9, "Nepal", "NP", 28.3, 84.1, "Netherlands", "NL", 52.1, 5.2, "Netherlands Antilles", "AN", 12.2, -69, "New Caledonia", "NC", -20.9, 165.6, "New Zealand", "NZ", -40.9, 174.8, "Nicaragua", "NI", 12.8, -85.2, "Niger", "NE", 17.6, 8, "Nigeria", "NG", 9, 8.6, "Niue", "NU", -19, -169.8, "Norfolk Island", "NF", -29, 167.9, "North Korea", "KP", 40.3, 127.5, "Northern Mariana Islands", "MP", 17.3, 145.3, "Norway", "NO", 60.4, 8.4, "Oman", "OM", 21.5, 55.9, "Pakistan", "PK", 30.3, 69.3, "Palau", "PW", 7.5, 134.5, "Palestinian Territories", "PS", 31.9, 35.2, "Panama", "PA", 8.5, -80.7, "Papua New Guinea", "PG", -6.3, 143.9, "Paraguay", "PY", -23.4, -58.4, "Peru", "PE", -9.1, -75, "Philippines", "PH", 12.8, 121.7, "Pitcairn Islands", "PN", -24.7, -127.4, "Poland", "PL", 51.9, 19.1, "Portugal", "PT", 39.3, -8.2, "Puerto Rico", "PR", 18.2, -66.5, "Qatar", "QA", 25.3, 51.1, "Romania", "RO", 45.9, 24.9, "Russia", "RU", 61.5, 105.3, "Rwanda", "RW", -1.9, 29.8, "RÃ©union", "RE", -21.1, 55.5, "Saint Helena", "SH", -24.1, -10, "Saint Kitts", "KN", 17.3, -62.7, "Saint Lucia", "LC", 13.9, -60.9, "Saint Pierre", "PM", 46.9, -56.2, "Saint Vincent", "VC", 12.9, -61.2, "Samoa", "WS", -13.7, -172.1, "San Marino", "SM", 43.9, 12.4, "Saudi Arabia", "SA", 23.8, 45, "Scotland", "SCT", 56.5, 4.2, "Senegal", "SN", 14.4, -14.4, "Serbia", "RS", 44, 21, "Seychelles", "SC", -4.6, 55.4, "Sierra Leone", "SL", 8.4, -11.7, "Singapore", "SG", 1.3, 103.8, "Slovakia", "SK", 48.6, 19.6, "Slovenia", "SI", 46.1, 14.9, "Solomon Islands", "SB", -9.6, 160.1, "Somalia", "SO", 5.1, 46.1, "South Africa", "ZA", -30.5, 22.9, "South Georgia", "GS", -54.4, -36.5, "South Korea", "KR", 35.9, 127.7, "Spain", "ES", 40.4, -3.7, "Sri Lanka", "LK", 7.8, 80.7, "Sudan", "SD", 12.8, 30.2, "Suriname", "SR", 3.9, -56, "Svalbard and Jan Mayen", "SJ", 77.5, 23.6, "Swaziland", "SZ", -26.5, 31.4, "Sweden", "SE", 60.1, 18.6, "Switzerland", "CH", 46.8, 8.2, "Syria", "SY", 34.8, 38.9, "SÃ£o TomÃ© and PrÃ­ncipe", "ST", .1, 6.6, "Taiwan", "TW", 23.6, 120.9, "Tajikistan", "TJ", 38.8, 71.2, "Tanzania", "TZ", -6.3, 34.8, "Thailand", "TH", 15.8, 100.9, "Timor-Leste", "TL", -8.8, 125.7, "Togo", "TG", 8.6, .8, "Tokelau", "TK", -8.9, -171.8, "Tonga", "TO", -21.1, -175.1, "Trinidad and Tobago", "TT", 10.6, -61.2, "Tunisia", "TN", 33.8, 9.5, "Turkey", "TR", 38.9, 35.2, "Turkmenistan", "TM", 38.9, 59.5, "Turks and Caicos Islands", "TC", 21.6, -71.7, "Tuvalu", "TV", -7.1, 177.6, "U.S. Minor Outlying Islands", "UM", 0, 0, "U.S. Virgin Islands", "VI", 18.3, -64.8, "Uganda", "UG", 1.3, 32.2, "Ukraine", "UA", 48.3, 31.1, "United Arab Emirates", "AE", 23.4, 53.8, "United Kingdom", "GB", 55.3, -3.4, "United States", "US", 37, -95.7, "Uruguay", "UY", -32.5, -55.7, "Uzbekistan", "UZ", 41.3, 64.5, "Vanuatu", "VU", -15.3, 166.9, "Vatican City", "VA", 41.9, 12.4, "Venezuela", "VE", 6.4, -66.5, "Vietnam", "VN", 14, 108.2, "Wales", "WLS", 55.3, -3.4, "Wallis and Futuna", "WF", -13.7, -177.1, "Western Sahara", "EH", 24.2, -12.8, "Yemen", "YE", 15.5, 48.5, "Zambia", "ZM", -13.1, 27.8, "Zimbabwe", "ZW", -19, 29.1];
+    Ma.eb = ["Afghanistan", "AF", 33.3, 65.1, "Albania", "AL", 41.1, 20.1, "Algeria", "DZ", 28, 1.6, "American Samoa", "AS", -14.2, -170.1, "Andorra", "AD", 42.5, 1.6, "Angola", "AO", -11.2, 17.8, "Anguilla", "AI", 18.2, -63, "Antigua and Barbuda", "AG", 17, -61.7, "Argentina", "AR", -34.5, -58.4, "Armenia", "AM", 40, 45, "Aruba", "AW", 12.5, -69.9, "Australia", "AU", -25.2, 133.7, "Austria", "AT", 47.5, 14.5, "Azerbaijan", "AZ", 40.1, 47.5, "Bahamas", "BS", 25, -77.3, "Bahrain", "BH", 25.9, 50.6, "Bangladesh", "BD", 23.6, 90.3, "Barbados", "BB", 13.1, -59.5, "Belarus", "BY", 53.7, 27.9, "Belgium", "BE", 50.5, 4.4, "Belize", "BZ", 17.1, -88.4, "Benin", "BJ", 9.3, 2.3, "Bermuda", "BM", 32.3, -64.7, "Bhutan", "BT", 27.5, 90.4, "Bolivia", "BO", -16.2, -63.5, "Bosnia and Herzegovina", "BA", 43.9, 17.6, "Botswana", "BW", -22.3, 24.6, "Bouvet Island", "BV", -54.4, 3.4, "Brazil", "BR", -14.2, -51.9, "British Indian Ocean Territory", "IO", -6.3, 71.8, "British Virgin Islands", "VG", 18.4, -64.6, "Brunei", "BN", 4.5, 114.7, "Bulgaria", "BG", 42.7, 25.4, "Burkina Faso", "BF", 12.2, -1.5, "Burundi", "BI", -3.3, 29.9, "Cambodia", "KH", 12.5, 104.9, "Cameroon", "CM", 7.3, 12.3, "Canada", "CA", 56.1, -106.3, "Cape Verde", "CV", 16, -24, "Cayman Islands", "KY", 19.5, -80.5, "Central African Republic", "CF", 6.6, 20.9, "Chad", "TD", 15.4, 18.7, "Chile", "CL", -35.6, -71.5, "China", "CN", 35.8, 104.1, "Christmas Island", "CX", -10.4, 105.6, "Colombia", "CO", 4.5, -74.2, "Comoros", "KM", -11.8, 43.8, "Congo [DRC]", "CD", -4, 21.7, "Congo [Republic]", "CG", -.2, 15.8, "Cook Islands", "CK", -21.2, -159.7, "Costa Rica", "CR", 9.7, -83.7, "Croatia", "HR", 45.1, 15.2, "Cuba", "CU", 21.5, -77.7, "Cyprus", "CY", 35.1, 33.4, "Czech Republic", "CZ", 49.8, 15.4, "Côte d'Ivoire", "CI", 7.5, -5.5, "Denmark", "DK", 56.2, 9.5, "Djibouti", "DJ", 11.8, 42.5, "Dominica", "DM", 15.4, -61.3, "Dominican Republic", "DO", 18.7, -70.1, "Ecuador", "EC", -1.8, -78.1, "Egypt", "EG", 26.8, 30.8, "El Salvador", "SV", 13.7, -88.8, "England", "ENG", 55.3, -3.4, "Equatorial Guinea", "GQ", 1.6, 10.2, "Eritrea", "ER", 15.1, 39.7, "Estonia", "EE", 58.5, 25, "Ethiopia", "ET", 9.1, 40.4, "Faroe Islands", "FO", 61.8, -6.9, "Fiji", "FJ", -16.5, 179.4, "Finland", "FI", 61.9, 25.7, "France", "FR", 46.2, 2.2, "French Guiana", "GF", 3.9, -53.1, "French Polynesia", "PF", -17.6, -149.4, "Gabon", "GA", -.8, 11.6, "Gambia", "GM", 13.4, -15.3, "Georgia", "GE", 42.3, 43.3, "Germany", "DE", 51.1, 10.4, "Ghana", "GH", 7.9, -1, "Gibraltar", "GI", 36.1, -5.3, "Greece", "GR", 39, 21.8, "Greenland", "GL", 71.7, -42.6, "Grenada", "GD", 12.2, -61.6, "Guadeloupe", "GP", 16.9, -62, "Guam", "GU", 13.4, 144.7, "Guatemala", "GT", 15.7, -90.2, "Guinea", "GN", 9.9, -9.6, "Guinea-Bissau", "GW", 11.8, -15.1, "Guyana", "GY", 4.8, -58.9, "Haiti", "HT", 18.9, -72.2, "Honduras", "HN", 15.1, -86.2, "Hong Kong", "HK", 22.3, 114.1, "Hungary", "HU", 47.1, 19.5, "Iceland", "IS", 64.9, -19, "India", "IN", 20.5, 78.9, "Indonesia", "ID", -.7, 113.9, "Iran", "IR", 32.4, 53.6, "Iraq", "IQ", 33.2, 43.6, "Ireland", "IE", 53.4, -8.2, "Israel", "IL", 31, 34.8, "Italy", "IT", 41.8, 12.5, "Jamaica", "JM", 18.1, -77.2, "Japan", "JP", 36.2, 138.2, "Jordan", "JO", 30.5, 36.2, "Kazakhstan", "KZ", 48, 66.9, "Kenya", "KE", -0, 37.9, "Kiribati", "KI", -3.3, -168.7, "Kosovo", "XK", 42.6, 20.9, "Kuwait", "KW", 29.3, 47.4, "Kyrgyzstan", "KG", 41.2, 74.7, "Laos", "LA", 19.8, 102.4, "Latvia", "LV", 56.8, 24.6, "Lebanon", "LB", 33.8, 35.8, "Lesotho", "LS", -29.6, 28.2, "Liberia", "LR", 6.4, -9.4, "Libya", "LY", 26.3, 17.2, "Liechtenstein", "LI", 47.1, 9.5, "Lithuania", "LT", 55.1, 23.8, "Luxembourg", "LU", 49.8, 6.1, "Macau", "MO", 22.1, 113.5, "Macedonia [FYROM]", "MK", 41.6, 21.7, "Madagascar", "MG", -18.7, 46.8, "Malawi", "MW", -13.2, 34.3, "Malaysia", "MY", 4.2, 101.9, "Maldives", "MV", 3.2, 73.2, "Mali", "ML", 17.5, -3.9, "Malta", "MT", 35.9, 14.3, "Marshall Islands", "MH", 7.1, 171.1, "Martinique", "MQ", 14.6, -61, "Mauritania", "MR", 21, -10.9, "Mauritius", "MU", -20.3, 57.5, "Mayotte", "YT", -12.8, 45.1, "Mexico", "MX", 23.6, -102.5, "Micronesia", "FM", 7.4, 150.5, "Moldova", "MD", 47.4, 28.3, "Monaco", "MC", 43.7, 7.4, "Mongolia", "MN", 46.8, 103.8, "Montenegro", "ME", 42.7, 19.3, "Montserrat", "MS", 16.7, -62.1, "Morocco", "MA", 31.7, -7, "Mozambique", "MZ", -18.6, 35.5, "Myanmar [Burma]", "MM", 21.9, 95.9, "Namibia", "NA", -22.9, 18.4, "Nauru", "NR", -.5, 166.9, "Nepal", "NP", 28.3, 84.1, "Netherlands", "NL", 52.1, 5.2, "Netherlands Antilles", "AN", 12.2, -69, "New Caledonia", "NC", -20.9, 165.6, "New Zealand", "NZ", -40.9, 174.8, "Nicaragua", "NI", 12.8, -85.2, "Niger", "NE", 17.6, 8, "Nigeria", "NG", 9, 8.6, "Niue", "NU", -19, -169.8, "Norfolk Island", "NF", -29, 167.9, "North Korea", "KP", 40.3, 127.5, "Northern Mariana Islands", "MP", 17.3, 145.3, "Norway", "NO", 60.4, 8.4, "Oman", "OM", 21.5, 55.9, "Pakistan", "PK", 30.3, 69.3, "Palau", "PW", 7.5, 134.5, "Palestinian Territories", "PS", 31.9, 35.2, "Panama", "PA", 8.5, -80.7, "Papua New Guinea", "PG", -6.3, 143.9, "Paraguay", "PY", -23.4, -58.4, "Peru", "PE", -9.1, -75, "Philippines", "PH", 12.8, 121.7, "Pitcairn Islands", "PN", -24.7, -127.4, "Poland", "PL", 51.9, 19.1, "Portugal", "PT", 39.3, -8.2, "Puerto Rico", "PR", 18.2, -66.5, "Qatar", "QA", 25.3, 51.1, "Romania", "RO", 45.9, 24.9, "Russia", "RU", 61.5, 105.3, "Rwanda", "RW", -1.9, 29.8, "Réunion", "RE", -21.1, 55.5, "Saint Helena", "SH", -24.1, -10, "Saint Kitts", "KN", 17.3, -62.7, "Saint Lucia", "LC", 13.9, -60.9, "Saint Pierre", "PM", 46.9, -56.2, "Saint Vincent", "VC", 12.9, -61.2, "Samoa", "WS", -13.7, -172.1, "San Marino", "SM", 43.9, 12.4, "Saudi Arabia", "SA", 23.8, 45, "Scotland", "SCT", 56.5, 4.2, "Senegal", "SN", 14.4, -14.4, "Serbia", "RS", 44, 21, "Seychelles", "SC", -4.6, 55.4, "Sierra Leone", "SL", 8.4, -11.7, "Singapore", "SG", 1.3, 103.8, "Slovakia", "SK", 48.6, 19.6, "Slovenia", "SI", 46.1, 14.9, "Solomon Islands", "SB", -9.6, 160.1, "Somalia", "SO", 5.1, 46.1, "South Africa", "ZA", -30.5, 22.9, "South Georgia", "GS", -54.4, -36.5, "South Korea", "KR", 35.9, 127.7, "Spain", "ES", 40.4, -3.7, "Sri Lanka", "LK", 7.8, 80.7, "Sudan", "SD", 12.8, 30.2, "Suriname", "SR", 3.9, -56, "Svalbard and Jan Mayen", "SJ", 77.5, 23.6, "Swaziland", "SZ", -26.5, 31.4, "Sweden", "SE", 60.1, 18.6, "Switzerland", "CH", 46.8, 8.2, "Syria", "SY", 34.8, 38.9, "São Tomé and Príncipe", "ST", .1, 6.6, "Taiwan", "TW", 23.6, 120.9, "Tajikistan", "TJ", 38.8, 71.2, "Tanzania", "TZ", -6.3, 34.8, "Thailand", "TH", 15.8, 100.9, "Timor-Leste", "TL", -8.8, 125.7, "Togo", "TG", 8.6, .8, "Tokelau", "TK", -8.9, -171.8, "Tonga", "TO", -21.1, -175.1, "Trinidad and Tobago", "TT", 10.6, -61.2, "Tunisia", "TN", 33.8, 9.5, "Turkey", "TR", 38.9, 35.2, "Turkmenistan", "TM", 38.9, 59.5, "Turks and Caicos Islands", "TC", 21.6, -71.7, "Tuvalu", "TV", -7.1, 177.6, "U.S. Minor Outlying Islands", "UM", 0, 0, "U.S. Virgin Islands", "VI", 18.3, -64.8, "Uganda", "UG", 1.3, 32.2, "Ukraine", "UA", 48.3, 31.1, "United Arab Emirates", "AE", 23.4, 53.8, "United Kingdom", "GB", 55.3, -3.4, "United States", "US", 37, -95.7, "Uruguay", "UY", -32.5, -55.7, "Uzbekistan", "UZ", 41.3, 64.5, "Vanuatu", "VU", -15.3, 166.9, "Vatican City", "VA", 41.9, 12.4, "Venezuela", "VE", 6.4, -66.5, "Vietnam", "VN", 14, 108.2, "Wales", "WLS", 55.3, -3.4, "Wallis and Futuna", "WF", -13.7, -177.1, "Western Sahara", "EH", 24.2, -12.8, "Yemen", "YE", 15.5, 48.5, "Zambia", "ZM", -13.1, 27.8, "Zimbabwe", "ZW", -19, 29.1];
     m.Hs = "wss://p2p.haxball.com/";
     m.Se = "https://www.haxball.com/rs/";
     m.kg = [{
@@ -12404,6 +12750,241 @@
         urls: "stun:stun4.l.google.com:19302"
     }];
     m.j = new xc;
+    window.__haxAddPlayerKey = function(a, b) {
+        try {
+            let c = m.j.Jd.v();
+            c.Pa(a, b);
+            m.j.Jd.ha(c);
+            return !0
+        } catch (d) {
+            return !1
+        }
+    }
+    ;
+    window.__haxRemovePlayerKey = function(a) {
+        try {
+            let b = m.j.Jd.v();
+            b.sr(a);
+            m.j.Jd.ha(b);
+            return !0
+        } catch (c) {
+            return !1
+        }
+    }
+    ;
+    window.__haxSetPlayerAuth = function(a) {
+        try {
+            a ? localStorage.setItem("player_auth_key", a) : localStorage.removeItem("player_auth_key");
+            m.j.Yj.ha(a || null);
+            return !0
+        } catch (b) {
+            return !1
+        }
+    }
+    ;
+    window.__hxdSyncAllSettingsFromStorage = function() {
+        try {
+            let ls = window.localStorage
+              , b = function(g, h) {
+                try {
+                    let k = ls.getItem(g);
+                    if (null == k)
+                        return h;
+                    k = String(k).toLowerCase();
+                    return "1" == k || "true" == k || "yes" == k || "on" == k
+                } catch (l) {
+                    return h
+                }
+            }
+              , c = function(g, h) {
+                try {
+                    let k = parseInt(ls.getItem(g), 10);
+                    return isNaN(k) ? h : k
+                } catch (l) {
+                    return h
+                }
+            }
+              , d = function(g, h) {
+                try {
+                    let k = parseFloat(ls.getItem(g));
+                    return isNaN(k) ? h : k
+                } catch (l) {
+                    return h
+                }
+            }
+              , q = function(g, h) {
+                try {
+                    let k = document.querySelector('.dialog.settings-view [data-hook="' + g + '"] i');
+                    if (k) {
+                        k.classList.toggle("icon-ok", !!h);
+                        k.classList.toggle("icon-cancel", !h)
+                    }
+                } catch (l) {}
+            }
+              , dlg = document.querySelector(".dialog.settings-view");
+            m.j.xe.ha(b("sound_main", !0));
+            m.j.Xi.ha(b("sound_chat", !0));
+            m.j.Nm.ha(b("sound_highlight", !0));
+            m.j.Mm.ha(b("sound_crowd", !1));
+            m.j.Zk.ha(b("sound_kick", !0));
+            m.j.Zl.ha(b("sound_goal", !0));
+            m.j.Zm.ha(b("sound_join", !0));
+            m.j.Zn.ha(b("sound_leave", !0));
+            m.j.Yi.ha(d("sound_volume", 1));
+            m.j.Vm.ha(b("team_colors", !0));
+            m.j.Km.ha(b("show_avatars", !0));
+            m.j.Lm.ha(b("show_names", !0));
+            m.j.Rm.ha(b("show_player_indicator", !0) || b("show_indicator", !0));
+            m.j.Sm.ha(b("simple_lines", !1));
+            m.j.Xm.ha(b("ultra_simple_lines", !1));
+            m.j.Tm.ha(b("simple_field", !1));
+            m.j.Um.ha(b("show_animations", !0));
+            m.j.Wm.ha(b("viewport_culling", !1) || b("culling_enabled", !1));
+            m.j.Ym.ha(b("low_quality_circles", !1));
+            m.j.Uk.ha(b("show_indicators", !0) || b("show_chat_indicator", !0));
+            m.j.li.ha(b("low_latency_canvas", !1));
+            m.j.Qm.ha(b("image_smoothing", !0));
+            m.j.Rh.ha(c("fps_limit", 0));
+            m.j.Mi.ha(d("resolution_scale", 1));
+            m.j.Rd.ha(null != ls.getItem("view_mode") ? c("view_mode", -1) : c("viewmode", -1));
+            m.j.kk.ha(c("chat_height", 160));
+            m.j.Hh.ha(c("chat_focus_height", 140));
+            m.j.Ih.ha(d("chat_opacity", .8));
+            m.j.Ad.ha(c("extrapolation", 0));
+            if (null != ls.getItem("haxball_extrapolation"))
+                m.j.Ad.ha(c("haxball_extrapolation", 0));
+            try {
+                let chatBg = ls.getItem("chat_bg_mode");
+                null != chatBg && m.j.jk.ha("full" == chatBg ? "full" : "compact")
+            } catch (bgE) {}
+            try {
+                let KEY_S = "hxd_ui_scoreboard_opacity"
+                  , KEY_C = "hxd_ui_chatbox_opacity";
+                function clamp100(x) {
+                    x = parseInt("" + x, 10);
+                    if (isNaN(x) || 0 > x)
+                        return 0;
+                    if (100 < x)
+                        return 100;
+                    return x
+                }
+                let sOp = clamp100(null != ls.getItem(KEY_S) ? ls.getItem(KEY_S) : 100)
+                  , cOp = clamp100(null != ls.getItem(KEY_C) ? ls.getItem(KEY_C) : 100);
+                document.documentElement.style.setProperty("--hxd-scoreboard-bg-alpha", "" + sOp / 100);
+                document.documentElement.style.setProperty("--hxd-chat-bg-alpha", "" + cOp / 100);
+                if (dlg) {
+                    let sr = dlg.querySelector('[data-hook="hxd-scoreboard-opacity-range"]')
+                      , sv = dlg.querySelector('[data-hook="hxd-scoreboard-opacity-value"]')
+                      , cr = dlg.querySelector('[data-hook="hxd-chatbox-opacity-range"]')
+                      , cv = dlg.querySelector('[data-hook="hxd-chatbox-opacity-value"]');
+                    sr && (sr.value = "" + sOp,
+                    sv && (sv.textContent = "" + sOp));
+                    cr && (cr.value = "" + cOp,
+                    cv && (cv.textContent = "" + cOp))
+                }
+            } catch (opE) {}
+            try {
+                let pk = ls.getItem("player_keys");
+                null != pk && m.j.Jd.ha(Aa.Th(pk))
+            } catch (pkE) {}
+            let qmIdx = c("quality_mode", 1);
+            window._hxdQualityMultiplier = 1 == qmIdx ? 1 : .9;
+            q("tsound-main", m.j.xe.v());
+            q("tsound-chat", m.j.Xi.v());
+            q("tsound-highlight", m.j.Nm.v());
+            q("tsound-crowd", m.j.Mm.v());
+            q("tsound-kick", m.j.Zk.v());
+            q("tsound-goal", m.j.Zl.v());
+            q("tsound-join", m.j.Zm.v());
+            q("tsound-leave", m.j.Zn.v());
+            q("tvideo-teamcol", m.j.Vm.v());
+            q("tvideo-showavatars", m.j.Km.v());
+            q("tvideo-lowlatency", m.j.li.v());
+            q("tmisc-showavatars", m.j.Km.v());
+            q("tmisc-shownames", m.j.Lm.v());
+            q("tmisc-lowqualitycircles", m.j.Ym.v());
+            q("tmisc-showindicator", m.j.Rm.v());
+            q("tmisc-indicator-name", m.j.Om.v());
+            q("tmisc-simplelines", m.j.Sm.v());
+            q("tmisc-ultrasimplelines", m.j.Xm.v());
+            q("tmisc-simplefield", m.j.Tm.v());
+            q("tmisc-showanimations", m.j.Um.v());
+            q("tmisc-showchat", m.j.Uk.v());
+            q("tmisc-culling", m.j.Wm.v());
+            if (dlg) {
+                let fpsSel = dlg.querySelector('[data-hook="fps"]');
+                fpsSel && (fpsSel.selectedIndex = Math.max(0, [0, 30, 60, 144, 240].indexOf(m.j.Rh.v())));
+                let vmSel = dlg.querySelector('[data-hook="viewmode"]');
+                vmSel && (vmSel.selectedIndex = Math.max(0, m.j.Rd.v() + 1));
+                let qmSel = dlg.querySelector('[data-hook="qualitymode"]');
+                qmSel && (qmSel.selectedIndex = qmIdx);
+                let rr = dlg.querySelector('[data-hook="resscale-range"]')
+                  , rv = dlg.querySelector('[data-hook="resscale-value"]');
+                rr && (rr.value = "" + Math.round(100 * m.j.Mi.v()),
+                rv && (rv.textContent = rr.value + "%"));
+                let co = dlg.querySelector('[data-hook="chatopacity-range"]')
+                  , cov = dlg.querySelector('[data-hook="chatopacity-value"]');
+                co && (co.value = "" + m.j.Ih.v(),
+                cov && (cov.textContent = Math.round(100 * m.j.Ih.v()) + "%"));
+                let ch = dlg.querySelector('[data-hook="chatheight-range"]')
+                  , chv = dlg.querySelector('[data-hook="chatheight-value"]');
+                ch && (ch.value = "" + m.j.kk.v(),
+                chv && (chv.textContent = ch.value + "px"));
+                let cf = dlg.querySelector('[data-hook="chatfocusheight-range"]')
+                  , cfv = dlg.querySelector('[data-hook="chatfocusheight-value"]');
+                cf && (cf.value = "" + m.j.Hh.v(),
+                cfv && (cfv.textContent = cf.value + "px"));
+                let cbmSel = dlg.querySelector('[data-hook="chatbgmode"]');
+                if (cbmSel) {
+                    let bgIdx = "full" == m.j.jk.v() ? 0 : 1;
+                    cbmSel.selectedIndex = bgIdx
+                }
+                let hp = dlg.querySelector('[data-hook="tmisc-highpriority"] i');
+                if (hp) {
+                    let hpOn = "true" === ls.getItem("high_priority");
+                    hp.classList.toggle("icon-ok", hpOn);
+                    hp.classList.toggle("icon-cancel", !hpOn)
+                }
+            }
+            try {
+                let th = ls.getItem("haxball-theme");
+                if (th && window.HaxThemes && "function" == typeof window.HaxThemes.apply)
+                    window.HaxThemes.apply("user-custom" == th || 0 === th.indexOf("user-") ? "custom" : th)
+            } catch (thE) {}
+            try {
+                let lang = ls.getItem("haxball_language");
+                lang && "function" == typeof window.__haxSetLanguage && window.__haxSetLanguage(lang)
+            } catch (lgE) {}
+            try {
+                let glassOn = "1" === ls.getItem("hax_glass_ui");
+                glassOn ? document.documentElement.setAttribute("data-glass-ui", "1") : document.documentElement.removeAttribute("data-glass-ui")
+            } catch (glE) {}
+            try {
+                "true" === ls.getItem("high_priority") && fetch("http://localhost:7788/config/performance", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        high_priority: !0
+                    })
+                }).catch(function() {})
+            } catch (hpE) {}
+            try {
+                window.dispatchEvent(new Event("storage"));
+                window.dispatchEvent(new Event("resize"));
+                window.dispatchEvent(new CustomEvent("hxd-settings-imported"))
+            } catch (evE) {}
+            return !0
+        } catch (g) {
+            return !1
+        }
+    }
+    ;
+    window.__hxdApplyRuntimeConfig = function(a) {
+        return window.__hxdSyncAllSettingsFromStorage()
+    }
+    ;
     Y.ul = function() {
         let a = [];
         {
@@ -12533,7 +13114,7 @@
     ea.Mn = new $b([0, -1, 3, 0, 0, .35, 0, 0, 0, 0, .65, 0, 0, 1, 3, 1]);
     Hb.O = "<div class='dialog change-location-view'><h1>Change Location</h1><div class='splitter'><div class='list' data-hook='list'></div><div class='buttons'><button data-hook='change'>Change</button><button data-hook='cancel'>Cancel</button></div></div></div>";
     cb.O = "<div class='chatbox-view'><div class='chatbox-view-contents'><div data-hook='drag' class='drag'></div><div data-hook='log' class='log subtle-thin-scrollbar'><div data-hook='log-contents' class='log-contents'><p>Controls:<br/>Move: WASD or Arrows<br/>Kick: X, Space, Ctrl, Shift, Numpad 0<br/>View: Numbers 1 to 4</p></div></div><div class='autocompletebox' data-hook='autocompletebox'></div><div class='input'><input data-hook='input' type='text' /></div></div></div>";
-    qb.O = "<div class='choose-nickname-view'><img src=\"images/haxball.png\" /><div class='dialog'><h1>Choose nickname</h1><div class='label-input'><label>Nick:</label><input data-hook='input' type='text' /></div><button data-hook='ok'>Ok</button></div></div>";
+    qb.O = "<div class='choose-nickname-view hxd-zero-nickname-view'><img class='hxd-zero-native-logo' src=\"images/haxball.png\" /><div class='dialog hxd-zero-native-auth'><h1>HaxBall Zero</h1><div class='label-input hxd-zero-native-field'><label>Nick:</label><input data-hook='input' type='text' /></div><button class='hxd-zero-native-btn' data-hook='ok'>Ok</button></div></div>";
     xb.O = "<div class='connecting-view'><div class='dialog'><h1>Connecting</h1><div class='connecting-view-log' data-hook='log'></div><button data-hook='cancel'>Cancel</button></div></div>";
     wb.O = "<div class='create-room-view'><div class='dialog'><h1>Create room</h1><div class='label-input'><label>Room name:</label><input data-hook='name' required /></div><div class='label-input'><label>Password:</label><input data-hook='pass' /></div><div class='label-input'><label>Max players:</label><select data-hook='max-pl'></select></div><button data-hook='unlisted'></button><div class='row'><button data-hook='cancel'>Cancel</button><button data-hook='create'>Create</button></div></div></div>";
     db.O = "<div class='disconnected-view'><div class='dialog basic-dialog'><h1>Disconnected</h1><p data-hook='reason'></p><div class='buttons'><button data-hook='ok'>Ok</button><button data-hook='replay'>Save replay</button></div></div></div>";
@@ -12551,7 +13132,7 @@
     eb.Ij = "<div class='roomlist-view'><div class='notice' data-hook='notice' hidden><div data-hook='notice-contents'>Testing the notice.</div><div data-hook='notice-close'><i class='icon-cancel'></i></div></div><div class='dialog'><h1>Room list</h1><p>Tip: Join rooms near you to reduce lag.</p><div class='splitter'><div class='list'><table class='header'><colgroup><col><col><col><col></colgroup><thead><tr><td>Name</td><td>Players</td><td>Pass</td><td>Distance</td></tr></thead></table><div class='separator'></div><div class='content' data-hook='listscroll'><table><colgroup><col><col><col><col></colgroup><tbody data-hook='list'></tbody></table></div><div class='filters'><span class='bool' data-hook='fil-pass'>Show locked <i></i></span><span class='bool' data-hook='fil-full'>Show full <i></i></span><span class='bool' data-hook='fil-empty'>Show empty <i></i></span></div></div><div class='buttons'><button data-hook='refresh'><i class='icon-cw'></i><div>Refresh</div></button><button data-hook='join'><i class='icon-login'></i><div>Join Room</div></button><button data-hook='create'><i class='icon-plus'></i><div>Create Room</div></button><div class='spacer'></div><div class='file-btn'><label for='replayfile'><i class='icon-play'></i><div>Replays</div></label><input id='replayfile' type='file' accept='.hbr2' data-hook='replayfile'/></div><button data-hook='settings'><i class='icon-cog'></i><div>Settings</div></button><button data-hook='changenick'><i class='icon-cw'></i><div>Change Nick</div></button></div></div><p data-hook='count'></p></div></div>";
     Kb.O = "<div class='room-password-view'><div class='dialog'><h1>Password required</h1><div class='label-input'><label>Password:</label><input data-hook='input' /></div><div class='buttons'><button data-hook='cancel'>Cancel</button><button data-hook='ok'>Ok</button></div></div></div>";
     Ab.O = "<div class='room-view'><div class='container'><h1 data-hook='room-name'></h1><div class='header-btns'><button data-hook='friends-room-btn'><i class='icon-heart'></i>Friends</button><button data-hook='rec-btn'><i class='icon-circle'></i>Rec</button><button data-hook='link-btn'><i class='icon-link'></i>Link</button><button data-hook='leave-btn'><i class='icon-logout'></i>Leave</button></div><div class='teams'><div class='tools admin-only'><button data-hook='auto-btn'>Auto</button><button data-hook='rand-btn'>Rand</button><button data-hook='lock-btn'>Lock</button><button data-hook='reset-all-btn'>Reset</button></div><div data-hook='red-list'></div><div data-hook='spec-list'></div><div data-hook='blue-list'></div><div class='spacer admin-only'></div></div><div class='settings'><div><label class='lbl'>Time limit</label><select data-hook='time-limit-sel'></select></div><div><label class='lbl'>Score limit</label><select data-hook='score-limit-sel'></select></div><div><label class='lbl'>Stadium</label><label class='val' data-hook='stadium-name'>testing the stadium name</label><button class='admin-only' data-hook='stadium-pick'>Pick</button></div></div><div class='controls admin-only'><button data-hook='start-btn'><i class='icon-play'></i>Start game</button><button data-hook='stop-btn'><i class='icon-stop'></i>Stop game</button><button data-hook='pause-btn'><i class='icon-pause'></i>Pause</button></div></div></div>";
-    na.O = '<div class=\'dialog settings-view\'><h1>Settings</h1><button data-hook=\'close\'>Close</button><div class=\'tabs\'><button data-hook=\'soundbtn\'>Sound</button><button data-hook=\'videobtn\'>Video</button><button data-hook=\'inputbtn\'>Input</button><button data-hook=\'miscbtn\'>Misc</button></div><div data-hook=\'presskey\' tabindex=\'-1\'><div>Press a key</div></div><div class=\'tabcontents\'><div class=\'section\' data-hook=\'miscsec\'><div class=\'loc\' data-hook=\'loc\'></div><div class=\'loc\' data-hook=\'loc-ovr\'></div><button data-hook=\'loc-ovr-btn\'></button><div style=\'display:none;\'><div data-hook=\'tmisc-title\' style=\'color:#888;font-size:11px;margin-bottom:8px;\'>Desempenho</div><div data-hook=\'tmisc-shownames\'>Mostrar nomes dos jogadores</div><div data-hook=\'tmisc-showavatars\'>Mostrar avatares e cores</div><div data-hook=\'tmisc-lowqualitycircles\'>CÃ­rculos de baixa qualidade</div><div data-hook=\'tmisc-showindicator\'>Mostrar indicador do jogador</div><div data-hook=\'tmisc-indicator-name\'>Mostrar nome no indicador</div><div data-hook=\'tmisc-simplelines\'>Linhas simplificadas</div><div data-hook=\'tmisc-ultrasimplelines\'>Curvas viram retas</div><div data-hook=\'tmisc-simplefield\'>Campo simplificado</div><div data-hook=\'tmisc-showanimations\'>Mostrar animaÃ§Ãµes de gol</div><div data-hook=\'tmisc-showchat\'>Mostrar indicador de chat</div><div data-hook=\'tmisc-highpriority\'>Alta prioridade</div><div data-hook=\'tmisc-culling\'>Culling de viewport</div></div></div><div class=\'section\' data-hook=\'soundsec\'><div data-hook="tsound-main">Sounds enabled</div><div data-hook="tsound-chat">Chat sound enabled</div><div data-hook="tsound-highlight">Nick highlight sound enabled</div><div data-hook="tsound-crowd">Crowd sound enabled</div><div data-hook="tsound-kick">Kick / ball hit sound</div><div data-hook="tsound-goal">Goal sound</div><div data-hook="tsound-join">Player join sound</div><div data-hook="tsound-leave">Player leave sound</div></div><div class=\'section\' data-hook=\'inputsec\'></div><div class=\'section\' data-hook=\'videosec\'><div>Viewport Mode:<select data-hook=\'viewmode\'><option>Dynamic</option><option>Restricted 840x410</option><option>Full 1x Zoom</option><option>Full 1.25x Zoom</option><option>Full 1.5x Zoom</option><option>Full 1.75x Zoom</option><option>Full 2x Zoom</option><option>Full 2.25x Zoom</option><option>Full 2.5x Zoom</option></select></div><div>FPS Limit:<select data-hook=\'fps\'><option>None (Recommended)</option><option>30</option><option>60</option><option>75</option><option>144</option><option>240</option></select></div><div class="option-row"><div style="margin-right: 10px; flex: 1; max-width: 115px;">Resolution</div><div style="width: 40px" data-hook=\'resscale-value\'>100%</div><input class="slider" type="range" min="10" max="100" step="5" data-hook=\'resscale-range\'></div><div><span data-hook=\'qualitymode-label\'>Qualidade:</span><select data-hook=\'qualitymode\'><option>Desempenho</option><option>HD</option></select></div><div data-hook="tvideo-lowlatency">Use low latency canvas</div><div data-hook="tvideo-teamcol">Custom team colors enabled</div><div data-hook="tvideo-showavatars">Show player avatars</div><div class="option-row"><div style="margin-right: 10px; flex: 1; max-width: 115px;">Chat opacity </div><div style="width: 40px" data-hook="chatopacity-value">1</div><input class="slider" type="range" min="0.5" max="1" step="0.01" data-hook="chatopacity-range"></div><div class="option-row"><div style="margin-right: 10px; flex: 1; max-width: 115px;">Marcador transparente</div><div style="width: 40px" data-hook="hxd-scoreboard-opacity-value">100</div><input class="slider" type="range" min="0" max="100" step="1" data-hook="hxd-scoreboard-opacity-range"></div><div class="option-row"><div style="margin-right: 10px; flex: 1; max-width: 115px;">Chat transparente</div><div style="width: 40px" data-hook="hxd-chatbox-opacity-value">100</div><input class="slider" type="range" min="0" max="100" step="1" data-hook="hxd-chatbox-opacity-range"></div><div class="option-row"><div style="margin-right: 10px; flex: 1; max-width: 115px;">Chat focus height </div><div style="width: 40px" data-hook="chatfocusheight-value">200</div><input class="slider" type="range" min="0" max="400" step="10" data-hook="chatfocusheight-range"></div><div>Chat background width:<select data-hook=\'chatbgmode\'><option>Full</option><option>Compact</option></select></div></div></div></div>';
+    na.O = '<div class=\'dialog settings-view\'><h1>Settings</h1><button data-hook=\'close\'>Close</button><div class=\'tabs\'><button data-hook=\'soundbtn\'>Sound</button><button data-hook=\'videobtn\'>Video</button><button data-hook=\'inputbtn\'>Input</button><button data-hook=\'miscbtn\'>Misc</button></div><div data-hook=\'presskey\' tabindex=\'-1\'><div>Press a key</div></div><div class=\'tabcontents\'><div class=\'section\' data-hook=\'miscsec\'><div class=\'loc\' data-hook=\'loc\'></div><div class=\'loc\' data-hook=\'loc-ovr\'></div><button data-hook=\'loc-ovr-btn\'></button><div style=\'display:none;\'><div data-hook=\'tmisc-title\' style=\'color:#888;font-size:11px;margin-bottom:8px;\'>Desempenho</div><div data-hook=\'tmisc-shownames\'>Mostrar nomes dos jogadores</div><div data-hook=\'tmisc-showavatars\'>Mostrar avatares e cores</div><div data-hook=\'tmisc-lowqualitycircles\'>Círculos de baixa qualidade</div><div data-hook=\'tmisc-showindicator\'>Mostrar indicador do jogador</div><div data-hook=\'tmisc-indicator-name\'>Mostrar nome no indicador</div><div data-hook=\'tmisc-simplelines\'>Linhas simplificadas</div><div data-hook=\'tmisc-ultrasimplelines\'>Curvas viram retas</div><div data-hook=\'tmisc-simplefield\'>Campo simplificado</div><div data-hook=\'tmisc-showanimations\'>Mostrar animações de gol</div><div data-hook=\'tmisc-showchat\'>Mostrar indicador de chat</div><div data-hook=\'tmisc-highpriority\'>Alta prioridade</div><div data-hook=\'tmisc-culling\'>Culling de viewport</div></div></div><div class=\'section\' data-hook=\'soundsec\'><div data-hook="tsound-main">Sounds enabled</div><div data-hook="tsound-chat">Chat sound enabled</div><div data-hook="tsound-highlight">Nick highlight sound enabled</div><div data-hook="tsound-crowd">Crowd sound enabled</div><div data-hook="tsound-kick">Kick / ball hit sound</div><div data-hook="tsound-goal">Goal sound</div><div data-hook="tsound-join">Player join sound</div><div data-hook="tsound-leave">Player leave sound</div></div><div class=\'section\' data-hook=\'inputsec\'></div><div class=\'section\' data-hook=\'videosec\'><div>Viewport Mode:<select data-hook=\'viewmode\'><option>Dynamic</option><option>Restricted 840x410</option><option>Full 1x Zoom</option><option>Full 1.25x Zoom</option><option>Full 1.5x Zoom</option><option>Full 1.75x Zoom</option><option>Full 2x Zoom</option><option>Full 2.25x Zoom</option><option>Full 2.5x Zoom</option></select></div><div>FPS Limit:<select data-hook=\'fps\'><option>None (Recommended)</option><option>30</option><option>60</option><option>75</option><option>144</option><option>240</option></select></div><div class="option-row"><div style="margin-right: 10px; flex: 1; max-width: 115px;">Resolution</div><div style="width: 40px" data-hook=\'resscale-value\'>100%</div><input class="slider" type="range" min="10" max="100" step="5" data-hook=\'resscale-range\'></div><div><span data-hook=\'qualitymode-label\'>Qualidade:</span><select data-hook=\'qualitymode\'><option>Desempenho</option><option>HD</option></select></div><div data-hook="tvideo-lowlatency">Use low latency canvas</div><div data-hook="tvideo-teamcol">Custom team colors enabled</div><div data-hook="tvideo-showavatars">Show player avatars</div><div class="option-row"><div style="margin-right: 10px; flex: 1; max-width: 115px;">Chat opacity </div><div style="width: 40px" data-hook="chatopacity-value">1</div><input class="slider" type="range" min="0.5" max="1" step="0.01" data-hook="chatopacity-range"></div><div class="option-row"><div style="margin-right: 10px; flex: 1; max-width: 115px;">Marcador transparente</div><div style="width: 40px" data-hook="hxd-scoreboard-opacity-value">100</div><input class="slider" type="range" min="0" max="100" step="1" data-hook="hxd-scoreboard-opacity-range"></div><div class="option-row"><div style="margin-right: 10px; flex: 1; max-width: 115px;">Chat transparente</div><div style="width: 40px" data-hook="hxd-chatbox-opacity-value">100</div><input class="slider" type="range" min="0" max="100" step="1" data-hook="hxd-chatbox-opacity-range"></div><div class="option-row"><div style="margin-right: 10px; flex: 1; max-width: 115px;">Chat focus height </div><div style="width: 40px" data-hook="chatfocusheight-value">200</div><input class="slider" type="range" min="0" max="400" step="10" data-hook="chatfocusheight-range"></div><div>Chat background width:<select data-hook=\'chatbgmode\'><option>Full</option><option>Compact</option></select></div></div></div></div>';
     na.ym = 0;
     ba.O = "<div class='simple-dialog-view'><div class='dialog basic-dialog'><h1 data-hook='title'></h1><p data-hook='content'></p><div class='buttons' data-hook='buttons'></div></div></div>";
     zb.O = "<div class=\"stats-view-container\"><div class='stats-view'><p data-hook='ping'></p><p data-hook='fps'></p><div data-hook='graph'></div></div></div>";

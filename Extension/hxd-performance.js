@@ -19,6 +19,7 @@
         'simple_lines',
         'ultra_simple_lines',
         'culling_enabled',
+        'viewport_culling',
         'show_avatars',
         'team_colors',
         'show_names',
@@ -26,14 +27,15 @@
         'low_quality_circles',
         'show_animations',
         'show_indicator',
-        'player_indicator_name',
+        'show_player_indicator',
         'show_chat_indicator',
+        'show_indicators',
         'high_priority',
-        'hxd_background_frames',
         'canvas_boost_scale',
         'fps_limit',
         'resolution_scale',
         'viewmode',
+        'view_mode',
         'quality_mode',
         'input_tolerance',
         'hxd_input_tolerance_unlock',
@@ -49,11 +51,78 @@
         'hax_zoom_key_binds',
         'hax_chat_command_shortcuts',
         'hax_hide_match_status_text',
-        'hideui_settings'
+        'hideui_settings',
+        'player_keys',
+        'sound_main',
+        'sound_chat',
+        'sound_highlight',
+        'sound_crowd',
+        'sound_kick',
+        'sound_goal',
+        'sound_join',
+        'sound_leave',
+        'sound_volume',
+        'chat_height',
+        'chat_focus_height',
+        'chat_opacity',
+        'chat_bg_mode',
+        'image_smoothing',
+        'extrapolation',
+        'hxd_ui_scoreboard_opacity',
+        'hxd_ui_chatbox_opacity',
+        'haxball-theme',
+        'haxball-user-theme',
+        'haxball-user-themes',
+        'haxball_language',
+        'hax_verified_disabled',
+        'hax_zero_zoom',
+        'hax_glass_ui',
+        'player_indicator_name'
     ];
+
+    var RUNTIME_DEFAULTS = {
+        simple_lines: '0',
+        ultra_simple_lines: '0',
+        culling_enabled: '0',
+        viewport_culling: '0',
+        show_avatars: '1',
+        team_colors: '1',
+        show_names: '1',
+        simple_field: '0',
+        low_quality_circles: '0',
+        show_animations: '1',
+        show_indicator: '1',
+        show_player_indicator: '1',
+        show_chat_indicator: '1',
+        show_indicators: '1',
+        fps_limit: '0',
+        resolution_scale: '1',
+        viewmode: '-1',
+        view_mode: '-1',
+        low_latency_canvas: '0',
+        team_colors: '1',
+        sound_main: '1',
+        sound_chat: '1',
+        sound_highlight: '1',
+        sound_crowd: '0',
+        sound_kick: '1',
+        sound_goal: '1',
+        sound_join: '1',
+        sound_leave: '1',
+        sound_volume: '1',
+        chat_height: '160',
+        chat_focus_height: '140',
+        chat_opacity: '0.8',
+        chat_bg_mode: 'compact',
+        image_smoothing: '1',
+        extrapolation: '0',
+        hxd_ui_scoreboard_opacity: '100',
+        hxd_ui_chatbox_opacity: '100'
+    };
 
     function padBase64(s) {
         s = String(s || '').trim();
+        s = s.replace(/^HXZ0[:\s-]*/i, '');
         while (s.length % 4 !== 0) s += '=';
         return s;
     }
@@ -91,6 +160,32 @@
             } catch (e) {}
         }
         return applied;
+    }
+
+    function buildRuntimeConfig(config, replaceKnown) {
+        var out = {};
+        if (replaceKnown) {
+            for (var key in RUNTIME_DEFAULTS) {
+                if (Object.prototype.hasOwnProperty.call(RUNTIME_DEFAULTS, key)) out[key] = RUNTIME_DEFAULTS[key];
+            }
+        }
+        for (var cfgKey in config) {
+            if (!Object.prototype.hasOwnProperty.call(config, cfgKey)) continue;
+            if (cfgKey === META_SCHEMA) continue;
+            if (SNAPSHOT_KEYS.indexOf(cfgKey) === -1) continue;
+            out[cfgKey] = config[cfgKey];
+        }
+        return out;
+    }
+
+    function applyRuntimeConfig(config, replaceKnown) {
+        try {
+            if (typeof window.__hxdSyncAllSettingsFromStorage === 'function') {
+                window.__hxdSyncAllSettingsFromStorage();
+            } else if (typeof window.__hxdApplyRuntimeConfig === 'function') {
+                window.__hxdApplyRuntimeConfig(buildRuntimeConfig(config, replaceKnown));
+            }
+        } catch (eRuntime) {}
     }
 
     /**
@@ -134,6 +229,7 @@
             if (!config || typeof config !== 'object') return false;
             if (replaceKnown) clearSnapshotKeys();
             applyFlatConfig(config);
+            applyRuntimeConfig(config, replaceKnown);
             return true;
         } catch (e) {
             return false;

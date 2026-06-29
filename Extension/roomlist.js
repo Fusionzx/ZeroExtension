@@ -6,10 +6,15 @@
         window.__hxdRoomlistAnonSyncBound = true;
         window.addEventListener('hxd-anonymous-mode-changed', function() {
             try {
-                var ids = ['friends-btn', 'teams-btn', 'pro-sidebar-btn'];
+                var anon = window.__hxdIsAnonymousMode && window.__hxdIsAnonymousMode();
+                var ids = ['pro-sidebar-btn'];
                 for (var i = 0; i < ids.length; i++) {
                     var el = document.getElementById(ids[i]);
-                    if (el) el.style.display = '';
+                    if (el) el.style.display = anon ? 'none' : '';
+                }
+                if (document.getElementById('hxd-roomlist-preview-frame')) {
+                    invalidateRoomlistPreviewSync(document);
+                    pushRoomlistPreviewSyncNow(document);
                 }
             } catch (eAn) {}
         });
@@ -17,22 +22,20 @@
 
     if (Injector.isMainFrame() && !Injector.isGameDocument()) return;
 
+    if (!document.hxdRoomlistPreviewCmdBound) {
+        document.hxdRoomlistPreviewCmdBound = true;
+        document.addEventListener('hxd-roomlist-preview-cmd', function (e) {
+            var detail = e && e.detail ? e.detail : {};
+            handleRoomlistPreviewCmd(document, detail.action, detail.payload || {});
+        });
+    }
+
     var roomListObserver = null;
     var cachedRows = null;
     var selectedCountry = 'all';
     var searchTimeout = null;
     var isFilteringFavs = false;
-    var LOCAL_API = (function resolveRoomlistApiBase() {
-        try {
-            var meta = document.querySelector('meta[name="hxd-local-api"]');
-            if (meta && meta.content) return String(meta.content).replace(/\/+$/, '');
-        } catch (eMeta) {}
-        try {
-            var parentMeta = window.parent.document.querySelector('meta[name="hxd-local-api"]');
-            if (parentMeta && parentMeta.content) return String(parentMeta.content).replace(/\/+$/, '');
-        } catch (eParent) {}
-        return 'http://127.0.0.1:5483';
-    })();
+    var LOCAL_API = 'http://127.0.0.1:5483';
     var profileDataCache = null;
     var profileDataPromise = null;
 
@@ -78,108 +81,110 @@
         var S = {
             es: {
                 loginTitle: 'Iniciá sesión',
-                loginMsg: 'Para ver tu perfil con foto de Discord y datos automáticos, entrá con Discord desde HaxBall Zero y volvé a la lista de salas. Después abrí de nuevo el perfil desde el botón lateral.',
+                loginMsg: 'Para ver tu perfil con foto de Discord y datos automáticos, entrá con Discord desde HaxBall Zero y volvé a la lista de salas. Después abrí de nuevo el perfil desde el avatar.',
                 loginBtn: 'Ir al juego',
                 backRooms: 'Volver a salas',
-                pageTitle: 'Pro',
-                tierSub: ' partidas · ',
-                wins: '% wins',
-                online: 'ONLINE',
-                inRoom: ' en sala',
-                chatSoon: 'El chat global estará disponible pronto.',
-                chatPh: 'Mensaje...',
-                noFriends: 'Sin amigos aún',
-                rend: 'RENDIMIENTO',
-                elo: 'RANGO ELO',
-                delta: 'CAMBIO ELO',
-                vict: 'VICTORIAS',
-                der: 'DERROTAS',
-                emp: 'EMPATES',
-                winp: 'WIN %',
-                kd: 'K/D',
-                pj: 'PARTIDAS',
-                global: 'GLOBAL',
-                amigos: 'AMIGOS',
-                amigosBtn: '❤ AMIGOS',
-                reports: 'REPORTES',
-                buscar: '▶ BUSCAR',
-                crear: '+ CREAR',
-                haxball: 'HAXBALL',
+                pageTitle: 'Mi perfil',
+                pageLead: 'Tu cuenta y estado en HaxBall Zero.',
+                statusLbl: 'Estado',
+                roomLbl: 'Sala actual',
+                accountLbl: 'Cuenta',
+                online: 'En línea',
+                inRoom: 'En sala',
+                notInRoom: 'Sin sala',
+                accountDiscord: 'Discord',
+                accountGuest: 'Invitado',
+                detailsLbl: 'Detalles',
+                statsLbl: 'Estadísticas',
+                playTimeLbl: 'Horas jugadas',
+                createdLbl: 'Fecha de creación',
+                streakLbl: 'Racha de días',
                 proCta: 'PRO',
-                proTitle: 'Pro',
-                communityInvite: 'discord.gg/haxzero',
-                communityOpenLabel: 'Comunidad (Discord)'
+                proTitle: 'Pro'
             },
             pt: {
                 loginTitle: 'Inicia sessão',
-                loginMsg: 'Para ver o teu perfil com foto do Discord e dados automáticos, entra com Discord no HaxBall Zero e volta à lista de salas. Depois abre de novo o perfil pelo botão lateral.',
+                loginMsg: 'Para ver o teu perfil com foto do Discord e dados automáticos, entra com Discord no HaxBall Zero e volta à lista de salas. Depois abre de novo o perfil pelo avatar.',
                 loginBtn: 'Ir ao jogo',
                 backRooms: 'Voltar às salas',
-                pageTitle: 'Pro',
-                tierSub: ' partidas · ',
-                wins: '% vitórias',
-                online: 'ONLINE',
-                inRoom: ' na sala',
-                chatSoon: 'O chat global estará disponível em breve.',
-                chatPh: 'Mensagem...',
-                noFriends: 'Sem amigos ainda',
-                rend: 'DESEMPENHO',
-                elo: 'ELO',
-                delta: 'VARIAÇÃO ELO',
-                vict: 'VITÓRIAS',
-                der: 'DERROTAS',
-                emp: 'EMPATES',
-                winp: 'WIN %',
-                kd: 'K/D',
-                pj: 'PARTIDAS',
-                global: 'GLOBAL',
-                amigos: 'AMIGOS',
-                amigosBtn: '❤ AMIGOS',
-                reports: 'RELATÓRIOS',
-                buscar: '▶ JOGAR',
-                crear: '+ CRIAR',
-                haxball: 'HAXBALL',
+                pageTitle: 'Meu perfil',
+                pageLead: 'Sua conta e status no HaxBall Zero.',
+                statusLbl: 'Estado',
+                roomLbl: 'Sala atual',
+                accountLbl: 'Conta',
+                online: 'Online',
+                inRoom: 'Na sala',
+                notInRoom: 'Sem sala',
+                accountDiscord: 'Discord',
+                accountGuest: 'Convidado',
+                detailsLbl: 'Detalhes',
+                statsLbl: 'Estatísticas',
+                playTimeLbl: 'Horas jogadas',
+                createdLbl: 'Data de criação',
+                streakLbl: 'Sequência de dias',
                 proCta: 'PRO',
-                proTitle: 'Pro',
-                communityInvite: 'discord.gg/haxzero',
-                communityOpenLabel: 'Comunidade (Discord)'
+                proTitle: 'Pro'
             },
             en: {
                 loginTitle: 'Sign in',
-                loginMsg: 'To see your profile with Discord avatar and auto-filled data, sign in with Discord from HaxBall Zero and return to the room list. Then open your profile again from the side button.',
+                loginMsg: 'To see your profile with Discord avatar and auto-filled data, sign in with Discord from HaxBall Zero and return to the room list. Then open your profile again from the avatar.',
                 loginBtn: 'Go to game',
                 backRooms: 'Back to rooms',
-                pageTitle: 'Pro',
-                tierSub: ' matches · ',
-                wins: '% wins',
-                online: 'ONLINE',
-                inRoom: ' in room',
-                chatSoon: 'Global chat will be available soon.',
-                chatPh: 'Message...',
-                noFriends: 'No friends yet',
-                rend: 'PERFORMANCE',
-                elo: 'ELO RANK',
-                delta: 'ELO CHANGE',
-                vict: 'WINS',
-                der: 'LOSSES',
-                emp: 'DRAWS',
-                winp: 'WIN %',
-                kd: 'K/D',
-                pj: 'MATCHES',
-                global: 'GLOBAL',
-                amigos: 'FRIENDS',
-                amigosBtn: '❤ FRIENDS',
-                reports: 'REPORTS',
-                buscar: '▶ FIND',
-                crear: '+ CREATE',
-                haxball: 'HAXBALL',
+                pageTitle: 'My profile',
+                pageLead: 'Your account and status in HaxBall Zero.',
+                statusLbl: 'Status',
+                roomLbl: 'Current room',
+                accountLbl: 'Account',
+                online: 'Online',
+                inRoom: 'In room',
+                notInRoom: 'Not in a room',
+                accountDiscord: 'Discord',
+                accountGuest: 'Guest',
+                detailsLbl: 'Details',
+                statsLbl: 'Statistics',
+                playTimeLbl: 'Hours played',
+                createdLbl: 'Account created',
+                streakLbl: 'Day streak',
                 proCta: 'PRO',
-                proTitle: 'Pro',
-                communityInvite: 'discord.gg/haxzero',
-                communityOpenLabel: 'Community (Discord)'
+                proTitle: 'Pro'
             }
         };
         return S[lang] || S.es;
+    }
+
+    function formatPlayStreakDays(days, lang) {
+        lang = (lang === 'pt' || lang === 'en') ? lang : 'es';
+        var n = Math.max(0, Math.floor(Number(days) || 0));
+        if (lang === 'en') return n + (n === 1 ? ' day' : ' days');
+        if (lang === 'pt') return n + (n === 1 ? ' dia' : ' dias');
+        return n + (n === 1 ? ' día' : ' días');
+    }
+
+    function formatPlayTimeMinutes(minutes, lang) {
+        lang = (lang === 'pt' || lang === 'en') ? lang : 'es';
+        var m = Math.max(0, Math.floor(Number(minutes) || 0));
+        if (m <= 0) return '0 min';
+        var h = Math.floor(m / 60);
+        var rem = m % 60;
+        if (h <= 0) return rem + ' min';
+        if (rem === 0) {
+            if (lang === 'en') return h + (h === 1 ? ' hr' : ' hrs');
+            return h + ' h';
+        }
+        if (lang === 'en') return h + (h === 1 ? ' hr' : ' hrs') + ' ' + rem + ' min';
+        return h + ' h ' + rem + ' min';
+    }
+
+    function formatCreatedAt(value, lang) {
+        if (!value) return '—';
+        var d = new Date(value);
+        if (isNaN(d.getTime())) return '—';
+        var loc = lang === 'en' ? 'en-US' : lang === 'pt' ? 'pt-BR' : 'es-AR';
+        try {
+            return d.toLocaleDateString(loc, { year: 'numeric', month: 'long', day: 'numeric' });
+        } catch (eFmt) {
+            return d.toISOString().slice(0, 10);
+        }
     }
 
     function zipVerifiedBadgeSvg(size) {
@@ -196,6 +201,12 @@
     }
 
     function openProFromZipPanel(iframeDoc) {
+        if (window.__hxdIsAnonymousMode && window.__hxdIsAnonymousMode()) {
+            if (typeof window.showToast === 'function') {
+                window.showToast((window.__t && window.__t('Anonymous mode block pro')) || 'Modo anónimo.', 'info', 2600);
+            }
+            return;
+        }
         if (window.__hxdOpenProInpanel) {
             try {
                 window.__hxdOpenProInpanel(iframeDoc);
@@ -231,6 +242,8 @@
     }
 
     function hideInpanelProfile(iframeDoc) {
+        window.__hxdRoomlistPreviewInpanelMode = '';
+        delete iframeDoc.hxdRoomlistProfileSnapshot;
         var dialog = iframeDoc.querySelector('.roomlist-view .dialog');
         if (dialog) {
             dialog.classList.remove('zero-profile-mode');
@@ -238,16 +251,6 @@
         }
         var root = iframeDoc.getElementById('zero-inpanel-profile');
         if (root) root.style.display = 'none';
-        if (window.TeamsSystem && typeof TeamsSystem.closeRoomlistTeamsIfOpen === 'function') {
-            try {
-                TeamsSystem.closeRoomlistTeamsIfOpen(iframeDoc);
-            } catch (eZt) {}
-        }
-        if (window.FriendsSystem && typeof FriendsSystem.closeFriendsPanel === 'function') {
-            try {
-                FriendsSystem.closeFriendsPanel(iframeDoc);
-            } catch (eZf) {}
-        }
         if (window.JerseyKitSystem && typeof JerseyKitSystem.closeRoomlistJerseyIfOpen === 'function') {
             try {
                 JerseyKitSystem.closeRoomlistJerseyIfOpen(iframeDoc);
@@ -303,8 +306,6 @@
         dialog.__zeroRlUnlockTimer = setTimeout(function() {
             dialog.__zeroRlUnlockTimer = null;
             if (!dialog || !dialog.classList) return;
-            if (dialog.classList.contains('zero-teams-mode')) return;
-            if (dialog.classList.contains('zero-friends-mode')) return;
             if (dialog.classList.contains('zero-profile-mode')) return;
             if (dialog.classList.contains('zero-pro-mode')) return;
             if (dialog.classList.contains('zero-kit-mode')) return;
@@ -322,155 +323,7 @@
     }
 
     /**
-     * Modo equipos embebido na roomlist: mantén sidebar; mostra só #zero-inpanel-teams.
-     */
-    function setRoomlistDialogTeamsMode(iframeDoc, dialog, active) {
-        if (!iframeDoc || !dialog) return;
-        if (active) {
-            ensureRoomlistDialogOverlayLocked(dialog);
-        } else {
-            scheduleRoomlistDialogOverlayUnlock(dialog);
-        }
-
-        var children = dialog.children;
-        for (var i = 0; i < children.length; i++) {
-            var child = children[i];
-            if (!child || !child.id) {
-                setSwapVisibility(child, !active);
-                continue;
-            }
-            if (child.id === 'sidebar-panel') {
-                if (child.dataset && Object.prototype.hasOwnProperty.call(child.dataset, 'zeroPrevDisplay')) {
-                    delete child.dataset.zeroPrevDisplay;
-                }
-                child.style.display = 'flex';
-                child.style.flexDirection = 'column';
-                continue;
-            }
-            if (child.id === 'zero-inpanel-friends') {
-                setSwapVisibility(child, !active);
-                continue;
-            }
-            if (child.id === 'zero-inpanel-teams') {
-                setSwapVisibility(child, active);
-                continue;
-            }
-            if (child.id === 'zero-inpanel-pro') {
-                setSwapVisibility(child, !active);
-                continue;
-            }
-            if (child.id === 'zero-inpanel-jersey') {
-                setSwapVisibility(child, !active);
-                continue;
-            }
-            if (child.id === 'zero-inpanel-ranked') {
-                setSwapVisibility(child, !active);
-                continue;
-            }
-            setSwapVisibility(child, !active);
-        }
-
-        var profileRoot = iframeDoc.getElementById('zero-inpanel-profile');
-        if (profileRoot) {
-            if (active) profileRoot.style.display = 'none';
-            else if (dialog.classList.contains('zero-profile-mode')) profileRoot.style.display = 'flex';
-        }
-        var proRootT = iframeDoc.getElementById('zero-inpanel-pro');
-        if (proRootT) proRootT.style.display = active ? 'none' : (dialog.classList.contains('zero-pro-mode') ? 'flex' : 'none');
-        var teamsHost = iframeDoc.getElementById('zero-inpanel-teams');
-        if (teamsHost) teamsHost.style.display = active ? 'flex' : 'none';
-        var friendsSyncT = iframeDoc.getElementById('zero-inpanel-friends');
-        if (friendsSyncT) {
-            friendsSyncT.style.display = active ? 'none' : (dialog.classList.contains('zero-friends-mode') ? 'flex' : 'none');
-        }
-        var jerseySyncT = iframeDoc.getElementById('zero-inpanel-jersey');
-        if (jerseySyncT) {
-            jerseySyncT.style.display = active ? 'none' : (dialog.classList.contains('zero-kit-mode') ? 'flex' : 'none');
-        }
-        if (!active) {
-            var rsT = iframeDoc.getElementById('room-search');
-            if (rsT && rsT.style) rsT.style.display = 'flex';
-        }
-    }
-
-    window.__hxdSetRoomlistDialogTeamsMode = setRoomlistDialogTeamsMode;
-
-    /**
-     * Modo amigos embebido na roomlist (igual caixa que equipos / Pro en wad).
-     */
-    function setRoomlistDialogFriendsMode(iframeDoc, dialog, active) {
-        if (!iframeDoc || !dialog) return;
-        if (active) {
-            ensureRoomlistDialogOverlayLocked(dialog);
-        } else {
-            scheduleRoomlistDialogOverlayUnlock(dialog);
-        }
-
-        var childrenF = dialog.children;
-        for (var j = 0; j < childrenF.length; j++) {
-            var ch = childrenF[j];
-            if (!ch || !ch.id) {
-                setSwapVisibility(ch, !active);
-                continue;
-            }
-            if (ch.id === 'sidebar-panel') {
-                if (ch.dataset && Object.prototype.hasOwnProperty.call(ch.dataset, 'zeroPrevDisplay')) {
-                    delete ch.dataset.zeroPrevDisplay;
-                }
-                ch.style.display = 'flex';
-                ch.style.flexDirection = 'column';
-                continue;
-            }
-            if (ch.id === 'zero-inpanel-friends') {
-                setSwapVisibility(ch, active);
-                continue;
-            }
-            if (ch.id === 'zero-inpanel-teams') {
-                setSwapVisibility(ch, !active);
-                continue;
-            }
-            if (ch.id === 'zero-inpanel-pro') {
-                setSwapVisibility(ch, !active);
-                continue;
-            }
-            if (ch.id === 'zero-inpanel-jersey') {
-                setSwapVisibility(ch, !active);
-                continue;
-            }
-            if (ch.id === 'zero-inpanel-ranked') {
-                setSwapVisibility(ch, !active);
-                continue;
-            }
-            setSwapVisibility(ch, !active);
-        }
-
-        var profileRootF = iframeDoc.getElementById('zero-inpanel-profile');
-        if (profileRootF) {
-            if (active) profileRootF.style.display = 'none';
-            else if (dialog.classList.contains('zero-profile-mode')) profileRootF.style.display = 'flex';
-        }
-        var proRootF = iframeDoc.getElementById('zero-inpanel-pro');
-        if (proRootF) proRootF.style.display = active ? 'none' : (dialog.classList.contains('zero-pro-mode') ? 'flex' : 'none');
-        var friendsHost = iframeDoc.getElementById('zero-inpanel-friends');
-        if (friendsHost) friendsHost.style.display = active ? 'flex' : 'none';
-        var teamsSyncF = iframeDoc.getElementById('zero-inpanel-teams');
-        if (teamsSyncF) {
-            teamsSyncF.style.display = active ? 'none' : (dialog.classList.contains('zero-teams-mode') ? 'flex' : 'none');
-        }
-        var jerseySyncF = iframeDoc.getElementById('zero-inpanel-jersey');
-        if (jerseySyncF) {
-            jerseySyncF.style.display = active ? 'none' : (dialog.classList.contains('zero-kit-mode') ? 'flex' : 'none');
-        }
-        if (!active) {
-            var rsF = iframeDoc.getElementById('room-search');
-            if (rsF && rsF.style) rsF.style.display = 'flex';
-        }
-    }
-
-    window.__hxdSetRoomlistDialogFriendsMode = setRoomlistDialogFriendsMode;
-
-    /**
-     * Modo Pro embebido (misma lógica de visibilidad que equipos/amigos).
+     * Modo Pro embebido (misma lógica de visibilidad que perfil / kit).
      */
     function setRoomlistDialogProMode(iframeDoc, dialog, active) {
         if (!iframeDoc || !dialog) return;
@@ -495,14 +348,6 @@
                 c.style.flexDirection = 'column';
                 continue;
             }
-            if (c.id === 'zero-inpanel-friends') {
-                setSwapVisibility(c, !active);
-                continue;
-            }
-            if (c.id === 'zero-inpanel-teams') {
-                setSwapVisibility(c, !active);
-                continue;
-            }
             if (c.id === 'zero-inpanel-pro') {
                 setSwapVisibility(c, active);
                 continue;
@@ -525,14 +370,6 @@
         }
         var proHostP = iframeDoc.getElementById('zero-inpanel-pro');
         if (proHostP) proHostP.style.display = active ? 'flex' : 'none';
-        var teamsSyncP = iframeDoc.getElementById('zero-inpanel-teams');
-        if (teamsSyncP) {
-            teamsSyncP.style.display = active ? 'none' : (dialog.classList.contains('zero-teams-mode') ? 'flex' : 'none');
-        }
-        var friendsSyncP = iframeDoc.getElementById('zero-inpanel-friends');
-        if (friendsSyncP) {
-            friendsSyncP.style.display = active ? 'none' : (dialog.classList.contains('zero-friends-mode') ? 'flex' : 'none');
-        }
         var jerseySyncP = iframeDoc.getElementById('zero-inpanel-jersey');
         if (jerseySyncP) {
             jerseySyncP.style.display = active ? 'none' : (dialog.classList.contains('zero-kit-mode') ? 'flex' : 'none');
@@ -575,14 +412,6 @@
                 setSwapVisibility(ck, active);
                 continue;
             }
-            if (ck.id === 'zero-inpanel-friends') {
-                setSwapVisibility(ck, !active);
-                continue;
-            }
-            if (ck.id === 'zero-inpanel-teams') {
-                setSwapVisibility(ck, !active);
-                continue;
-            }
             if (ck.id === 'zero-inpanel-pro') {
                 setSwapVisibility(ck, !active);
                 continue;
@@ -603,14 +432,6 @@
         if (proRootK) proRootK.style.display = active ? 'none' : (dialog.classList.contains('zero-pro-mode') ? 'flex' : 'none');
         var jerseyHostK = iframeDoc.getElementById('zero-inpanel-jersey');
         if (jerseyHostK) jerseyHostK.style.display = active ? 'flex' : 'none';
-        var teamsSyncK = iframeDoc.getElementById('zero-inpanel-teams');
-        if (teamsSyncK) {
-            teamsSyncK.style.display = active ? 'none' : (dialog.classList.contains('zero-teams-mode') ? 'flex' : 'none');
-        }
-        var friendsSyncK = iframeDoc.getElementById('zero-inpanel-friends');
-        if (friendsSyncK) {
-            friendsSyncK.style.display = active ? 'none' : (dialog.classList.contains('zero-friends-mode') ? 'flex' : 'none');
-        }
         if (!active) {
             var rsK = iframeDoc.getElementById('room-search');
             if (rsK && rsK.style) rsK.style.display = 'flex';
@@ -681,27 +502,23 @@
     }
 
     function openInpanelProFromRoomlist(iframeDoc) {
+        if (window.__hxdIsAnonymousMode && window.__hxdIsAnonymousMode()) {
+            if (typeof window.showToast === 'function') {
+                window.showToast((window.__t && window.__t('Anonymous mode block pro')) || 'Pro no disponible en modo anónimo.', 'info', 2600);
+            }
+            return;
+        }
         var dialog = iframeDoc.querySelector('.roomlist-view .dialog');
         if (!dialog) {
             showProPopupFromIframe();
             return;
-        }
-        if (window.TeamsSystem && typeof TeamsSystem.closeRoomlistTeamsIfOpen === 'function') {
-            try {
-                TeamsSystem.closeRoomlistTeamsIfOpen(iframeDoc);
-            } catch (e1) {}
-        }
-        if (window.FriendsSystem && typeof FriendsSystem.closeFriendsPanel === 'function') {
-            try {
-                FriendsSystem.closeFriendsPanel(iframeDoc);
-            } catch (e2) {}
         }
         if (window.JerseyKitSystem && typeof JerseyKitSystem.closeRoomlistJerseyIfOpen === 'function') {
             try {
                 JerseyKitSystem.closeRoomlistJerseyIfOpen(iframeDoc);
             } catch (eJk) {}
         }
-        dialog.classList.remove('zero-teams-mode', 'zero-friends-mode', 'zero-profile-mode', 'zero-kit-mode');
+        dialog.classList.remove('zero-profile-mode', 'zero-kit-mode');
         var zipRoot = iframeDoc.getElementById('zero-inpanel-profile');
         if (zipRoot) zipRoot.style.display = 'none';
 
@@ -727,22 +544,12 @@
     function openInpanelProfileFromRoomlist(iframeDoc) {
         var dialog = iframeDoc.querySelector('.roomlist-view .dialog');
         if (!dialog) return;
-        if (window.TeamsSystem && typeof TeamsSystem.closeRoomlistTeamsIfOpen === 'function') {
-            try {
-                TeamsSystem.closeRoomlistTeamsIfOpen(iframeDoc);
-            } catch (e1) {}
-        }
-        if (window.FriendsSystem && typeof FriendsSystem.closeFriendsPanel === 'function') {
-            try {
-                FriendsSystem.closeFriendsPanel(iframeDoc);
-            } catch (e2) {}
-        }
         if (window.JerseyKitSystem && typeof JerseyKitSystem.closeRoomlistJerseyIfOpen === 'function') {
             try {
                 JerseyKitSystem.closeRoomlistJerseyIfOpen(iframeDoc);
             } catch (eJk2) {}
         }
-        dialog.classList.remove('zero-teams-mode', 'zero-friends-mode', 'zero-pro-mode', 'zero-kit-mode');
+        dialog.classList.remove('zero-pro-mode', 'zero-kit-mode');
         if (window.__hxdSetRoomlistDialogProMode) {
             try {
                 window.__hxdSetRoomlistDialogProMode(iframeDoc, dialog, false);
@@ -756,12 +563,27 @@
         var proW = iframeDoc.getElementById('zero-inpanel-pro');
         if (proW) proW.style.display = 'none';
 
+        if (iframeDoc.getElementById('hxd-roomlist-preview-frame')) {
+            window.__hxdRoomlistPreviewInpanelMode = 'profile';
+            dialog.classList.remove('zero-profile-mode');
+            var zipRoot = iframeDoc.getElementById('zero-inpanel-profile');
+            if (zipRoot) zipRoot.style.display = 'none';
+            fetchProfileBundle(true).then(function(data) {
+                iframeDoc.hxdRoomlistProfileSnapshot = buildProfileSnapshotForPreview(iframeDoc, data && data.user);
+                pushRoomlistPreviewSyncNow(iframeDoc, true);
+            }).catch(function() {
+                iframeDoc.hxdRoomlistProfileSnapshot = buildProfileSnapshotForPreview(iframeDoc, profileDataCache && profileDataCache.user);
+                pushRoomlistPreviewSyncNow(iframeDoc, true);
+            });
+            return;
+        }
+
         dialog.classList.add('zero-profile-mode');
         ensureRoomlistDialogOverlayLocked(dialog);
         var root = iframeDoc.getElementById('zero-inpanel-profile');
         if (root) {
             root.style.display = 'flex';
-            fetchProfileBundle().then(function(data) {
+            fetchProfileBundle(true).then(function(data) {
                 renderZipProfile(iframeDoc, data);
             }).catch(function() {});
         }
@@ -777,8 +599,6 @@
         var wall = iframeDoc.getElementById('zip-login-wall');
         var main = iframeDoc.getElementById('zip-main-wrap');
         var user = data && data.user;
-        var friends = data && Array.isArray(data.friends) ? data.friends : [];
-        var team = data && data.team;
 
         function setText(id, text) {
             var el = iframeDoc.getElementById(id);
@@ -795,48 +615,19 @@
             loginPro.setAttribute('title', T.proTitle);
             loginPro.setAttribute('aria-label', T.proTitle);
         }
-        var proToolbar = iframeDoc.getElementById('zip-btn-pro');
-        if (proToolbar) {
-            proToolbar.innerHTML = zipVerifiedBadgeSvg(17);
-            proToolbar.setAttribute('title', T.proTitle);
-            proToolbar.setAttribute('aria-label', T.proTitle);
-        }
-        if (loginPro) loginPro.style.display = '';
-        if (proToolbar) proToolbar.style.display = '';
+        var anonZip = window.__hxdIsAnonymousMode && window.__hxdIsAnonymousMode();
+        if (loginPro) loginPro.style.display = anonZip ? 'none' : '';
         var backBtn = iframeDoc.getElementById('zip-back-salas');
         if (backBtn) {
             backBtn.title = T.backRooms;
             backBtn.setAttribute('aria-label', T.backRooms);
         }
-        setText('zip-page-title', T.pageTitle);
-        setText('zip-lbl-rend', T.rend);
-        setText('zip-lbl-elo', T.elo);
-        setText('zip-lbl-delta', T.delta);
-        setText('zip-lbl-v', T.vict);
-        setText('zip-lbl-d', T.der);
-        setText('zip-lbl-e', T.emp);
-        setText('zip-lbl-winp', T.winp);
-        setText('zip-lbl-kd', T.kd);
-        setText('zip-lbl-pj', T.pj);
-        setText('zip-lbl-global', T.global);
-        setText('zip-pill-global-on', '● ' + T.online);
-        setText('zip-lbl-online', T.online);
-        setText('zip-lbl-amigos-col', T.amigos);
-        setText('zip-chat-log', T.chatSoon);
-        var chatInp = iframeDoc.getElementById('zip-chat-inp');
-        if (chatInp) chatInp.placeholder = T.chatPh || '';
-        var bbf = iframeDoc.getElementById('zip-btn-friends');
-        var bbr = iframeDoc.getElementById('zip-btn-reports');
-        var bbus = iframeDoc.getElementById('zip-btn-buscar');
-        var bcre = iframeDoc.getElementById('zip-btn-crear');
-        if (bbf) {
-            bbf.textContent = T.amigosBtn;
-            bbf.style.display = anonZip ? 'none' : '';
-        }
-        if (bbr) bbr.textContent = T.reports;
-        if (bbus) bbus.textContent = T.buscar;
-        if (bcre) bcre.textContent = T.crear;
-        setText('zip-game-lbl', T.haxball);
+        setText('zip-profile-title', T.pageTitle);
+        setText('zip-profile-lead', T.pageLead);
+        setText('zip-lbl-stats', T.statsLbl);
+        setText('zip-lbl-playtime', T.playTimeLbl);
+        setText('zip-lbl-created', T.createdLbl);
+        setText('zip-lbl-streak', T.streakLbl);
 
         if (!user || !user.discord_id) {
             if (wall) wall.style.display = 'flex';
@@ -848,48 +639,45 @@
 
         var nick = user.nick || user.username || 'Player';
         setText('zip-display', nick);
+        var handleEl = iframeDoc.getElementById('zip-handle');
+        var handleName = user.username || user.discord_username || '';
+        if (handleEl) {
+            if (handleName) {
+                handleEl.textContent = '@' + handleName;
+                handleEl.style.display = '';
+            } else {
+                handleEl.textContent = '';
+                handleEl.style.display = 'none';
+            }
+        }
         var avEl = iframeDoc.getElementById('zip-avatar');
+        var avFb = iframeDoc.getElementById('zip-avatar-fb');
         if (avEl) {
             avEl.src = user.discord_avatar || defaultAvatarZip(user.discord_id);
             avEl.alt = nick;
+            avEl.hidden = false;
+        }
+        if (avFb) {
+            avFb.textContent = nick.slice(0, 2).toUpperCase();
+            avFb.style.display = avEl && avEl.src ? 'none' : '';
         }
         var tierEl = iframeDoc.getElementById('zip-tier');
         if (tierEl) {
-            if (user.is_pro) tierEl.textContent = 'PRO';
-            else if (user.is_vip) tierEl.textContent = 'VIP';
-            else tierEl.textContent = 'NOVATO+';
-        }
-        setText('zip-tier-sub', '0' + T.tierSub + '0' + T.wins);
-        var roomTxt = '0' + T.inRoom;
-        if (user.room_name) roomTxt = '1' + T.inRoom;
-        setText('zip-inroom', roomTxt);
-
-        var teamEl = iframeDoc.getElementById('zip-team-line');
-        if (teamEl) {
-            if (team && (team.name || team.team_name)) {
-                teamEl.style.display = 'block';
-                teamEl.textContent = String(team.name || team.team_name);
+            tierEl.className = 'zip-tier';
+            if (user.is_pro) {
+                tierEl.textContent = 'PRO';
+                tierEl.classList.add('zip-tier--pro');
+            } else if (user.is_vip) {
+                tierEl.textContent = 'VIP';
+                tierEl.classList.add('zip-tier--vip');
             } else {
-                teamEl.style.display = 'none';
-                teamEl.textContent = '';
+                tierEl.textContent = 'NOVATO+';
+                tierEl.classList.add('zip-tier--default');
             }
         }
-
-        var fl = iframeDoc.getElementById('zip-friends-list');
-        if (fl) {
-            if (!friends.length) {
-                fl.innerHTML = '<div class="zip-empty">' + escapeHtml(T.noFriends) + '</div>';
-            } else {
-                fl.innerHTML = '';
-                for (var i = 0; i < friends.length; i++) {
-                    var f = friends[i];
-                    var row = iframeDoc.createElement('div');
-                    row.className = 'zip-friend-row';
-                    row.textContent = f.username || f.nick || f.discord_id || '—';
-                    fl.appendChild(row);
-                }
-            }
-        }
+        setText('zip-playtime', formatPlayTimeMinutes(user.play_time_minutes, lang));
+        setText('zip-created', formatCreatedAt(user.created_at, lang));
+        setText('zip-streak', formatPlayStreakDays(user.play_streak_days, lang));
     }
 
     function bindZipProfilePanel(iframeDoc) {
@@ -902,23 +690,6 @@
         if (gotoBtn) gotoBtn.onclick = goHaxballPlay;
         var loginProBtn = iframeDoc.getElementById('zip-login-pro');
         if (loginProBtn) loginProBtn.onclick = function() { openProFromZipPanel(iframeDoc); };
-        var proBtn = iframeDoc.getElementById('zip-btn-pro');
-        if (proBtn) proBtn.onclick = function() { openProFromZipPanel(iframeDoc); };
-        var bb = iframeDoc.getElementById('zip-btn-buscar');
-        var bc = iframeDoc.getElementById('zip-btn-crear');
-        var bf = iframeDoc.getElementById('zip-btn-friends');
-        var br = iframeDoc.getElementById('zip-btn-reports');
-        if (bb) bb.onclick = goHaxballPlay;
-        if (bc) bc.onclick = goHaxballPlay;
-        if (bf) bf.onclick = goHaxballPlay;
-        if (br) br.onclick = goHaxballPlay;
-        var inp = iframeDoc.getElementById('zip-chat-inp');
-        if (inp) {
-            inp.addEventListener('input', function() {
-                var cc = iframeDoc.getElementById('zip-cc-n');
-                if (cc) cc.textContent = String(inp.value.length);
-            });
-        }
     }
 
     function buildZeroInpanelProfileHtml() {
@@ -934,73 +705,42 @@
             '<div class="zip-toolbar">' +
             '<button type="button" id="zip-back-salas" class="zip-back-btn" title="">←</button>' +
             '<div class="zip-toolbar-mid"></div>' +
-            '<button type="button" id="zip-btn-pro" class="zip-pro-btn zip-pro-btn-icon" aria-label=""></button>' +
             '<span class="zip-toolbar-spacer"></span></div>' +
-            '<div class="zip-card">' +
-            '<h1 class="zip-card-title" id="zip-page-title"></h1>' +
-            '<div class="zip-columns">' +
-            '<div class="zip-col zip-col-main">' +
-            '<div class="zip-rank">' +
-            '<div class="zip-ring"><span class="zip-lvl" id="zip-lvl">3</span><span class="zip-xp" id="zip-xp">1000</span></div>' +
-            '<div class="zip-rank-meta">' +
-            '<div class="zip-tier" id="zip-tier">NOVATO+</div>' +
-            '<div class="zip-tier-sub" id="zip-tier-sub"></div></div></div>' +
-            '<div class="zip-id">' +
-            '<img id="zip-avatar" src="" alt="" width="48" height="48" />' +
-            '<div><div class="zip-name" id="zip-display">—</div>' +
-            '<div class="zip-tag" id="zip-game-lbl"></div>' +
-            '<div class="zip-team-line" id="zip-team-line" style="display:none"></div></div></div>' +
-            '<div class="zip-block">' +
-            '<div class="zip-row-label"><span id="zip-lbl-rend"></span>' +
-            '<div class="zip-pills"><div class="zip-pill zip-pill-g" id="zip-wcell">0</div><div class="zip-pill zip-pill-r" id="zip-lcell">0</div></div></div>' +
-            '<div class="zip-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>' +
-            '<div class="zip-kv"><span id="zip-lbl-elo"></span><strong id="zip-elo">951 / 1100</strong></div>' +
-            '<div class="zip-kv"><span id="zip-lbl-delta"></span><strong class="zip-delta" id="zip-elo-delta">0</strong></div></div>' +
-            '<div class="zip-block">' +
-            '<div class="zip-stat-grid">' +
-            '<div class="zip-stat"><span class="zip-n" id="zip-st-v">0</span><span class="zip-lbl" id="zip-lbl-v"></span></div>' +
-            '<div class="zip-stat"><span class="zip-n" id="zip-st-d">0</span><span class="zip-lbl" id="zip-lbl-d"></span></div>' +
-            '<div class="zip-stat"><span class="zip-n" id="zip-st-e">0</span><span class="zip-lbl" id="zip-lbl-e"></span></div></div>' +
-            '<div class="zip-stat-grid zip-stat-grid-sub">' +
-            '<div class="zip-stat zip-st-sm"><span class="zip-n" id="zip-st-winp">0%</span><span class="zip-lbl" id="zip-lbl-winp"></span></div>' +
-            '<div class="zip-stat zip-st-sm"><span class="zip-n" id="zip-st-kd">—</span><span class="zip-lbl" id="zip-lbl-kd"></span></div>' +
-            '<div class="zip-stat zip-st-sm"><span class="zip-n" id="zip-st-pj">0</span><span class="zip-lbl" id="zip-lbl-pj"></span></div></div>' +
-            '<div class="zip-btn-row">' +
-            '<button type="button" class="zip-btn-flat" id="zip-btn-friends"></button>' +
-            '<button type="button" class="zip-btn-flat" id="zip-btn-reports"></button></div></div>' +
-            '<div class="zip-footer">' +
-            '<div class="zip-footer-left">' +
-            '<span class="zip-dot"></span>' +
-            '<span class="zip-online-txt" id="zip-lbl-online"></span>' +
-            '<span class="zip-room-txt" id="zip-inroom"></span></div>' +
-            '<div class="zip-footer-cta">' +
-            '<button type="button" class="zip-btn-primary" id="zip-btn-buscar"></button>' +
-            '<button type="button" class="zip-btn-secondary" id="zip-btn-crear"></button></div></div></div>' +
-            '<div class="zip-col">' +
-            '<div class="zip-col-head"><strong id="zip-lbl-global"></strong><span class="zip-badge-live" id="zip-pill-global-on"></span></div>' +
-            '<div class="zip-chat-body" id="zip-chat-log"></div>' +
-            '<div class="zip-chat-foot">' +
-            '<div class="zip-chat-row">' +
-            '<input type="text" id="zip-chat-inp" maxlength="120" placeholder="" readonly />' +
-            '<button type="button" class="zip-send" title="">➤</button></div>' +
-            '<div class="zip-char"><span id="zip-cc-n">0</span> / 120</div></div></div>' +
-            '<div class="zip-col">' +
-            '<div class="zip-col-head" id="zip-lbl-amigos-col"></div>' +
-            '<div class="zip-friends" id="zip-friends-list"></div></div></div></div></div>'
+            '<div class="zip-profile-zero">' +
+            '<h2 id="zip-profile-title" class="zip-profile-h2"></h2>' +
+            '<p id="zip-profile-lead" class="zip-profile-lead"></p>' +
+            '<div class="zip-list-block">' +
+            '<div class="zip-zero-list">' +
+            '<div class="zip-zero-row zip-profile-identity-row">' +
+            '<div class="zip-profile-avatar-wrap">' +
+            '<img id="zip-avatar" src="" alt="" hidden />' +
+            '<div class="zip-avatar-fb" id="zip-avatar-fb">GZ</div>' +
+            '<span class="zip-dot"></span></div>' +
+            '<div class="zip-profile-meta">' +
+            '<div class="zip-profile-name-row">' +
+            '<span class="zip-name" id="zip-display">—</span>' +
+            '<span class="zip-tier zip-tier--default" id="zip-tier">NOVATO+</span></div>' +
+            '<p class="zip-pp-handle" id="zip-handle" style="display:none"></p>' +
+            '</div></div></div></div>' +
+            '<div class="zip-list-block">' +
+            '<div class="zip-section-title" id="zip-lbl-stats"></div>' +
+            '<div class="zip-zero-list">' +
+            '<div class="zip-zero-row"><span class="zip-row-label" id="zip-lbl-playtime"></span><span class="zip-row-hint" id="zip-playtime"></span></div>' +
+            '<div class="zip-zero-row"><span class="zip-row-label" id="zip-lbl-created"></span><span class="zip-row-hint" id="zip-created"></span></div>' +
+            '<div class="zip-zero-row"><span class="zip-row-label" id="zip-lbl-streak"></span><span class="zip-row-hint" id="zip-streak"></span></div>' +
+            '</div></div></div></div>'
         );
     }
 
-    function fetchProfileBundle() {
+    function fetchProfileBundle(forceRefresh) {
+        if (forceRefresh) {
+            profileDataPromise = null;
+            profileDataCache = null;
+        }
         if (profileDataPromise) return profileDataPromise;
-        profileDataPromise = Promise.all([
-            fetchJson('/user').catch(function() { return null; }),
-            fetchJson('/friends').catch(function() { return []; }),
-            fetchJson('/teams/my').catch(function() { return null; })
-        ]).then(function(results) {
-            var user = results[0] && results[0].logged_in ? results[0] : null;
-            var friends = Array.isArray(results[1]) ? results[1] : [];
-            var team = results[2] && typeof results[2] === 'object' ? results[2] : null;
-            profileDataCache = { user: user, friends: friends, team: team };
+        profileDataPromise = fetchJson('/user').then(function(user) {
+            var loggedIn = user && user.logged_in ? user : null;
+            profileDataCache = { user: loggedIn };
             profileDataPromise = null;
             return profileDataCache;
         }).catch(function(error) {
@@ -1207,6 +947,1267 @@
         }
     }
 
+    // === ROOMLIST PREVIEW (iframe UI) ===
+    var roomlistPreviewHtmlCache = null;
+    var roomlistPreviewFetchPending = null;
+
+    function injectRoomlistPreviewBootStyles(doc) {
+        var css =
+            '.roomlist-view .dialog:not(:has(#hxd-roomlist-preview-frame)) > h1,' +
+            '.roomlist-view .dialog:not(:has(#hxd-roomlist-preview-frame)) > p,' +
+            '.roomlist-view .dialog:not(:has(#hxd-roomlist-preview-frame)) > .content,' +
+            '.roomlist-view .dialog:not(:has(#hxd-roomlist-preview-frame)) table.header,' +
+            '.roomlist-view .dialog:not(:has(#hxd-roomlist-preview-frame)) .buttons,' +
+            '.roomlist-view .dialog:not(:has(#hxd-roomlist-preview-frame)) #room-search,' +
+            '.roomlist-view .dialog:not(:has(#hxd-roomlist-preview-frame)) #sidebar-panel,' +
+            'html.hxd-roomlist-preview-pending .roomlist-view .dialog > h1,' +
+            'html.hxd-roomlist-preview-pending .roomlist-view .dialog > p,' +
+            'html.hxd-roomlist-preview-pending .roomlist-view .dialog > .content,' +
+            'html.hxd-roomlist-preview-pending .roomlist-view .dialog table.header,' +
+            'html.hxd-roomlist-preview-pending .roomlist-view .dialog .buttons,' +
+            'html.hxd-roomlist-preview-pending .roomlist-view #room-search,' +
+            'html.hxd-roomlist-preview-pending .roomlist-view #sidebar-panel{' +
+                'display:none!important;' +
+            '}' +
+            '.roomlist-view .dialog:not(:has(#hxd-roomlist-preview-frame)) > .splitter,' +
+            'html.hxd-roomlist-preview-pending .roomlist-view .dialog > .splitter{' +
+                'position:absolute!important;left:0!important;top:0!important;width:100%!important;height:100%!important;' +
+                'overflow:hidden!important;opacity:0!important;visibility:hidden!important;' +
+                'pointer-events:none!important;z-index:-1!important;' +
+            '}' +
+            '.roomlist-view .dialog:not(:has(#hxd-roomlist-preview-frame)),' +
+            'html.hxd-roomlist-preview-pending .roomlist-view .dialog{' +
+                'background:var(--theme-bg-secondary,#1a1a1a)!important;' +
+                'border:none!important;box-shadow:none!important;padding:0!important;overflow:hidden!important;' +
+            '}' +
+            '#hxd-roomlist-preview-root:not(:has(#hxd-roomlist-preview-frame)){' +
+                'position:relative;width:100%;height:100%;' +
+                'background:var(--theme-bg-secondary,#1a1a1a);' +
+            '}';
+        var style = doc.getElementById('hxd-roomlist-preview-boot-styles');
+        if (style) {
+            style.textContent = css;
+            return;
+        }
+        style = doc.createElement('style');
+        style.id = 'hxd-roomlist-preview-boot-styles';
+        style.textContent = css;
+        var head = doc.head || doc.getElementsByTagName('head')[0];
+        if (head) head.appendChild(style);
+        else doc.documentElement.appendChild(style);
+    }
+
+    function markRoomlistPreviewPending(doc) {
+        try { doc.documentElement.classList.add('hxd-roomlist-preview-pending'); } catch (eP) {}
+    }
+
+    function clearRoomlistPreviewPending(doc) {
+        try { doc.documentElement.classList.remove('hxd-roomlist-preview-pending'); } catch (eC) {}
+    }
+
+    function prepareRoomlistPreviewDialog(doc, dialog, options) {
+        if (!dialog) return;
+        options = options || {};
+        injectRoomlistPreviewBootStyles(doc);
+        if (options.markPending && !doc.getElementById('hxd-roomlist-preview-frame')) {
+            markRoomlistPreviewPending(doc);
+        }
+        ensureRoomlistPreviewStyles(doc);
+        applyRoomlistPreviewDialogSize(dialog);
+        removeLegacyRoomlistChrome(doc);
+        try { doc.documentElement.classList.add('hxd-roomlist-preview-active'); } catch (eA) {}
+    }
+
+    function ensureRoomlistPreviewShell(doc, dialog) {
+        if (!dialog) return null;
+        var root = doc.getElementById('hxd-roomlist-preview-root');
+        if (root) return root;
+        root = doc.createElement('div');
+        root.id = 'hxd-roomlist-preview-root';
+        root.style.cssText = 'position:relative;width:100%;height:100%;overflow:hidden;background:transparent;';
+        dialog.appendChild(root);
+        return root;
+    }
+
+    function bootRoomlistPreviewPipeline(doc) {
+        if (!Injector.isGameFrame()) return;
+        injectRoomlistPreviewBootStyles(doc);
+        fetchRoomlistPreviewHtml(function () {});
+
+        var tick = function () {
+            var view = doc.querySelector('.roomlist-view');
+            if (!view) return;
+            var dialog = view.querySelector('.dialog');
+            if (!dialog) return;
+            prepareRoomlistPreviewDialog(doc, dialog);
+            ensureRoomlistPreviewShell(doc, dialog);
+            if (!doc.getElementById('hxd-roomlist-preview-frame') && dialog.dataset.hxdPreviewMounting !== '1') {
+                ensureRoomlistPreview(doc);
+            }
+        };
+
+        if (!doc.hxdRoomlistPreviewBootMo) {
+            doc.hxdRoomlistPreviewBootMo = new MutationObserver(tick);
+            doc.hxdRoomlistPreviewBootMo.observe(doc.documentElement, { childList: true, subtree: true });
+        }
+        tick();
+    }
+
+    function getRoomlistPreviewUrl() {
+        try {
+            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
+                return chrome.runtime.getURL('roomlist-preview.html');
+            }
+        } catch (eUrl) {}
+        return null;
+    }
+
+    function fetchRoomlistPreviewHtml(done) {
+        if (roomlistPreviewHtmlCache) {
+            done(null, roomlistPreviewHtmlCache);
+            return;
+        }
+        if (roomlistPreviewFetchPending) {
+            roomlistPreviewFetchPending.push(done);
+            return;
+        }
+        roomlistPreviewFetchPending = [done];
+        var url = getRoomlistPreviewUrl();
+        if (!url) {
+            roomlistPreviewFetchPending.forEach(function (cb) { cb(new Error('no preview url')); });
+            roomlistPreviewFetchPending = null;
+            return;
+        }
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.onload = function () {
+            var pending = roomlistPreviewFetchPending || [];
+            roomlistPreviewFetchPending = null;
+            if (xhr.status === 200 && xhr.responseText) {
+                roomlistPreviewHtmlCache = xhr.responseText;
+                pending.forEach(function (cb) { cb(null, roomlistPreviewHtmlCache); });
+            } else {
+                pending.forEach(function (cb) { cb(new Error('preview fetch failed')); });
+            }
+        };
+        xhr.onerror = function () {
+            var pending = roomlistPreviewFetchPending || [];
+            roomlistPreviewFetchPending = null;
+            pending.forEach(function (cb) { cb(new Error('preview xhr error')); });
+        };
+        xhr.send();
+    }
+
+    function getRoomlistPreviewStylesCss() {
+        return '.roomlist-view .dialog.hxd-roomlist-preview-dialog{' +
+            'background:transparent!important;border:none!important;box-shadow:none!important;padding:0!important;overflow:hidden!important;' +
+            'max-width:none!important;' +
+        '}' +
+        '.roomlist-view .dialog.hxd-roomlist-preview-dialog > h1,' +
+        '.roomlist-view .dialog.hxd-roomlist-preview-dialog > p{display:none!important;}' +
+        '.roomlist-view .dialog.hxd-roomlist-preview-dialog > .splitter{' +
+            'position:absolute!important;left:0!important;top:0!important;width:100%!important;height:100%!important;' +
+            'overflow:hidden!important;opacity:0!important;pointer-events:none!important;z-index:0!important;' +
+        '}' +
+        '.roomlist-view .dialog.hxd-roomlist-preview-dialog #hxd-roomlist-preview-root{display:block!important;position:relative;z-index:2!important;}' +
+        '.roomlist-view .dialog.hxd-roomlist-preview-dialog #sidebar-panel{display:none!important;}' +
+        '.roomlist-view .dialog.hxd-roomlist-preview-dialog.zero-kit-mode #hxd-roomlist-preview-root{display:none!important;}' +
+        '.roomlist-view .dialog.hxd-roomlist-preview-dialog.zero-profile-mode #zero-inpanel-profile{' +
+            'position:absolute!important;inset:0!important;z-index:4!important;display:flex!important;' +
+        '}' +
+        '#hxd-roomlist-preview-root{display:block!important;position:relative;z-index:2;width:100%;height:100%;background:transparent!important;}' +
+        '#hxd-roomlist-preview-frame{width:100%;height:100%;border:none;display:block;background:transparent;}' +
+        'html.hxd-roomlist-preview-active .create-room-view{' +
+            'position:fixed!important;left:-10000px!important;top:0!important;' +
+            'opacity:0!important;visibility:hidden!important;pointer-events:none!important;' +
+        '}';
+    }
+
+    function ensureRoomlistPreviewStyles(doc) {
+        var style = doc.getElementById('hxd-roomlist-preview-styles');
+        var css = getRoomlistPreviewStylesCss();
+        if (style) {
+            style.textContent = css;
+            return;
+        }
+        style = doc.createElement('style');
+        style.id = 'hxd-roomlist-preview-styles';
+        style.textContent = css;
+        doc.head.appendChild(style);
+    }
+
+    function applyRoomlistPreviewDialogSize(dialog) {
+        Injector.applyPreviewShellSize(dialog, 'hxd-roomlist-preview-dialog');
+    }
+
+    function bindRoomlistPreviewResize(doc) {
+        if (doc.hxdRoomlistPreviewResizeBound) return;
+        doc.hxdRoomlistPreviewResizeBound = true;
+        var resizeTick = null;
+        var onResize = function () {
+            if (resizeTick) clearTimeout(resizeTick);
+            resizeTick = setTimeout(function () {
+                var dialog = doc.querySelector('.roomlist-view .dialog.hxd-roomlist-preview-dialog');
+                if (dialog) applyRoomlistPreviewDialogSize(dialog);
+            }, 60);
+        };
+        doc.defaultView.addEventListener('resize', onResize);
+        if (doc.defaultView.parent && doc.defaultView.parent !== doc.defaultView) {
+            try { doc.defaultView.parent.addEventListener('resize', onResize); } catch (eParent) {}
+        }
+    }
+
+    function getRoomListRoot(iframeDoc) {
+        var view = iframeDoc.querySelector('.roomlist-view');
+        if (!view) return null;
+        return view.querySelector('[data-hook="list"]') ||
+            view.querySelector('.content [data-hook="list"]') ||
+            iframeDoc.querySelector("[data-hook='list']");
+    }
+
+    function getRoomListRows(iframeDoc) {
+        var root = getRoomListRoot(iframeDoc);
+        if (!root) return [];
+        return root.querySelectorAll('tr');
+    }
+
+    function isRoomLocked(passEl) {
+        if (!passEl) return false;
+        var txt = (passEl.textContent || '').trim();
+        if (/yes|si|sí|sim|locked|password|senha|contraseña/i.test(txt)) return true;
+        if (passEl.querySelector('.icon-lock, [class*="lock"]')) return true;
+        var html = passEl.innerHTML || '';
+        return html.indexOf('icon-lock') !== -1;
+    }
+
+    var hxdRoomRowStatic = new WeakMap();
+    var hxdPreviewScanCache = null;
+
+    function invalidatePreviewScanCache() {
+        hxdPreviewScanCache = null;
+    }
+
+    function readRowMetrics(row, room) {
+        if (!row || !room) return false;
+        var changed = false;
+
+        var playersEl = row.querySelector('[data-hook="players"]');
+        var playersText = playersEl ? (playersEl.textContent || '').trim() : '';
+        var players = 0;
+        var max = 0;
+        var pm = playersText.match(/(\d+)\s*\/\s*(\d+)/);
+        if (pm) {
+            players = parseInt(pm[1], 10) || 0;
+            max = parseInt(pm[2], 10) || 0;
+        } else {
+            var single = playersText.match(/(\d+)/);
+            if (single) players = parseInt(single[1], 10) || 0;
+            max = players;
+        }
+        if (room.players !== players) { room.players = players; changed = true; }
+        if (room.max !== (max || Math.max(players, 1))) { room.max = max || Math.max(players, 1); changed = true; }
+
+        var distEl = row.querySelector('[data-hook="distance"]');
+        var distance = 0;
+        if (distEl) {
+            var distText = String(distEl.textContent || distEl.innerText || '').trim();
+            var dm = distText.match(/(\d+)/);
+            if (dm) distance = parseInt(dm[1], 10) || 0;
+        }
+        if (room.distance !== distance) { room.distance = distance; changed = true; }
+
+        var sel = row.classList.contains('selected');
+        if (room.selected !== sel) { room.selected = sel; changed = true; }
+
+        return changed;
+    }
+
+    function parseRoomRow(row, index) {
+        var staticPart = hxdRoomRowStatic.get(row);
+        var name;
+        var country;
+
+        if (staticPart) {
+            name = staticPart.name;
+            country = staticPart.country;
+        } else {
+            var nameEl = row.querySelector('[data-hook="name"]');
+            name = nameEl ? (nameEl.textContent || nameEl.innerText || '').replace(/\s+/g, ' ').trim() : '';
+            if (!name) {
+                var firstTd = row.querySelector('td');
+                if (firstTd) name = (firstTd.textContent || '').replace(/\s+/g, ' ').trim();
+            }
+            if (!name) return null;
+
+            var flagEl = row.querySelector('[data-hook="flag"]');
+            country = '';
+            if (flagEl) {
+                var cls = String(flagEl.className || '');
+                var m = cls.match(/\bf-([a-z]{2})\b/i);
+                if (m) country = m[1].toLowerCase();
+                else {
+                    country = cls.replace(/.*\bf-/, '').replace(/\s+.*/, '').trim().toLowerCase();
+                    if (country.length !== 2) country = '';
+                }
+            }
+            hxdRoomRowStatic.set(row, { name: name, country: country });
+        }
+
+        var passEl = row.querySelector('[data-hook="pass"]');
+        var locked = isRoomLocked(passEl);
+
+        var distEl = row.querySelector('[data-hook="distance"]');
+        var distance = 0;
+        if (distEl) {
+            var distText = String(distEl.textContent || distEl.innerText || '').trim();
+            var dm = distText.match(/(\d+)/);
+            if (dm) distance = parseInt(dm[1], 10) || 0;
+        }
+
+        var playersEl = row.querySelector('[data-hook="players"]');
+        var playersText = playersEl ? (playersEl.textContent || '').trim() : '';
+        var players = 0;
+        var max = 0;
+        var pm = playersText.match(/(\d+)\s*\/\s*(\d+)/);
+        if (pm) {
+            players = parseInt(pm[1], 10) || 0;
+            max = parseInt(pm[2], 10) || 0;
+        } else {
+            var single = playersText.match(/(\d+)/);
+            if (single) players = parseInt(single[1], 10) || 0;
+            max = players;
+        }
+
+        return {
+            id: 'row-' + index,
+            name: name,
+            country: country,
+            players: players,
+            max: max || Math.max(players, 1),
+            distance: distance,
+            domIndex: index,
+            locked: locked,
+            fav: isFavRoom(name),
+            pinned: isPinnedRoom(name),
+            selected: row.classList.contains('selected')
+        };
+    }
+
+    function scanRoomsForPreview(iframeDoc) {
+        var rows = getRoomListRows(iframeDoc);
+        var n = rows.length;
+
+        if (hxdPreviewScanCache && hxdPreviewScanCache.count === n) {
+            var data = hxdPreviewScanCache.data;
+            var any = false;
+            for (var i = 0; i < n; i++) {
+                if (readRowMetrics(rows[i], data[i])) any = true;
+                var fav = isFavRoom(data[i].name);
+                var pin = isPinnedRoom(data[i].name);
+                if (data[i].fav !== fav) { data[i].fav = fav; any = true; }
+                if (data[i].pinned !== pin) { data[i].pinned = pin; any = true; }
+            }
+            hxdPreviewScanCache.dirty = hxdPreviewScanCache.dirty || any;
+            return data;
+        }
+
+        var out = [];
+        for (var j = 0; j < n; j++) {
+            var parsed = parseRoomRow(rows[j], j);
+            if (parsed) out.push(parsed);
+        }
+        hxdPreviewScanCache = { count: n, data: out, dirty: true };
+        return out;
+    }
+
+    function selectRoomByName(iframeDoc, roomName) {
+        var rows = getRoomListRows(iframeDoc);
+        for (var i = 0; i < rows.length; i++) {
+            var nameEl = rows[i].querySelector('[data-hook="name"]');
+            if (nameEl && (nameEl.textContent || '').trim() === roomName) {
+                rows[i].click();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    var THEME_VAR_KEYS = [
+        '--theme-bg-primary', '--theme-bg-secondary', '--theme-bg-tertiary',
+        '--theme-bg-primary-rgb', '--theme-bg-hover', '--theme-bg-selected',
+        '--theme-border', '--theme-border-light',
+        '--theme-text-primary', '--theme-text-secondary', '--theme-text-muted',
+        '--theme-scrollbar-track', '--theme-scrollbar-thumb', '--theme-scrollbar-thumb-hover',
+        '--theme-tooltip-bg', '--theme-tooltip-border', '--theme-app-background-image'
+    ];
+
+    function getThemeColorsForPreview(iframeDoc) {
+        var win = iframeDoc.defaultView || window;
+        if (win.HaxThemes && typeof win.HaxThemes.getCurrent === 'function' && typeof win.HaxThemes.getThemeColors === 'function') {
+            try {
+                return win.HaxThemes.getThemeColors(win.HaxThemes.getCurrent()) || {};
+            } catch (eTheme) {}
+        }
+        var root = iframeDoc.documentElement;
+        var out = {};
+        for (var i = 0; i < THEME_VAR_KEYS.length; i++) {
+            var key = THEME_VAR_KEYS[i];
+            var val = root.style.getPropertyValue(key);
+            if (!val) {
+                try {
+                    val = win.getComputedStyle(root).getPropertyValue(key);
+                } catch (eCs) {}
+            }
+            val = String(val || '').trim();
+            if (val) out[key] = val;
+        }
+        return out;
+    }
+
+    function getInpanelModeForPreview(iframeDoc) {
+        if (window.__hxdRoomlistPreviewInpanelMode) return window.__hxdRoomlistPreviewInpanelMode;
+        var dialog = iframeDoc.querySelector('.roomlist-view .dialog');
+        if (!dialog) return null;
+        if (dialog.classList.contains('zero-profile-mode')) return 'profile';
+        if (dialog.classList.contains('zero-kit-mode')) return 'kit';
+        return null;
+    }
+
+    function getThemeIdForPreview(iframeDoc) {
+        var win = iframeDoc.defaultView || window;
+        if (win.HaxThemes && typeof win.HaxThemes.getCurrent === 'function') {
+            try { return win.HaxThemes.getCurrent() || 'dark'; } catch (eId) {}
+        }
+        try {
+            return iframeDoc.documentElement.getAttribute('data-theme') || 'dark';
+        } catch (eAttr) {
+            return 'dark';
+        }
+    }
+
+    function getThemeSignatureForPreview(iframeDoc) {
+        var colors = getThemeColorsForPreview(iframeDoc);
+        var parts = [];
+        for (var i = 0; i < THEME_VAR_KEYS.length; i++) {
+            var key = THEME_VAR_KEYS[i];
+            if (colors[key]) parts.push(key + ':' + colors[key]);
+        }
+        return parts.join('|');
+    }
+
+    function buildPreviewBootThemeCss(iframeDoc) {
+        var colors = getThemeColorsForPreview(iframeDoc);
+        var parts = [];
+        for (var i = 0; i < THEME_VAR_KEYS.length; i++) {
+            var key = THEME_VAR_KEYS[i];
+            if (colors[key]) parts.push(key + ':' + colors[key]);
+        }
+        return ':root{' + parts.join(';') + (parts.length ? ';' : '') + '}';
+    }
+
+    function injectThemeIntoPreviewHtml(html, iframeDoc) {
+        if (!html) return html;
+        var themeId = getThemeIdForPreview(iframeDoc);
+        var colors = getThemeColorsForPreview(iframeDoc);
+        var inject = '<style id="hxd-boot-theme">' + buildPreviewBootThemeCss(iframeDoc) + '</style>';
+        var htmlTag = '<html';
+        var idx = html.indexOf(htmlTag);
+        if (idx !== -1) {
+            var tagEnd = html.indexOf('>', idx);
+            if (tagEnd !== -1) html = html.slice(0, tagEnd + 1) + inject + html.slice(tagEnd + 1);
+        } else if (html.indexOf('<head>') !== -1) {
+            html = html.replace('<head>', '<head>' + inject);
+        }
+        if (themeId && html.indexOf('data-theme=') === -1) {
+            html = html.replace('<html', '<html data-theme="' + themeId + '"');
+        }
+        if (colors['--theme-app-background-image'] && String(colors['--theme-app-background-image']).trim() &&
+            html.indexOf('data-app-bg-image=') === -1) {
+            html = html.replace('<html', '<html data-app-bg-image="1"');
+        }
+        return html;
+    }
+
+    function applyThemeToPreviewFrameDirect(frame, iframeDoc) {
+        if (!frame || !frame.contentDocument) return false;
+        var previewRoot = frame.contentDocument.documentElement;
+        if (!previewRoot) return false;
+        var colors = getThemeColorsForPreview(iframeDoc);
+        var themeId = getThemeIdForPreview(iframeDoc);
+        for (var i = 0; i < THEME_VAR_KEYS.length; i++) {
+            var key = THEME_VAR_KEYS[i];
+            if (colors[key]) previewRoot.style.setProperty(key, colors[key]);
+        }
+        if (themeId) previewRoot.setAttribute('data-theme', themeId);
+        var bgImg = colors['--theme-app-background-image'];
+        if (bgImg && String(bgImg).trim()) previewRoot.setAttribute('data-app-bg-image', '1');
+        else previewRoot.removeAttribute('data-app-bg-image');
+        return true;
+    }
+
+    function revealRoomlistPreviewAfterTheme(doc) {
+        applyThemeToPreviewFrameDirect(doc.getElementById('hxd-roomlist-preview-frame'), doc);
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+                clearRoomlistPreviewPending(doc);
+            });
+        });
+    }
+
+    function getRoomlistTransitionBg(doc) {
+        try {
+            var value = doc.defaultView.getComputedStyle(doc.documentElement).getPropertyValue('--theme-bg-primary');
+            if (value && value.trim()) return value.trim();
+        } catch (eBg) {}
+        return '#141414';
+    }
+
+    function createRoomlistTransitionCover(doc) {
+        var old = doc.getElementById('hxd-roomlist-return-cover');
+        if (old) old.remove();
+        var cover = doc.createElement('div');
+        cover.id = 'hxd-roomlist-return-cover';
+        cover.style.cssText =
+            'position:fixed;inset:0;z-index:2147483000;pointer-events:none;' +
+            'background:' + getRoomlistTransitionBg(doc) + ';opacity:0;' +
+            'transition:opacity 0.14s ease-out;';
+        doc.body.appendChild(cover);
+        requestAnimationFrame(function () {
+            cover.style.opacity = '1';
+        });
+        return cover;
+    }
+
+    function fadeOutRoomlistTransitionCover(doc, cover) {
+        if (!cover || !cover.isConnected) return;
+        var attempts = 0;
+        var finish = function () {
+            var frame = doc.getElementById('hxd-roomlist-preview-frame');
+            if (frame) {
+                applyThemeToPreviewFrameDirect(frame, doc);
+                pushRoomlistPreviewSyncNow(doc, true);
+            }
+            clearRoomlistPreviewPending(doc);
+            cover.style.transition = 'opacity 0.18s ease-out';
+            cover.style.opacity = '0';
+            setTimeout(function () {
+                if (cover && cover.isConnected) cover.remove();
+            }, 200);
+        };
+        var waitForRoomlist = function () {
+            attempts++;
+            if (doc.getElementById('hxd-roomlist-preview-frame') || attempts > 24) {
+                finish();
+                return;
+            }
+            setTimeout(waitForRoomlist, 25);
+        };
+        waitForRoomlist();
+    }
+
+    function getGameAvatarForPreview() {
+        try {
+            var fromStorage = localStorage.getItem('hxd_settings_preview_avatar');
+            if (fromStorage) return fromStorage;
+        } catch (eAv) {}
+        if (window.__hxdMyAvatarUrl) return window.__hxdMyAvatarUrl;
+        return '';
+    }
+
+    function getPlayerNickForPreview() {
+        try {
+            return String(
+                localStorage.getItem('haxball_nick') ||
+                localStorage.getItem('haxclient_my_nick') ||
+                window.__haxLocalGameNick ||
+                window.__myNick ||
+                ''
+            ).replace(/\u200B/g, '').trim();
+        } catch (eNick) {
+            return '';
+        }
+    }
+
+    function buildProfileSnapshotForPreview(iframeDoc, user) {
+        var nick = getPlayerNickForPreview();
+        var avatarUrl = getGameAvatarForPreview();
+        if (user && user.discord_id) {
+            nick = user.nick || user.username || nick || 'Player';
+            if (user.discord_avatar) avatarUrl = user.discord_avatar;
+        }
+        var tier = 'NOVATO+';
+        if (user) {
+            if (user.is_pro) tier = 'PRO';
+            else if (user.is_vip) tier = 'VIP';
+        }
+        return {
+            loggedIn: !!(user && user.discord_id),
+            nick: nick || 'Player',
+            handle: user && (user.username || user.discord_username) ? String(user.username || user.discord_username) : '',
+            avatarUrl: avatarUrl || '',
+            tier: tier,
+            online: true,
+            roomName: user && user.room_name ? String(user.room_name) : null,
+            playTimeMinutes: user ? Number(user.play_time_minutes) || 0 : 0,
+            createdAt: user && user.created_at ? user.created_at : null,
+            playStreakDays: user ? Number(user.play_streak_days) || 0 : 0
+        };
+    }
+
+    function roomsStructureCrc(rooms) {
+        var len = rooms.length;
+        if (!len) return '0';
+        var h = len;
+        var step = Math.max(1, Math.floor(len / 24));
+        for (var i = 0; i < len; i += step) {
+            var r = rooms[i];
+            h = ((h * 33) + r.name.length + r.name.charCodeAt(0)) | 0;
+        }
+        return String(h) + ':' + len;
+    }
+
+    function roomsChecksum(rooms) {
+        var len = rooms.length;
+        if (!len) return '0';
+        var h = len;
+        var step = Math.max(1, Math.floor(len / 32));
+        for (var i = 0; i < len; i += step) {
+            var r = rooms[i];
+            h = ((h * 31) + r.players + ((r.distance || 0) << 4) + (r.selected ? 256 : 0) + (r.fav ? 512 : 0) + (r.pinned ? 1024 : 0)) | 0;
+        }
+        var a = rooms[0];
+        var b = rooms[len - 1];
+        return h + ':' + len + ':' + a.players + '/' + a.distance + ':' + b.players + '/' + b.distance;
+    }
+
+    function compactRoomsForPreview(rooms) {
+        var out = new Array(rooms.length);
+        for (var i = 0; i < rooms.length; i++) {
+            var r = rooms[i];
+            out[i] = [
+                r.name, r.players, r.max, r.distance || 0, r.country || '',
+                r.locked ? 1 : 0, r.fav ? 1 : 0, r.pinned ? 1 : 0, r.selected ? 1 : 0, r.domIndex || i
+            ];
+        }
+        return out;
+    }
+
+    function roomsSignature(rooms) {
+        return roomsChecksum(rooms);
+    }
+
+    function invalidateRoomlistPreviewSync(iframeDoc) {
+        if (!iframeDoc) return;
+        delete iframeDoc.hxdRoomlistLastPushSig;
+    }
+
+    function isRoomlistLoading(iframeDoc) {
+        var refreshBtn = iframeDoc.querySelector('.roomlist-view [data-hook="refresh"]');
+        return !!(refreshBtn && refreshBtn.disabled);
+    }
+
+    function pushRoomlistPreviewSyncNow(iframeDoc, force) {
+        var frame = iframeDoc.getElementById('hxd-roomlist-preview-frame');
+        if (!frame || !frame.contentWindow) {
+            if (force) iframeDoc.hxdRoomlistThemePending = true;
+            return;
+        }
+        if (force) delete iframeDoc.hxdRoomlistLastPushSig;
+
+        var rooms = scanRoomsForPreview(iframeDoc);
+        var roomsLoading = isRoomlistLoading(iframeDoc);
+        var inpanelMode = getInpanelModeForPreview(iframeDoc) || '';
+        var avatarUrl = getGameAvatarForPreview();
+        var playerNick = getPlayerNickForPreview();
+        var themeSig = getThemeSignatureForPreview(iframeDoc);
+        var roomsSig = roomsChecksum(rooms);
+        var sig = roomsSig + '\nmode:' + inpanelMode + '\nlang:' + getUiLang() +
+            '\ntheme:' + themeSig + '\navatar:' + (avatarUrl ? avatarUrl.length : 0) + ':' + playerNick +
+            '\nload:' + (roomsLoading ? '1' : '0');
+        var payload = {
+            type: 'hxd-roomlist-sync',
+            rooms: compactRoomsForPreview(rooms),
+            roomsCrc: roomsSig,
+            roomsStructCrc: roomsStructureCrc(rooms),
+            roomsLoading: roomsLoading,
+            forceFull: !!force,
+            inpanelMode: inpanelMode || null,
+            anonymous: !!(window.__hxdIsAnonymousMode && window.__hxdIsAnonymousMode()),
+            lang: getUiLang(),
+            theme: getThemeColorsForPreview(iframeDoc),
+            themeId: getThemeIdForPreview(iframeDoc),
+            avatarUrl: avatarUrl,
+            playerNick: playerNick
+        };
+
+        if (inpanelMode === 'profile') {
+            payload.profile = iframeDoc.hxdRoomlistProfileSnapshot ||
+                buildProfileSnapshotForPreview(iframeDoc, profileDataCache && profileDataCache.user);
+            sig += '\nprof:' + (payload.profile.nick || '');
+        }
+
+        if (sig === iframeDoc.hxdRoomlistLastPushSig) return;
+        iframeDoc.hxdRoomlistLastPushSig = sig;
+        if (hxdPreviewScanCache) hxdPreviewScanCache.dirty = false;
+
+        try {
+            frame.contentWindow.postMessage(payload, '*');
+        } catch (ePush) {}
+    }
+
+    function submitCreateRoomFromPreview(iframeDoc, payload) {
+        payload = payload || {};
+        var name = String(payload.name || '').trim();
+        if (!name) return false;
+
+        var createBtn = iframeDoc.querySelector('.roomlist-view [data-hook="create"]');
+        if (!createBtn) return false;
+        createBtn.click();
+
+        var attempts = 0;
+        var timer = setInterval(function () {
+            attempts++;
+            var view = iframeDoc.querySelector('.create-room-view');
+            if (!view) {
+                if (attempts < 50) return;
+                clearInterval(timer);
+                return;
+            }
+            clearInterval(timer);
+
+            var nameEl = view.querySelector('[data-hook="name"]');
+            var passEl = view.querySelector('[data-hook="pass"]');
+            var maxEl = view.querySelector('[data-hook="max-pl"]');
+            var unlistedBtn = view.querySelector('[data-hook="unlisted"]');
+            var submitBtn = view.querySelector('[data-hook="create"]');
+
+            if (nameEl) {
+                nameEl.value = name;
+                try { nameEl.dispatchEvent(new Event('input', { bubbles: true })); } catch (eIn) {}
+            }
+            if (passEl) passEl.value = String(payload.password || '');
+            if (maxEl) {
+                var max = parseInt(payload.max, 10) || 12;
+                var idx = Math.max(0, Math.min(max - 2, maxEl.options.length - 1));
+                maxEl.selectedIndex = idx;
+            }
+            if (unlistedBtn && payload.unlisted) unlistedBtn.click();
+
+            setTimeout(function () {
+                if (submitBtn && !submitBtn.disabled) submitBtn.click();
+            }, 30);
+        }, 20);
+        return true;
+    }
+
+    function scheduleRoomlistPreviewSync(iframeDoc, structureChange) {
+        if (structureChange) invalidatePreviewScanCache();
+        if (iframeDoc.hxdRoomlistPushTimer) return;
+        iframeDoc.hxdRoomlistPushTimer = setTimeout(function () {
+            iframeDoc.hxdRoomlistPushTimer = null;
+            var push = function () { pushRoomlistPreviewSyncNow(iframeDoc); };
+            if (structureChange || typeof requestIdleCallback !== 'function') {
+                push();
+            } else {
+                requestIdleCallback(push, { timeout: 2500 });
+            }
+        }, structureChange ? 400 : 1500);
+    }
+
+    function pushRoomlistPreviewSync(iframeDoc) {
+        scheduleRoomlistPreviewSync(iframeDoc);
+    }
+
+    function handleRoomlistPreviewCmd(iframeDoc, action, payload) {
+        payload = payload || {};
+        if (action === 'refresh') {
+            cachedRows = null;
+            isFilteringFavs = false;
+            invalidatePreviewScanCache();
+            var refreshBtn = iframeDoc.querySelector('.roomlist-view [data-hook="refresh"]');
+            if (refreshBtn) refreshBtn.click();
+            setTimeout(function () { pushRoomlistPreviewSyncNow(iframeDoc); }, 500);
+        } else if (action === 'select' && payload.name) {
+            selectRoomByName(iframeDoc, payload.name);
+        } else if (action === 'join' && payload.name) {
+            selectRoomByName(iframeDoc, payload.name);
+            var joinBtn = iframeDoc.querySelector('.roomlist-view [data-hook="join"]');
+            if (joinBtn) joinBtn.click();
+        } else if (action === 'create') {
+            if (payload && payload.name) {
+                submitCreateRoomFromPreview(iframeDoc, payload);
+            } else {
+                var createBtn = iframeDoc.querySelector('.roomlist-view [data-hook="create"]');
+                if (createBtn) createBtn.click();
+            }
+        } else if (action === 'settings') {
+            if (typeof window.__hxdMarkSettingsOpenedFromRoomlist === 'function') {
+                window.__hxdMarkSettingsOpenedFromRoomlist(iframeDoc);
+            } else {
+                var rlNow = Date.now();
+                iframeDoc.__hxdSettingsOpenedFromRoomlist = true;
+                iframeDoc.__hxdSettingsOpenedFromRoomlistUntil = rlNow + 60000;
+                iframeDoc.hxdSettingsRoomlistSession = true;
+                try {
+                    window.__hxdSettingsOpenedFromRoomlist = true;
+                    window.__hxdSettingsOpenedFromRoomlistUntil = rlNow + 60000;
+                    window.__hxdSettingsRoomlistSession = true;
+                } catch (eRlFlag) {}
+            }
+            var settingsBtn = iframeDoc.querySelector('.roomlist-view [data-hook="settings"]');
+            if (settingsBtn) settingsBtn.click();
+        } else if (action === 'replays') {
+            var replaysLabel = iframeDoc.querySelector('.roomlist-view label[for="replayfile"]');
+            if (replaysLabel) replaysLabel.click();
+            else {
+                var replayInput = iframeDoc.querySelector('#replayfile');
+                if (replayInput) replayInput.click();
+            }
+        } else if (action === 'toggleFav' && payload.name) {
+            toggleFavRoom(payload.name);
+            invalidateRoomlistPreviewSync(iframeDoc);
+            pushRoomlistPreviewSyncNow(iframeDoc, true);
+        } else if (action === 'togglePin' && payload.name) {
+            togglePinnedRoom(payload.name);
+            invalidateRoomlistPreviewSync(iframeDoc);
+            pushRoomlistPreviewSyncNow(iframeDoc, true);
+        } else if (action === 'openProfile') {
+            openInpanelProfileFromRoomlist(iframeDoc);
+            setTimeout(function () { pushRoomlistPreviewSyncNow(iframeDoc); }, 80);
+        } else if (action === 'openKit') {
+            if (window.JerseyKitSystem && typeof JerseyKitSystem.toggleJerseyPanel === 'function') {
+                JerseyKitSystem.toggleJerseyPanel(iframeDoc);
+            }
+        } else if (action === 'openPro') {
+            if (iframeDoc.getElementById('hxd-roomlist-preview-frame')) {
+                window.__hxdRoomlistPreviewInpanelMode = 'pro';
+                var dlgPro = iframeDoc.querySelector('.roomlist-view .dialog');
+                if (dlgPro) dlgPro.classList.remove('zero-pro-mode');
+                setTimeout(function () { pushRoomlistPreviewSyncNow(iframeDoc); }, 40);
+            } else {
+                openInpanelProFromRoomlist(iframeDoc);
+                setTimeout(function () { pushRoomlistPreviewSyncNow(iframeDoc); }, 80);
+            }
+        } else if (action === 'openDiscord') {
+            var discordUrl = 'https://discord.gg/haxzero';
+            if (typeof window.__hxdOpenExternalUrl === 'function') {
+                window.__hxdOpenExternalUrl(discordUrl);
+            } else {
+                fetch('http://127.0.0.1:5483/open-external', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: discordUrl })
+                }).catch(function () {
+                    try { window.open(discordUrl, '_blank', 'noopener,noreferrer'); } catch (eD) {}
+                });
+            }
+        } else if (action === 'closeInpanel') {
+            window.__hxdRoomlistPreviewInpanelMode = '';
+            delete iframeDoc.hxdRoomlistProfileSnapshot;
+            closeInpanelPro(iframeDoc);
+            if (window.JerseyKitSystem && typeof JerseyKitSystem.closeRoomlistJerseyIfOpen === 'function') {
+                try { JerseyKitSystem.closeRoomlistJerseyIfOpen(iframeDoc); } catch (eJ) {}
+            }
+            var dlg = iframeDoc.querySelector('.roomlist-view .dialog');
+            if (dlg) dlg.classList.remove('zero-profile-mode', 'zero-kit-mode', 'zero-pro-mode');
+            setTimeout(function () { pushRoomlistPreviewSyncNow(iframeDoc); }, 80);
+        }
+    }
+
+    function bindRoomlistSettingsVisibility(doc) {
+        if (doc.hxdRoomlistSettingsVisBound) return;
+        doc.hxdRoomlistSettingsVisBound = true;
+
+        doc.__hxdCloseSettingsPreviewAnimated = function () {
+            var settingsDialog = doc.querySelector('.dialog.settings-view.hxd-settings-preview-dialog');
+            var closeBtn = settingsDialog && settingsDialog.querySelector('button[data-hook="close"]');
+            if (!settingsDialog || !closeBtn) {
+                if (doc.defaultView && typeof doc.defaultView.__hxdCloseSettingsPreview === 'function') {
+                    doc.defaultView.__hxdCloseSettingsPreview();
+                }
+                return;
+            }
+            if (settingsDialog.dataset.hxdSettingsClosing === '1') return;
+            settingsDialog.dataset.hxdSettingsClosing = '1';
+            invalidateRoomlistPreviewSync(doc);
+            doc.hxdRoomlistThemePending = true;
+            var cover = createRoomlistTransitionCover(doc);
+            settingsDialog.classList.add('hxd-settings-preview-closing');
+            try {
+                if (typeof window.__hxdClearSettingsOpenedFromRoomlist === 'function') {
+                    window.__hxdClearSettingsOpenedFromRoomlist(doc);
+                }
+            } catch (eClr) {}
+            try { doc.defaultView.__hxdSuppressSettingsEscUntil = Date.now() + 900; } catch (eEsc) {}
+            setTimeout(function () {
+                delete settingsDialog.dataset.hxdSettingsClosing;
+                settingsDialog.classList.remove('hxd-settings-preview-closing');
+                closeBtn.click();
+                fadeOutRoomlistTransitionCover(doc, cover);
+                try {
+                    var restore = doc.defaultView && doc.defaultView.__hxdRestoreGameFocusAfterSettingsClose;
+                    if (typeof restore === 'function') restore();
+                } catch (eRestore) {}
+            }, 150);
+        };
+    }
+
+    function bindRoomlistPreviewBridge(iframeDoc) {
+        if (!iframeDoc.getElementById('hxd-roomlist-preview-frame')) return;
+        if (iframeDoc.hxdRoomlistPreviewBridgeReady) return;
+        iframeDoc.hxdRoomlistPreviewBridgeReady = true;
+
+        bindRoomlistSettingsVisibility(iframeDoc);
+
+        if (!window.hxdRoomlistPreviewThemeBound) {
+            window.hxdRoomlistPreviewThemeBound = true;
+            var onThemeOrAvatarChange = function (targetDoc) {
+                invalidateRoomlistPreviewSync(targetDoc);
+                var frame = targetDoc.getElementById('hxd-roomlist-preview-frame');
+                if (frame) {
+                    applyThemeToPreviewFrameDirect(frame, targetDoc);
+                    pushRoomlistPreviewSyncNow(targetDoc, true);
+                } else {
+                    targetDoc.hxdRoomlistThemePending = true;
+                }
+            };
+            window.addEventListener('themeChanged', function () { onThemeOrAvatarChange(document); });
+            window.addEventListener('storage', function () { onThemeOrAvatarChange(document); });
+            window.addEventListener('message', function (e) {
+                var data = e.data;
+                if (!data || data.type !== 'themeChanged') return;
+                onThemeOrAvatarChange(document);
+            });
+            window.addEventListener('hxd-avatar-profile-changed', function () { onThemeOrAvatarChange(document); });
+        }
+
+        if (!window.hxdRoomlistPreviewMsgBound) {
+            window.hxdRoomlistPreviewMsgBound = true;
+            window.addEventListener('message', function (e) {
+                var data = e.data;
+                if (!data || data.type !== 'hxd-roomlist-preview-cmd') return;
+                var frame = document.getElementById('hxd-roomlist-preview-frame');
+                if (!frame || e.source !== frame.contentWindow) return;
+                handleRoomlistPreviewCmd(document, data.action, data.payload);
+            });
+        }
+
+        var listRoot = getRoomListRoot(iframeDoc);
+        if (listRoot && !listRoot.dataset.hxdPreviewBridgeMo) {
+            listRoot.dataset.hxdPreviewBridgeMo = '1';
+            var bridgeMo = new MutationObserver(function () {
+                scheduleRoomlistPreviewSync(iframeDoc, true);
+            });
+            bridgeMo.observe(listRoot, { childList: true });
+            iframeDoc.hxdRoomlistPreviewBridgeMo = bridgeMo;
+        }
+
+        if (!iframeDoc.hxdRoomlistMetricsIv) {
+            iframeDoc.hxdRoomlistMetricsIv = setInterval(function () {
+                if (!iframeDoc.getElementById('hxd-roomlist-preview-frame')) return;
+                scheduleRoomlistPreviewSync(iframeDoc, false);
+            }, 8000);
+        }
+
+        pushRoomlistPreviewSyncNow(iframeDoc);
+
+        if (!iframeDoc.hxdRoomlistPreviewRefreshDone) {
+            iframeDoc.hxdRoomlistPreviewRefreshDone = true;
+            setTimeout(function () {
+                var refreshBtn = iframeDoc.querySelector('.roomlist-view [data-hook="refresh"]');
+                if (refreshBtn) refreshBtn.click();
+                setTimeout(function () { pushRoomlistPreviewSyncNow(iframeDoc); }, 700);
+            }, 200);
+        }
+    }
+
+    function countRoomListRows(iframeDoc) {
+        return getRoomListRows(iframeDoc).length;
+    }
+
+    function warmRoomListFetch(iframeDoc) {
+        if (iframeDoc.hxdRoomlistWarmTs) return;
+        iframeDoc.hxdRoomlistWarmTs = Date.now();
+        var refreshBtn = iframeDoc.querySelector('.roomlist-view [data-hook="refresh"]');
+        if (refreshBtn) refreshBtn.click();
+    }
+
+    function installRoomlistPreviewApi(iframeDoc) {
+        window.__hxdRoomlistPreviewApi = {
+            isLive: function () { return true; },
+            scanRooms: function () { return scanRoomsForPreview(iframeDoc); },
+            clickHook: function (name) {
+                var el = iframeDoc.querySelector('.roomlist-view [data-hook="' + name + '"]');
+                if (el) el.click();
+            },
+            refresh: function () {
+                cachedRows = null;
+                isFilteringFavs = false;
+                this.clickHook('refresh');
+            },
+            joinSelected: function () {
+                this.clickHook('join');
+            },
+            openCreate: function () { this.clickHook('create'); },
+            openSettings: function () { this.clickHook('settings'); },
+            openReplays: function () {
+                var label = iframeDoc.querySelector('.roomlist-view label[for="replayfile"]');
+                if (label) label.click();
+                else {
+                    var input = iframeDoc.querySelector('#replayfile');
+                    if (input) input.click();
+                }
+            },
+            openPro: function () {
+                window.__hxdRoomlistPreviewInpanelMode = 'pro';
+                var dlg = iframeDoc.querySelector('.roomlist-view .dialog');
+                if (dlg) dlg.classList.remove('zero-pro-mode');
+                pushRoomlistPreviewSyncNow(iframeDoc);
+            },
+            closeInpanelModes: function () {
+                window.__hxdRoomlistPreviewInpanelMode = '';
+                closeInpanelPro(iframeDoc);
+                if (window.JerseyKitSystem && typeof JerseyKitSystem.closeRoomlistJerseyIfOpen === 'function') {
+                    try { JerseyKitSystem.closeRoomlistJerseyIfOpen(iframeDoc); } catch (eJ) {}
+                }
+                var dialog = iframeDoc.querySelector('.roomlist-view .dialog');
+                if (dialog) {
+                    dialog.classList.remove('zero-profile-mode', 'zero-kit-mode', 'zero-pro-mode');
+                }
+            },
+            getInpanelMode: function () {
+                if (window.__hxdRoomlistPreviewInpanelMode) return window.__hxdRoomlistPreviewInpanelMode;
+                var dialog = iframeDoc.querySelector('.roomlist-view .dialog');
+                if (!dialog) return null;
+                if (dialog.classList.contains('zero-profile-mode')) return 'profile';
+                if (dialog.classList.contains('zero-kit-mode')) return 'kit';
+                return null;
+            },
+            selectRoomByName: function (name) { return selectRoomByName(iframeDoc, name); },
+            toggleFav: function (name) { return toggleFavRoom(name); },
+            togglePinned: function (name) { return togglePinnedRoom(name); },
+            getFavs: getFavRooms,
+            isFav: isFavRoom,
+            isPinned: isPinnedRoom,
+            isAnonymous: function () {
+                return !!(window.__hxdIsAnonymousMode && window.__hxdIsAnonymousMode());
+            },
+            syncThemeVars: function () {
+                return getThemeColorsForPreview(iframeDoc);
+            },
+            setLanguage: function (lang) {
+                try {
+                    iframeDoc.defaultView.__haxLang = lang;
+                    iframeDoc.defaultView.localStorage.setItem('haxball_language', lang);
+                    if (typeof iframeDoc.defaultView.__applyTranslations === 'function') {
+                        iframeDoc.defaultView.__applyTranslations(lang);
+                    }
+                } catch (eLang) {}
+            }
+        };
+    }
+
+    function ensureRoomlistPreviewInpanelHosts(iframeDoc, dialog) {
+        if (!iframeDoc.getElementById('zero-inpanel-profile')) {
+            var zipRoot = iframeDoc.createElement('div');
+            zipRoot.id = 'zero-inpanel-profile';
+            zipRoot.innerHTML = buildZeroInpanelProfileHtml();
+            zipRoot.style.display = 'none';
+            dialog.appendChild(zipRoot);
+            bindZipProfilePanel(iframeDoc);
+        }
+    }
+
+    function removeLegacyRoomlistChrome(iframeDoc) {
+        var ids = ['sidebar-panel', 'sidebar-tooltip', 'room-context-menu', 'country-filter-btn', 'country-dropdown', 'room-search'];
+        for (var i = 0; i < ids.length; i++) {
+            var el = iframeDoc.getElementById(ids[i]);
+            if (el) el.remove();
+        }
+        var legacySearch = iframeDoc.querySelector('.roomlist-view .room-search-bar');
+        if (legacySearch) legacySearch.remove();
+    }
+
+    function ensureRoomlistPreview(iframeDoc) {
+        var roomlistView = iframeDoc.querySelector('.roomlist-view');
+        if (!roomlistView) return;
+
+        var dialog = roomlistView.querySelector('.dialog');
+        if (!dialog) return;
+
+        prepareRoomlistPreviewDialog(iframeDoc, dialog);
+
+        var existingFrame = iframeDoc.getElementById('hxd-roomlist-preview-frame');
+        if (existingFrame) {
+            try { iframeDoc.documentElement.classList.add('hxd-roomlist-preview-active'); } catch (eCls2) {}
+            clearRoomlistPreviewPending(iframeDoc);
+            if (iframeDoc.hxdRoomlistThemePending) {
+                delete iframeDoc.hxdRoomlistThemePending;
+                applyThemeToPreviewFrameDirect(existingFrame, iframeDoc);
+                pushRoomlistPreviewSyncNow(iframeDoc, true);
+            }
+            modifyRoomListPreviewMode(iframeDoc);
+            return;
+        }
+
+        ensureRoomlistPreviewShell(iframeDoc, dialog);
+
+        if (dialog.dataset.hxdPreviewMounting === '1') return;
+        dialog.dataset.hxdPreviewMounting = '1';
+
+        mountRoomlistPreview(iframeDoc, dialog, function (ok) {
+            delete dialog.dataset.hxdPreviewMounting;
+            if (ok) {
+                installRoomlistPreviewApi(iframeDoc);
+                warmRoomListFetch(iframeDoc);
+            }
+        });
+    }
+
+    function modifyRoomListPreviewMode(iframeDoc) {
+        var listContainer = getRoomListRoot(iframeDoc);
+        var roomlistView = iframeDoc.querySelector('.roomlist-view');
+        if (!listContainer || !roomlistView) {
+            cleanupRoomList();
+            return;
+        }
+
+        var dialog = roomlistView.querySelector('.dialog');
+        if (!dialog) return;
+
+        if (listContainer.dataset.hxdPreviewObserving === '1') {
+            return;
+        }
+        listContainer.dataset.hxdPreviewObserving = '1';
+
+        ensureRoomlistPreviewInpanelHosts(iframeDoc, dialog);
+
+        var sidebar = iframeDoc.getElementById('sidebar-panel');
+        if (sidebar) sidebar.style.display = 'none';
+
+        bindRoomlistPreviewBridge(iframeDoc);
+    }
+
+    function mountRoomlistPreview(doc, dialog, done) {
+        if (!dialog) {
+            done(false);
+            return;
+        }
+        if (doc.getElementById('hxd-roomlist-preview-frame')) {
+            done(true);
+            return;
+        }
+
+        fetchRoomlistPreviewHtml(function (err, html) {
+            if (err || !html) {
+                Injector.log('Roomlist preview fetch failed: ' + (err && err.message ? err.message : 'empty'));
+                done(false);
+                return;
+            }
+            if (!dialog.isConnected || doc.getElementById('hxd-roomlist-preview-frame')) {
+                done(!!doc.getElementById('hxd-roomlist-preview-frame'));
+                return;
+            }
+
+            prepareRoomlistPreviewDialog(doc, dialog, { markPending: true });
+            bindRoomlistPreviewResize(doc);
+            ensureRoomlistPreviewInpanelHosts(doc, dialog);
+
+            var root = ensureRoomlistPreviewShell(doc, dialog);
+
+            var iframe = doc.createElement('iframe');
+            iframe.id = 'hxd-roomlist-preview-frame';
+            iframe.setAttribute('title', 'Room list');
+            iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms');
+            iframe.style.cssText = 'width:100%;height:100%;border:none;display:block;background:transparent;';
+            var pendingFallback = setTimeout(function () {
+                clearRoomlistPreviewPending(doc);
+            }, 2500);
+            iframe.onload = function () {
+                clearTimeout(pendingFallback);
+                applyThemeToPreviewFrameDirect(iframe, doc);
+                delete doc.hxdRoomlistThemePending;
+                pushRoomlistPreviewSyncNow(doc, true);
+                revealRoomlistPreviewAfterTheme(doc);
+                installRoomlistPreviewApi(doc);
+                modifyRoomListPreviewMode(doc);
+            };
+            iframe.srcdoc = html;
+
+            root.appendChild(iframe);
+            if (!root.isConnected) dialog.appendChild(root);
+            dialog.dataset.hxdRoomlistPreview = '1';
+            try { doc.documentElement.classList.add('hxd-roomlist-preview-active'); } catch (eCls) {}
+
+            installRoomlistPreviewApi(doc);
+            modifyRoomListPreviewMode(doc);
+
+            Injector.log('Roomlist preview mounted');
+            done(true);
+        });
+    }
+
+    function teardownRoomlistPreview(iframeDoc) {
+        var root = iframeDoc.getElementById('hxd-roomlist-preview-root');
+        if (!root) return;
+
+        if (iframeDoc.hxdRoomlistPreviewSyncIv) {
+            clearInterval(iframeDoc.hxdRoomlistPreviewSyncIv);
+            iframeDoc.hxdRoomlistPreviewSyncIv = null;
+        }
+        if (iframeDoc.hxdRoomlistMetricsIv) {
+            clearInterval(iframeDoc.hxdRoomlistMetricsIv);
+            iframeDoc.hxdRoomlistMetricsIv = null;
+        }
+        if (iframeDoc.hxdRoomlistPushTimer) {
+            clearTimeout(iframeDoc.hxdRoomlistPushTimer);
+            iframeDoc.hxdRoomlistPushTimer = null;
+        }
+        if (iframeDoc.hxdRoomlistPreviewBridgeMo) {
+            iframeDoc.hxdRoomlistPreviewBridgeMo.disconnect();
+            iframeDoc.hxdRoomlistPreviewBridgeMo = null;
+        }
+
+        var listRoot = getRoomListRoot(iframeDoc);
+        if (listRoot) {
+            delete listRoot.dataset.hxdPreviewBridgeMo;
+            delete listRoot.dataset.hxdPreviewObserving;
+        }
+
+        iframeDoc.hxdRoomlistPreviewBridgeReady = false;
+        iframeDoc.hxdRoomlistPreviewRefreshDone = false;
+        delete iframeDoc.hxdRoomlistLastPushSig;
+        delete iframeDoc.hxdRoomlistThemeSent;
+        delete iframeDoc.hxdRoomlistMountDeadline;
+        delete iframeDoc.hxdRoomlistWarmTs;
+        invalidatePreviewScanCache();
+
+        root.remove();
+        clearRoomlistPreviewPending(iframeDoc);
+        try { iframeDoc.documentElement.classList.remove('hxd-roomlist-preview-active'); } catch (eClsOff) {}
+
+        var dialog = iframeDoc.querySelector('.roomlist-view .dialog');
+        if (dialog) {
+            dialog.classList.remove('hxd-roomlist-preview-dialog');
+            dialog.style.removeProperty('width');
+            dialog.style.removeProperty('min-width');
+            dialog.style.removeProperty('max-width');
+            dialog.style.removeProperty('height');
+            dialog.style.removeProperty('min-height');
+            dialog.style.removeProperty('max-height');
+            dialog.style.removeProperty('padding');
+            dialog.style.removeProperty('overflow');
+            dialog.style.removeProperty('border-radius');
+            dialog.style.removeProperty('box-sizing');
+            dialog.style.removeProperty('position');
+            delete dialog.dataset.hxdRoomlistPreview;
+            delete dialog.dataset.hxdPreviewMounting;
+        }
+
+        var previewStyles = iframeDoc.getElementById('hxd-roomlist-preview-styles');
+        if (previewStyles) previewStyles.remove();
+    }
+
     function modifyRoomList(iframeDoc) {
         var listContainer = iframeDoc.querySelector('.roomlist-view tbody[data-hook="list"]');
         var roomlistView = iframeDoc.querySelector('.roomlist-view');
@@ -1218,6 +2219,10 @@
 
         var dialog = roomlistView.querySelector('.dialog');
         if (!dialog) return;
+
+        if (iframeDoc.getElementById('hxd-roomlist-preview-root')) {
+            teardownRoomlistPreview(iframeDoc);
+        }
 
         dialog.style.overflow = 'visible';
         var existingSidebarRm = iframeDoc.getElementById('sidebar-panel');
@@ -1269,6 +2274,8 @@
             sidebar.id = 'sidebar-panel';
             sidebar.style.cssText = 'position:absolute;right:-50px;top:5px;bottom:5px;width:50px;min-width:50px;max-width:50px;background:var(--theme-bg-primary, #141414);border:1px solid var(--theme-border, #232323);border-radius:0 8px 8px 0;display:flex;flex-direction:column;gap:8px;padding:10px 6px;box-sizing:border-box;z-index:3;';
 
+            var hxdAnonHide = window.__hxdIsAnonymousMode && window.__hxdIsAnonymousMode();
+            
             // Esconde tooltip quando mouse sai do sidebar
             sidebar.addEventListener('mouseleave', hideTooltip);
 
@@ -1339,38 +2346,6 @@
             };
             sidebar.appendChild(favBtn);
 
-            // Botão de amizades
-            var friendsBtn = iframeDoc.createElement('button');
-            friendsBtn.id = 'friends-btn';
-            addTooltip(friendsBtn, t('Amizades'));
-            friendsBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
-            friendsBtn.onclick = function() {
-                if (window.FriendsSystem) {
-                    window.FriendsSystem.injectFriendsButton(iframeDoc);
-                    // Simula clique no botão injetado ou abre diretamente
-                    var injectedBtn = iframeDoc.getElementById('friends-btn-panel');
-                    if (injectedBtn) {
-                        injectedBtn.click();
-                    } else {
-                        // Abre painel diretamente
-                        window.FriendsSystem.toggleFriendsPanel(iframeDoc);
-                    }
-                }
-            };
-            sidebar.appendChild(friendsBtn);
-
-            // Botão de equipes
-            var teamsBtn = iframeDoc.createElement('button');
-            teamsBtn.id = 'teams-btn';
-            addTooltip(teamsBtn, t('Equipe'));
-            teamsBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>';
-            teamsBtn.onclick = function() {
-                if (window.TeamsSystem) {
-                    window.TeamsSystem.toggleTeamsPanel(iframeDoc);
-                }
-            };
-            sidebar.appendChild(teamsBtn);
-
             // Creador de camiseta (/colors)
             var jerseyBtn = iframeDoc.createElement('button');
             jerseyBtn.id = 'jersey-kit-btn';
@@ -1394,6 +2369,9 @@
             proSidebarBtn.onclick = function() {
                 openInpanelProFromRoomlist(iframeDoc);
             };
+            if (hxdAnonHide) {
+                proSidebarBtn.style.display = 'none';
+            }
             sidebar.appendChild(proSidebarBtn);
 
             // Espaçador
@@ -1807,32 +2785,20 @@
         
         var checkAndModify = function() {
             var roomlistView = document.querySelector('.roomlist-view');
-            var sidebar = document.getElementById('sidebar-panel');
 
             if (roomlistView) {
-                if (!sidebar) {
-                    modifyRoomList(document);
-                }
+                ensureRoomlistPreview(document);
             } else {
+                teardownRoomlistPreview(document);
                 teardownRoomListLoadingOverlay(document);
                 hideTooltipAndMenu();
-                if (window.TeamsSystem && typeof TeamsSystem.closeRoomlistTeamsIfOpen === 'function') {
-                    try {
-                        TeamsSystem.closeRoomlistTeamsIfOpen(document);
-                    } catch (eRtl) {}
-                }
-                if (window.FriendsSystem && typeof FriendsSystem.closeFriendsPanel === 'function') {
-                    try {
-                        FriendsSystem.closeFriendsPanel(document);
-                    } catch (eRfl) {}
-                }
             }
         };
         
         var startChecking = function() {
             if (checkInterval) return;
             Injector.log('Roomlist: startChecking');
-            checkInterval = setInterval(checkAndModify, 300);
+            checkInterval = setInterval(checkAndModify, 50);
             checkAndModify();
         };
         
@@ -1873,6 +2839,18 @@
     } else {
         init();
     }
+
+    bootRoomlistPreviewPipeline(document);
+
+    try {
+        window.__hxdForceRoomlistPreviewSync = function (doc, force) {
+            if (!doc) doc = document;
+            if (force !== false) invalidateRoomlistPreviewSync(doc);
+            var frame = doc.getElementById('hxd-roomlist-preview-frame');
+            if (frame) applyThemeToPreviewFrameDirect(frame, doc);
+            pushRoomlistPreviewSyncNow(doc, force !== false);
+        };
+    } catch (eApi) {}
 
     Injector.log('Roomlist module loaded');
 })();

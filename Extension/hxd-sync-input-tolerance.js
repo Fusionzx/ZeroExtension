@@ -22,12 +22,43 @@
         }
     }
 
+    function clampTolerance(value) {
+        var v = parseInt(value, 10);
+        if (isNaN(v) || v < 0) return 0;
+        if (v > 2) return 2;
+        return v;
+    }
+
+    function readTolerance() {
+        try {
+            return clampTolerance(localStorage.getItem('input_tolerance'));
+        } catch (e) {
+            return 0;
+        }
+    }
+
     function applyStorageZero() {
         if (isUnlocked()) return;
         try {
             localStorage.setItem('input_tolerance', '0');
         } catch (e) {}
     }
+
+    function applyToleranceLive(value) {
+        var v = clampTolerance(value);
+        try {
+            if (v > 0) localStorage.setItem(UNLOCK_KEY, '1');
+            else localStorage.removeItem(UNLOCK_KEY);
+            localStorage.setItem('input_tolerance', String(v));
+        } catch (eSave) {}
+        try {
+            window.dispatchEvent(new Event('storage'));
+        } catch (eEv) {}
+        return v;
+    }
+
+    window.__hxdGetInputTolerance = readTolerance;
+    window.__hxdSetInputTolerance = applyToleranceLive;
 
     function isBlockingNicknameOrAuthFlow() {
         try {

@@ -83,6 +83,34 @@ var Injector = {
         return this.isGameDocument();
     },
 
+    /** Mismo shell que settings-preview y roomlist-preview (ancho/alto del diálogo). */
+    getPreviewShellSize: function(win) {
+        win = win || window;
+        var vh = win.innerHeight || 800;
+        var vw = win.innerWidth || 1200;
+        return {
+            width: Math.min(1100, Math.max(720, vw - 48)),
+            height: Math.min(820, Math.max(520, Math.floor(vh * 0.92)))
+        };
+    },
+
+    applyPreviewShellSize: function(dialog, dialogClass) {
+        if (!dialog) return;
+        var sz = this.getPreviewShellSize();
+        dialog.style.boxSizing = 'border-box';
+        dialog.style.position = 'relative';
+        dialog.style.setProperty('width', sz.width + 'px', 'important');
+        dialog.style.setProperty('min-width', sz.width + 'px', 'important');
+        dialog.style.setProperty('max-width', sz.width + 'px', 'important');
+        dialog.style.setProperty('min-height', sz.height + 'px', 'important');
+        dialog.style.setProperty('height', sz.height + 'px', 'important');
+        dialog.style.setProperty('max-height', '95vh', 'important');
+        dialog.style.padding = '0';
+        dialog.style.overflow = 'hidden';
+        dialog.style.borderRadius = '16px';
+        if (dialogClass) dialog.classList.add(dialogClass);
+    },
+
     // Sistema de eventos de view (leve - observa só o container de views)
     _viewListeners: {},
     _viewChangeListeners: [],

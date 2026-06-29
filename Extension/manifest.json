@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "HaxBall Zero",
-  "version": "1.3.0",
+  "version": "2.0.1",
   "description": "Extensao oficial do HaxBall Zero",
   "content_scripts": [
     {
@@ -28,9 +28,10 @@
         "discord.js",
         "verified.js",
         "vip.js",
-        "friends.js",
-        "teams.js",
         "roomlist.js",
+        "scoreboard.js",
+        "smart-extrapolation.js",
+        "split-extrapolation.js",
         "jerseykit.js",
         "chathistory.js",
         "chatlinks.js",

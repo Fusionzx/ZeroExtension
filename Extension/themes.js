@@ -439,14 +439,36 @@
     var currentTheme = 'dark';
     var persistDebounceTimer = null;
 
+    function getElectronAPI() {
+        try {
+            if (window.electronAPI && typeof window.electronAPI.saveAppearance === 'function') {
+                return window.electronAPI;
+            }
+        } catch (eApi) {}
+        try {
+            if (window.top && window.top !== window && window.top.electronAPI &&
+                typeof window.top.electronAPI.saveAppearance === 'function') {
+                return window.top.electronAPI;
+            }
+        } catch (eTop) {}
+        return null;
+    }
+
+    function getAppearanceSyncTarget() {
+        try {
+            if (window.top && window.top !== window) return window.top;
+        } catch (eTop) {}
+        try {
+            if (window.parent && window.parent !== window) return window.parent;
+        } catch (eParent) {}
+        return window;
+    }
+
     function applyDiskSnapshotToLocalStorage(data) {
         if (!data || typeof data !== 'object') return;
         try {
             if (data.theme && THEMES[data.theme]) {
-                var existing = localStorage.getItem(STORAGE_KEY);
-                if (!existing || !THEMES[existing]) {
-                    localStorage.setItem(STORAGE_KEY, String(data.theme));
-                }
+                localStorage.setItem(STORAGE_KEY, String(data.theme));
             }
             if (Object.prototype.hasOwnProperty.call(data, 'customThemeBase') && data.customThemeBase && typeof data.customThemeBase === 'object') {
                 var ct = Object.assign({}, data.customThemeBase);
@@ -481,13 +503,12 @@
                 customThemeBase: ct,
                 wallpaper: localStorage.getItem(APP_WALLPAPER_STORAGE_KEY) || ''
             };
-            if (window.parent && window.parent !== window) {
-                try {
-                    window.parent.postMessage({ type: 'hxd-appearance-sync-parent-ls', payload: payload }, '*');
-                } catch (e3) {}
-            }
-            if (window.electronAPI && typeof window.electronAPI.saveAppearance === 'function') {
-                window.electronAPI.saveAppearance(payload).catch(function() {});
+            try {
+                getAppearanceSyncTarget().postMessage({ type: 'hxd-appearance-sync-parent-ls', payload: payload }, '*');
+            } catch (e3) {}
+            var api = getElectronAPI();
+            if (api && typeof api.saveAppearance === 'function') {
+                api.saveAppearance(payload).catch(function() {});
             }
         } catch (e) {}
     }
@@ -576,7 +597,6 @@
             document.body.setAttribute('data-theme', theme);
         }
         
-        // Notifica e persiste apenas se o tema realmente mudou
         if (themeChanged) {
             window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: theme, colors: getThemeColors(theme) } }));
             
@@ -770,8 +790,9 @@
             }).observe(document.documentElement, { childList: true, subtree: true });
             setTimeout(resyncWallpaperPaint, 0);
         } catch (eObsWallpaper) {}
-        if (window.electronAPI && typeof window.electronAPI.loadAppearance === 'function') {
-            window.electronAPI.loadAppearance().then(function(data) {
+        var loadApi = getElectronAPI();
+        if (loadApi && typeof loadApi.loadAppearance === 'function') {
+            loadApi.loadAppearance().then(function(data) {
                 applyDiskSnapshotToLocalStorage(data);
                 proceedInitAfterDisk();
             }).catch(function() {

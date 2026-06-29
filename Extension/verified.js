@@ -5,38 +5,49 @@
 (function() {
     if (Injector.isMainFrame() && !Injector.isGameDocument()) return;
 
-    var LOCAL_SERVER = (function resolveVerifiedApiBase() {
-        try {
-            var meta = document.querySelector('meta[name="hxd-local-api"]');
-            if (meta && meta.content) return String(meta.content).replace(/\/+$/, '');
-        } catch (eMeta) {}
-        try {
-            var parentMeta = window.parent.document.querySelector('meta[name="hxd-local-api"]');
-            if (parentMeta && parentMeta.content) return String(parentMeta.content).replace(/\/+$/, '');
-        } catch (eParent) {}
-        return 'http://127.0.0.1:5483';
-    })();
+    var LOCAL_SERVER = 'http://127.0.0.1:5483';
     var BADGE_SVG = '<svg width="12" height="12" viewBox="0 0 22 22" fill="none"><path d="M20.4 11c0-1.2-.7-2.3-1.8-2.9.4-1.2.2-2.5-.7-3.4-.9-.9-2.2-1.1-3.4-.7C14 2.9 12.9 2.2 11.7 2.2c-1.2 0-2.3.7-2.9 1.8-1.2-.4-2.5-.2-3.4.7-.9.9-1.1 2.2-.7 3.4C3.6 8.7 2.9 9.8 2.9 11c0 1.2.7 2.3 1.8 2.9-.4 1.2-.2 2.5.7 3.4.9.9 2.2 1.1 3.4.7.6 1.1 1.7 1.8 2.9 1.8 1.2 0 2.3-.7 2.9-1.8 1.2.4 2.5.2 3.4-.7.9-.9 1.1-2.2.7-3.4 1.1-.6 1.7-1.7 1.7-2.9z" fill="#249EF0"/><path d="M15 9l-4.5 4.5L8 11" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
     var verifiedCache = {};
     window.__verifiedCache = verifiedCache; // Expõe globalmente desde o início
+    window.__hxdAvatarProfilesByPlayerId = window.__hxdAvatarProfilesByPlayerId || {};
     var myVerified = false;
     var myDiscordId = null; // Discord ID do usuário local
     var myBadge = null;
     var myIsPro = false;
+    var myAvatarUrl = null;
+    var myAvatarDisabled = false;
+    var myAvatarVisibleSelfOnly = true;
+    var myAvatarVisibleTeam = false;
+    var myAvatarVisibleRival = false;
+    var myAvatarTeamBorder = false;
+    var myAvatarTeamBorderRed = 1;
+    var myAvatarTeamBorderBlue = 1;
+    var myAvatarTeamBorderWidth = 3;
+    var myAvatarTeamBorderInset = false;
 
     var statusLoaded = false;
     var listObservers = [];
     var isActive = false;
     var lastSentPlayerId = null;
+    var lastSentPlayerRoomId = null;
+    var lastSentPlayerAt = 0;
     var observerInitialized = false;
     var refreshTimer = null;
+    var remoteAvatarPollTimer = null;
     var processDebounceTimer = null;
+    var avatarPublishTimer = null;
     var observerRetryTimer = null;
     var observerWatchdogTimer = null;
-    var VERIFIED_CACHE_TTL_MS = 1000;
+    var VERIFIED_CACHE_TTL_MS = 400;
+    var REMOTE_AVATAR_POLL_MS = 500;
+    var verifiedFetchInFlight = 0;
     var VERIFIED_DISABLED_KEY = 'hax_verified_disabled';
     var activeRoomId = null;
+    var lastSentNicknameInput = '';
+    var nicknameInputWatcherStarted = false;
+    var nicknameInputWatchTimer = null;
+    var nicknameInputDebounceTimer = null;
     var localSettingsLoaded = false;
     var localSettingsRequestInFlight = false;
     
@@ -252,9 +263,189 @@
         }
     }
 
+    function resolveEffectivePlayerId(rowPlayerId, fallbackId) {
+        if (rowPlayerId != null && !isNaN(rowPlayerId)) return rowPlayerId;
+        if (fallbackId != null && !isNaN(fallbackId)) return fallbackId;
+        return null;
+    }
+
+    function hasAvatarDiscordSession() {
+        return Boolean(myDiscordId || window.__haxDiscordId || window.__hxdAvatarDiscordAllowed);
+    }
+
+    function getResolvedMyAvatarUrl() {
+        if (!hasAvatarDiscordSession()) return null;
+        try {
+            var fromStorage = localStorage.getItem('hxd_settings_preview_avatar');
+            if (fromStorage) return fromStorage;
+        } catch (e) {}
+        if (myAvatarUrl) return myAvatarUrl;
+        if (window.__hxdMyAvatarUrl) return window.__hxdMyAvatarUrl;
+        return null;
+    }
+
+    function syncLocalAvatarFromStorage() {
+        try {
+            var fromStorage = localStorage.getItem('hxd_settings_preview_avatar');
+            if (fromStorage) myAvatarUrl = fromStorage;
+        } catch (eStorage) {}
+    }
+
+    function escapeScriptString(value) {
+        return String(value == null ? '' : value)
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'")
+            .replace(/\r/g, '\\r')
+            .replace(/\n/g, '\\n')
+            .replace(/</g, '\\u003c');
+    }
+
+    function injectAvatarGlobalsToRuntime() {
+        try {
+            var avatarUrl = getResolvedMyAvatarUrl();
+            var visibleAll = getAvatarVisibleAllToggle();
+            var borderStyle = getAvatarBorderStyleFromStorage();
+            var discordAllowed = hasAvatarDiscordSession();
+            var script = document.createElement('script');
+            var parts = [];
+            if (myDiscordId || window.__haxDiscordId) {
+                parts.push('window.__haxDiscordId="' + escapeScriptString(String(myDiscordId || window.__haxDiscordId)) + '";');
+            } else {
+                parts.push('try{delete window.__haxDiscordId;}catch(e){window.__haxDiscordId=null;}');
+            }
+            parts.push('window.__hxdAvatarDiscordAllowed=' + (discordAllowed ? 'true' : 'false') + ';');
+            parts.push('window.__hxdMyAvatarUrl=' + (avatarUrl ? "'" + escapeScriptString(avatarUrl) + "'" : 'null') + ';');
+            parts.push('window.__hxdAvatarDisabled=' + (getAvatarStorageToggle('hxd_avatar_disabled', myAvatarDisabled) ? 'true' : 'false') + ';');
+            parts.push('window.__hxdAvatarVisibleSelfOnly=' + (getAvatarStorageToggle('hxd_avatar_visible_self_only', myAvatarVisibleSelfOnly) ? 'true' : 'false') + ';');
+            parts.push('window.__hxdAvatarVisibleTeam=' + (visibleAll ? 'true' : 'false') + ';');
+            parts.push('window.__hxdAvatarVisibleRival=' + (visibleAll ? 'true' : 'false') + ';');
+            parts.push('window.__hxdAvatarTeamBorder=' + (getAvatarStorageToggle('hxd_avatar_team_border', myAvatarTeamBorder) ? 'true' : 'false') + ';');
+            parts.push('window.__hxdAvatarTeamBorderRed=' + borderStyle.avatar_team_border_red + ';');
+            parts.push('window.__hxdAvatarTeamBorderBlue=' + borderStyle.avatar_team_border_blue + ';');
+            parts.push('window.__hxdAvatarTeamBorderWidth=' + borderStyle.avatar_team_border_width + ';');
+            parts.push('window.__hxdAvatarTeamBorderInset=' + (borderStyle.avatar_team_border_inset ? 'true' : 'false') + ';');
+            script.textContent = parts.join('');
+            (document.documentElement || document.head || document.body).appendChild(script);
+            script.remove();
+        } catch (eInject) {}
+    }
+
+    function getAvatarStorageShade(key, fallback) {
+        try {
+            var v = localStorage.getItem(key);
+            if (v === null || v === '') return fallback;
+            var n = parseInt(v, 10);
+            if (isNaN(n)) return fallback;
+            return Math.min(2, Math.max(0, n));
+        } catch (e) {
+            return fallback;
+        }
+    }
+
+    function getAvatarStorageWidth(key, fallback) {
+        try {
+            var v = localStorage.getItem(key);
+            if (v === null || v === '') return fallback;
+            var n = parseInt(v, 10);
+            if (isNaN(n)) return fallback;
+            return Math.min(8, Math.max(1, n));
+        } catch (e) {
+            return fallback;
+        }
+    }
+
+    function getAvatarBorderStyleFromStorage() {
+        return {
+            avatar_team_border_red: getAvatarStorageShade('hxd_avatar_team_border_red', myAvatarTeamBorderRed),
+            avatar_team_border_blue: getAvatarStorageShade('hxd_avatar_team_border_blue', myAvatarTeamBorderBlue),
+            avatar_team_border_width: getAvatarStorageWidth('hxd_avatar_team_border_width', myAvatarTeamBorderWidth),
+            avatar_team_border_inset: getAvatarStorageToggle('hxd_avatar_team_border_inset', myAvatarTeamBorderInset)
+        };
+    }
+
+    function getAvatarStorageToggle(key, fallback) {
+        try {
+            var value = localStorage.getItem(key);
+            if (value !== null && value !== '') return value === '1';
+        } catch (e) {}
+        return Boolean(fallback);
+    }
+
+    function readAvatarBool(value, defaultValue) {
+        if (value === undefined || value === null || value === '') return Boolean(defaultValue);
+        if (value === true || value === 1) return true;
+        if (value === false || value === 0) return false;
+        var s = String(value).trim().toLowerCase();
+        if (s === '1' || s === 'true' || s === 'yes' || s === 'on') return true;
+        if (s === '0' || s === 'false' || s === 'no' || s === 'off') return false;
+        return Boolean(defaultValue);
+    }
+
+    function getAvatarVisibleAllToggle() {
+        return getAvatarStorageToggle('hxd_avatar_visible_all', false) ||
+            (
+                getAvatarStorageToggle('hxd_avatar_visible_team', myAvatarVisibleTeam) &&
+                getAvatarStorageToggle('hxd_avatar_visible_rival', myAvatarVisibleRival)
+            );
+    }
+
+    function publishAvatarGlobals() {
+        var avatarUrl = getResolvedMyAvatarUrl();
+        var visibleAll = getAvatarVisibleAllToggle();
+        window.__hxdAvatarDiscordAllowed = hasAvatarDiscordSession();
+        window.__hxdMyAvatarUrl = avatarUrl || null;
+        window.__hxdAvatarDisabled = getAvatarStorageToggle('hxd_avatar_disabled', myAvatarDisabled);
+        window.__hxdAvatarVisibleSelfOnly = getAvatarStorageToggle('hxd_avatar_visible_self_only', myAvatarVisibleSelfOnly);
+        window.__hxdAvatarVisibleTeam = visibleAll;
+        window.__hxdAvatarVisibleRival = visibleAll;
+        window.__hxdAvatarTeamBorder = getAvatarStorageToggle('hxd_avatar_team_border', myAvatarTeamBorder);
+        var borderStyle = getAvatarBorderStyleFromStorage();
+        window.__hxdAvatarTeamBorderRed = borderStyle.avatar_team_border_red;
+        window.__hxdAvatarTeamBorderBlue = borderStyle.avatar_team_border_blue;
+        window.__hxdAvatarTeamBorderWidth = borderStyle.avatar_team_border_width;
+        window.__hxdAvatarTeamBorderInset = borderStyle.avatar_team_border_inset;
+        if (myDiscordId) window.__haxDiscordId = myDiscordId;
+        injectAvatarGlobalsToRuntime();
+    }
+
+    function syncAvatarRuntimeForLocalPlayer() {
+        publishAvatarGlobals();
+        var avatarUrl = getResolvedMyAvatarUrl();
+        if (!avatarUrl) return;
+
+        var localPlayerId = getLocalPlayerId();
+        if (localPlayerId == null) {
+            localPlayerId = getLocalPlayerIdFromPage();
+        }
+        if (localPlayerId == null) {
+            var markedRow = document.querySelector('[class^="player-list-item"][data-hax-local-player="1"]');
+            if (markedRow) {
+                localPlayerId = parseInt(markedRow.dataset.playerId, 10);
+            }
+        }
+        if (localPlayerId == null || isNaN(localPlayerId)) return;
+
+        window.__myLocalPlayerId = localPlayerId;
+        var nick = cleanNick(window.__haxLocalGameNick || '') || getStoredLocalNick() || '';
+        setAvatarRuntimeProfile(localPlayerId, nick, buildLocalPersonalizationEntry(), true);
+    }
+
     function buildLocalPersonalizationEntry() {
         var localProSettings = getLocalProSettings() || {};
+        var visibleAll = getAvatarVisibleAllToggle();
+        var borderStyle = getAvatarBorderStyleFromStorage();
         return {
+            discord_id: myDiscordId || null,
+            avatar_url: getResolvedMyAvatarUrl(),
+            avatar_disabled: getAvatarStorageToggle('hxd_avatar_disabled', myAvatarDisabled),
+            avatar_visible_self_only: getAvatarStorageToggle('hxd_avatar_visible_self_only', myAvatarVisibleSelfOnly),
+            avatar_visible_team: visibleAll,
+            avatar_visible_rival: visibleAll,
+            avatar_team_border: getAvatarStorageToggle('hxd_avatar_team_border', myAvatarTeamBorder),
+            avatar_team_border_red: borderStyle.avatar_team_border_red,
+            avatar_team_border_blue: borderStyle.avatar_team_border_blue,
+            avatar_team_border_width: borderStyle.avatar_team_border_width,
+            avatar_team_border_inset: borderStyle.avatar_team_border_inset,
             verified: Boolean(myVerified),
             badge: myBadge || null,
             isPro: Boolean(myIsPro),
@@ -359,6 +550,7 @@
             setVerifiedCacheEntry(aliases[i], entry);
         }
         window.__verifiedCache = verifiedCache;
+        syncAvatarRuntimeForLocalPlayer();
     }
 
     function getLocalPlayerIdFromPage() {
@@ -424,6 +616,7 @@
 
     function remoteHasProfileVisuals(info) {
         if (!info) return false;
+        if (info.avatar_url && !readAvatarBool(info.avatar_disabled, false)) return true;
         if (info.banner && info.banner !== 'none') return true;
         if (info.font && info.font !== 'default') return true;
         if (info.nick_color || info.nick_gradient) return true;
@@ -437,6 +630,11 @@
         if (!incoming) return base;
         return {
             discord_id: incoming.discord_id || base.discord_id || null,
+            avatar_url: incoming.avatar_url ?? base.avatar_url ?? null,
+            avatar_disabled: incoming.avatar_disabled ?? base.avatar_disabled ?? false,
+            avatar_visible_self_only: incoming.avatar_visible_self_only ?? base.avatar_visible_self_only ?? true,
+            avatar_visible_team: incoming.avatar_visible_team ?? base.avatar_visible_team ?? false,
+            avatar_visible_rival: incoming.avatar_visible_rival ?? base.avatar_visible_rival ?? false,
             verified: Boolean(base.verified || incoming.verified),
             badge: normalizeUserBadge(incoming.badge || base.badge),
             isPro: Boolean(base.isPro || incoming.isPro),
@@ -476,17 +674,35 @@
                         myVerified = Boolean(data.is_verified);
                         myDiscordId = data.discord_id || null;
                         myBadge = normalizeUserBadge(data.badge);
-                        myIsPro = true;
+                        myIsPro = Boolean(data.is_pro || data.is_vip);
+                        myAvatarUrl = data.avatar_url || null;
+                        myAvatarDisabled = readAvatarBool(data.avatar_disabled, false);
+                        myAvatarVisibleSelfOnly = readAvatarBool(data.avatar_visible_self_only, true);
+                        myAvatarVisibleTeam = readAvatarBool(data.avatar_visible_team, false);
+                        myAvatarVisibleRival = readAvatarBool(data.avatar_visible_rival, false);
+                        myAvatarTeamBorder = readAvatarBool(data.avatar_team_border, false);
+                        var skipBorderStyleSync = window.__hxdAvatarBorderEditUntil &&
+                          Date.now() < window.__hxdAvatarBorderEditUntil;
+                        if (!skipBorderStyleSync) {
+                          myAvatarTeamBorderRed = Math.min(2, Math.max(0, parseInt(data.avatar_team_border_red, 10) || 1));
+                          myAvatarTeamBorderBlue = Math.min(2, Math.max(0, parseInt(data.avatar_team_border_blue, 10) || 1));
+                          myAvatarTeamBorderWidth = Math.min(8, Math.max(1, parseInt(data.avatar_team_border_width, 10) || 3));
+                          myAvatarTeamBorderInset = readAvatarBool(data.avatar_team_border_inset, false);
+                          try {
+                            localStorage.setItem('hxd_avatar_team_border_red', String(myAvatarTeamBorderRed));
+                            localStorage.setItem('hxd_avatar_team_border_blue', String(myAvatarTeamBorderBlue));
+                            localStorage.setItem('hxd_avatar_team_border_width', String(myAvatarTeamBorderWidth));
+                            localStorage.setItem('hxd_avatar_team_border_inset', myAvatarTeamBorderInset ? '1' : '0');
+                          } catch (eBorderStore) {}
+                        }
                         if (data.game_nick) {
                             storeLocalGameNick(data.game_nick);
                         }
 
                         window.__proStatus = {
-                            is_pro: true,
-                            is_vip: true,
-                            allpro: true
+                            is_pro: Boolean(data.is_pro),
+                            is_vip: Boolean(data.is_vip)
                         };
-                        window.__vipStatus = { is_vip: true };
 
                         var localSettings = {
                             banner: data.banner ?? null,
@@ -504,22 +720,23 @@
 
                         updateLocalProSettings(localSettings);
                         localSettingsLoaded = true;
+                        publishAvatarGlobals();
+                        syncAvatarRuntimeForLocalPlayer();
                         if (isActive) {
                             scheduleFullRefresh(20);
                         }
-                        
-                        // Injeta discord_id e flag de debug no contexto do game-min
-                        if (myDiscordId) {
-                            var script = document.createElement('script');
-                            script.textContent = 'window.__haxDiscordId = "' + myDiscordId + '";';
-                            document.body.appendChild(script);
-                            script.remove();
-                        }
-                    } else if (force) {
+                    } else {
                         myVerified = false;
                         myDiscordId = null;
                         myBadge = null;
-                        myIsPro = true;
+                        myIsPro = false;
+                        myAvatarUrl = null;
+                        myAvatarDisabled = false;
+                        myAvatarVisibleSelfOnly = true;
+                        myAvatarVisibleTeam = false;
+                        myAvatarVisibleRival = false;
+                        myAvatarTeamBorder = false;
+                        publishAvatarGlobals();
                     }
                     statusLoaded = true;
                 } catch (e) {}
@@ -534,8 +751,12 @@
     }
 
     function sendPlayerIdToServer(playerId, roomId) {
-        if (playerId === lastSentPlayerId) return;
+        var now = Date.now();
+        var normalizedRoomId = roomId || null;
+        if (playerId === lastSentPlayerId && normalizedRoomId === lastSentPlayerRoomId && now - lastSentPlayerAt < 5000) return;
         lastSentPlayerId = playerId;
+        lastSentPlayerRoomId = normalizedRoomId;
+        lastSentPlayerAt = now;
         
         var xhr = new XMLHttpRequest();
         xhr.open('POST', LOCAL_SERVER + '/session/player-id', true);
@@ -565,11 +786,50 @@
     function sendGameNickToServer(gameNick, roomId) {
         if (!gameNick) return;
         storeLocalGameNick(gameNick);
+        var localPlayerId = getLocalPlayerId();
+        if (localPlayerId == null) localPlayerId = getLocalPlayerIdFromPage();
         
         var xhr = new XMLHttpRequest();
         xhr.open('POST', LOCAL_SERVER + '/session/game-nick', true);
         xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.send(JSON.stringify({ game_nick: gameNick, room_id: roomId }));
+        xhr.send(JSON.stringify({ game_nick: gameNick, room_id: roomId, player_id: localPlayerId }));
+    }
+
+    function readNicknameInputNick() {
+        var root = document.querySelector('.choose-nickname-view') || document;
+        var inputs = root.querySelectorAll('input');
+        for (var i = 0; i < inputs.length; i++) {
+            var input = inputs[i];
+            var type = String(input.getAttribute('type') || 'text').toLowerCase();
+            if (type === 'hidden' || type === 'password' || type === 'checkbox' || type === 'radio') continue;
+            var nick = cleanNick(String(input.value || '').trim());
+            if (nick) return nick;
+        }
+        return null;
+    }
+
+    function syncNicknameInputToServer() {
+        var nick = readNicknameInputNick();
+        if (!nick || nick === lastSentNicknameInput) return;
+        lastSentNicknameInput = nick;
+        sendGameNickToServer(nick, getRoomId());
+    }
+
+    function scheduleNicknameInputSync() {
+        if (nicknameInputDebounceTimer) clearTimeout(nicknameInputDebounceTimer);
+        nicknameInputDebounceTimer = setTimeout(function() {
+            nicknameInputDebounceTimer = null;
+            syncNicknameInputToServer();
+        }, 1500);
+    }
+
+    function startNicknameInputWatcher() {
+        if (nicknameInputWatcherStarted) return;
+        nicknameInputWatcherStarted = true;
+        document.addEventListener('input', scheduleNicknameInputSync, true);
+        document.addEventListener('change', syncNicknameInputToServer, true);
+        nicknameInputWatchTimer = setInterval(scheduleNicknameInputSync, 1000);
+        scheduleNicknameInputSync();
     }
 
     function notifyLeaveRoom() {
@@ -595,10 +855,22 @@
         }
         if (!payloadPlayers.length) { callback({}); return; }
 
+        verifiedFetchInFlight++;
+
+        function finishFetch(result) {
+            verifiedFetchInFlight = Math.max(0, verifiedFetchInFlight - 1);
+            callback(result);
+        }
+
         function normalizeRemoteProfile(data) {
             if (!data || typeof data !== 'object') return null;
             return {
                 discord_id: data.discord_id != null ? String(data.discord_id) : null,
+                avatar_url: data.avatar_url != null ? String(data.avatar_url) : null,
+                avatar_disabled: readAvatarBool(data.avatar_disabled, false),
+                avatar_visible_self_only: readAvatarBool(data.avatar_visible_self_only, true),
+                avatar_visible_team: readAvatarBool(data.avatar_visible_team, false),
+                avatar_visible_rival: readAvatarBool(data.avatar_visible_rival, false),
                 verified: Boolean(data.verified || data.is_verified),
                 badge: normalizeUserBadge(data.badge),
                 isPro: Boolean(data.isPro || data.is_pro || data.is_vip),
@@ -618,7 +890,7 @@
 
         function fetchByNickFallback(missingNicks, existingResult) {
             if (!missingNicks.length) {
-                callback(existingResult);
+                finishFetch(existingResult);
                 return;
             }
 
@@ -628,7 +900,7 @@
             function finishOne() {
                 remaining--;
                 if (remaining <= 0) {
-                    callback(merged);
+                    finishFetch(merged);
                 }
             }
 
@@ -693,11 +965,126 @@
         xhr.send(JSON.stringify({ nicks: nicks, players: payloadPlayers, room_id: roomId }));
     }
 
-    function setVerifiedCacheEntry(nick, data) {
+    function forcePresenceSync() {
+        lastSentPlayerId = null;
+        lastSentPlayerAt = 0;
+        var localPlayerId = getLocalPlayerId();
+        if (localPlayerId == null) {
+            localPlayerId = getLocalPlayerIdFromPage();
+        }
+        if (localPlayerId != null && !isNaN(localPlayerId)) {
+            sendPlayerIdToServer(localPlayerId, getRoomId());
+        }
+    }
+
+    function runFastRoomBootstrap() {
+        forcePresenceSync();
+        processPlayers(true, true);
+    }
+
+    function avatarUrlFingerprint(url) {
+        if (!url || typeof url !== 'string') return '';
+        if (url.indexOf('blob:') === 0) return url;
+        var len = url.length;
+        if (len <= 256) return url;
+        if (url.indexOf('data:') === 0) {
+            return 'd:' + len + ':' + url.charCodeAt(len - 1) + ':' + url.slice(-96);
+        }
+        return url.slice(-128);
+    }
+
+    function pruneAvatarBlobCacheForOwner(ownerKey) {
+        if (!ownerKey) return;
+        var owner = String(ownerKey);
+        var prefix = owner + '|';
+        for (var key in avatarBlobUrlCache) {
+            if (key === owner || key.indexOf(prefix) === 0) {
+                try { URL.revokeObjectURL(avatarBlobUrlCache[key]); } catch (eRevoke) {}
+                delete avatarBlobUrlCache[key];
+            }
+        }
+    }
+
+    function setVerifiedCacheEntry(nick, data, playerId) {
         if (!nick) return;
-        verifiedCache[nick] = Object.assign({}, data || {}, {
-            __fetchedAt: Date.now()
-        });
+        var prev = verifiedCache[nick];
+        var incoming = data || {};
+        var entry = Object.assign({}, prev || {}, incoming);
+
+        if (prev) {
+            if (prev.discord_id && !incoming.discord_id) entry.discord_id = prev.discord_id;
+            if (prev.avatar_url && !incoming.avatar_url) entry.avatar_url = prev.avatar_url;
+            if (prev.__proLocked || prev.isPro) {
+                entry.isPro = Boolean(prev.isPro || incoming.isPro);
+                entry.__proLocked = true;
+            } else if (incoming.isPro) {
+                entry.__proLocked = true;
+            }
+            if (prev.__verifiedLocked || prev.verified) {
+                entry.verified = Boolean(prev.verified || incoming.verified);
+                entry.__verifiedLocked = true;
+            } else if (incoming.verified) {
+                entry.__verifiedLocked = true;
+            }
+            if (prev.badge && !incoming.badge) entry.badge = prev.badge;
+            var stickyVisualKeys = [
+                'banner', 'font', 'nick_color', 'nick_gradient',
+                'verified_color', 'verified_gradient',
+                'custom_banner_color1', 'custom_banner_color2'
+            ];
+            for (var sk = 0; sk < stickyVisualKeys.length; sk++) {
+                var vKey = stickyVisualKeys[sk];
+                if (prev[vKey] && (incoming[vKey] === null || incoming[vKey] === undefined || incoming[vKey] === '')) {
+                    entry[vKey] = prev[vKey];
+                }
+            }
+        } else {
+            if (entry.isPro) entry.__proLocked = true;
+            if (entry.verified) entry.__verifiedLocked = true;
+        }
+
+        entry.__fetchedAt = Date.now();
+        entry.__avatarFp = avatarUrlFingerprint(entry.avatar_url);
+        if (prev && prev.__avatarFp && prev.__avatarFp !== entry.__avatarFp) {
+            pruneAvatarBlobCacheForOwner(entry.discord_id || prev.discord_id || ('n:' + nick));
+        }
+        if (playerId != null && !isNaN(playerId)) {
+            entry.__playerId = playerId;
+        }
+        verifiedCache[nick] = entry;
+    }
+
+    function applyRemoteAvatarPollUpdate(prev, next) {
+        if (!next) return prev || null;
+        var entry = Object.assign({}, prev || {});
+        if (next.avatar_url) entry.avatar_url = next.avatar_url;
+        if (next.avatar_disabled !== undefined && next.avatar_disabled !== null) {
+            entry.avatar_disabled = next.avatar_disabled;
+        }
+        if (next.avatar_visible_self_only !== undefined && next.avatar_visible_self_only !== null) {
+            entry.avatar_visible_self_only = next.avatar_visible_self_only;
+        }
+        if (next.avatar_visible_team !== undefined && next.avatar_visible_team !== null) {
+            entry.avatar_visible_team = next.avatar_visible_team;
+        }
+        if (next.avatar_visible_rival !== undefined && next.avatar_visible_rival !== null) {
+            entry.avatar_visible_rival = next.avatar_visible_rival;
+        }
+        if (next.discord_id && !entry.discord_id) entry.discord_id = next.discord_id;
+        if (!entry.__proLocked) {
+            if (next.isPro) {
+                entry.isPro = true;
+                entry.__proLocked = true;
+            }
+            if (next.verified) {
+                entry.verified = true;
+                entry.__verifiedLocked = true;
+            }
+            if (next.badge && !entry.badge) entry.badge = next.badge;
+        }
+        entry.__fetchedAt = Date.now();
+        entry.__avatarFp = avatarUrlFingerprint(entry.avatar_url);
+        return entry;
     }
 
     function getVerifiedCacheEntry(nick) {
@@ -705,10 +1092,305 @@
         return verifiedCache[nick];
     }
 
-    function isVerifiedCacheStale(nick) {
+    function ensureAvatarRuntimeReceiver() {
+        if (window.__hxdAvatarReceiverInstalled) return;
+        window.__hxdAvatarReceiverInstalled = true;
+        var script = document.createElement('script');
+        script.textContent = '(function(){' +
+            'if(window.__hxdAvatarReceiverReady)return;' +
+            'window.__hxdAvatarReceiverReady=true;' +
+            'window.__hxdAvatarProfilesByPlayerId=window.__hxdAvatarProfilesByPlayerId||{};' +
+            'window.addEventListener("message",function(e){' +
+            'if(e.source!==window||!e.data||e.data.__hxdAvatars!==true)return;' +
+            'window.__hxdAvatarProfilesByPlayerId=e.data.profiles||{};' +
+            'try{window.dispatchEvent(new Event("hxd-avatar-image-loaded"));}catch(ex){}' +
+            '});' +
+            '})();';
+        (document.documentElement || document.head || document.body).appendChild(script);
+        script.remove();
+    }
+
+    var avatarBlobUrlCache = {};
+    var avatarPrefetchStarted = {};
+
+    function resolveRuntimeAvatarUrl(url, cacheKey) {
+        if (!url || typeof url !== 'string') return null;
+        if (url.indexOf('data:') !== 0) return url;
+        var ownerKey = String(cacheKey || 'u');
+        var key = ownerKey + '|' + avatarUrlFingerprint(url);
+        if (avatarBlobUrlCache[key]) return avatarBlobUrlCache[key];
+        try {
+            var parts = url.split(',');
+            if (parts.length < 2) return url;
+            var mimeMatch = parts[0].match(/data:([^;]+)/);
+            var mime = mimeMatch && mimeMatch[1] ? mimeMatch[1] : 'image/jpeg';
+            var binary = atob(parts[1]);
+            var bytes = new Uint8Array(binary.length);
+            for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            var blobUrl = URL.createObjectURL(new Blob([bytes], { type: mime }));
+            avatarBlobUrlCache[key] = blobUrl;
+            return blobUrl;
+        } catch (eBlob) {
+            return url;
+        }
+    }
+
+    function prefetchAvatarImage(url, cacheKey) {
+        var resolved = resolveRuntimeAvatarUrl(url, cacheKey);
+        if (!resolved) return;
+        if (avatarPrefetchStarted[resolved]) return;
+        avatarPrefetchStarted[resolved] = true;
+        try {
+            var img = new Image();
+            img.onload = function() {
+                try { window.dispatchEvent(new Event('hxd-avatar-image-loaded')); } catch (eOn) {}
+            };
+            img.onerror = function() {
+                delete avatarPrefetchStarted[resolved];
+            };
+            img.src = resolved;
+        } catch (ePre) {}
+    }
+
+    function buildRuntimeAvatarProfile(playerId, nick, profile, isLocal) {
+        var data = profile || {};
+        var disabled = data.avatar_disabled !== undefined ? readAvatarBool(data.avatar_disabled, false) : (isLocal ? getAvatarStorageToggle('hxd_avatar_disabled', myAvatarDisabled) : false);
+        var avatarUrl = data.avatar_url || (isLocal ? getResolvedMyAvatarUrl() : null);
+        if (disabled || !avatarUrl) return null;
+        var discordId = data.discord_id || (isLocal ? myDiscordId : null);
+        var runtimeUrl = resolveRuntimeAvatarUrl(avatarUrl, discordId || ('p' + playerId));
+        prefetchAvatarImage(avatarUrl, discordId || ('p' + playerId));
+        var visibleTeam = isLocal
+            ? (data.avatar_visible_team !== undefined ? readAvatarBool(data.avatar_visible_team, false) : getAvatarStorageToggle('hxd_avatar_visible_team', myAvatarVisibleTeam))
+            : readAvatarBool(data.avatar_visible_team, false);
+        var visibleRival = isLocal
+            ? (data.avatar_visible_rival !== undefined ? readAvatarBool(data.avatar_visible_rival, false) : getAvatarStorageToggle('hxd_avatar_visible_rival', myAvatarVisibleRival))
+            : readAvatarBool(data.avatar_visible_rival, false);
+        if (!isLocal && visibleTeam && visibleRival) {
+            // API puede marcar visible para todos con ambos flags en true.
+        }
+        return {
+            nick: nick || '',
+            discord_id: discordId,
+            avatar_url: runtimeUrl,
+            avatar_disabled: disabled,
+            avatar_visible_self_only: isLocal
+                ? (data.avatar_visible_self_only !== undefined ? readAvatarBool(data.avatar_visible_self_only, true) : getAvatarStorageToggle('hxd_avatar_visible_self_only', myAvatarVisibleSelfOnly))
+                : readAvatarBool(data.avatar_visible_self_only, false),
+            avatar_visible_team: visibleTeam,
+            avatar_visible_rival: visibleRival,
+            is_local: Boolean(isLocal),
+            __avatarFp: avatarUrlFingerprint(avatarUrl),
+            updated_at: Date.now()
+        };
+    }
+
+    function publishAvatarProfilesToRuntime() {
+        ensureAvatarRuntimeReceiver();
+        try {
+            window.postMessage({
+                __hxdAvatars: true,
+                profiles: window.__hxdAvatarProfilesByPlayerId || {}
+            }, '*');
+        } catch (e) {}
+    }
+
+    function scheduleAvatarPublish(immediate) {
+        if (immediate) {
+            if (avatarPublishTimer) {
+                clearTimeout(avatarPublishTimer);
+                avatarPublishTimer = null;
+            }
+            publishAvatarProfilesToRuntime();
+            return;
+        }
+        if (avatarPublishTimer) clearTimeout(avatarPublishTimer);
+        avatarPublishTimer = setTimeout(function() {
+            avatarPublishTimer = null;
+            publishAvatarProfilesToRuntime();
+        }, 40);
+    }
+
+    function setAvatarRuntimeProfile(playerId, nick, profile, isLocal) {
+        if (playerId == null || isNaN(playerId)) return;
+        var existing = window.__hxdAvatarProfilesByPlayerId &&
+            window.__hxdAvatarProfilesByPlayerId[playerId];
+        var runtimeProfile = buildRuntimeAvatarProfile(playerId, nick, profile, isLocal);
+        if (!runtimeProfile) {
+            if (existing && existing.avatar_url && !isLocal) {
+                return;
+            }
+            if (existing && existing.avatar_url && isLocal) {
+                var explicitlyDisabled = profile && readAvatarBool(profile.avatar_disabled, false);
+                if (!explicitlyDisabled && getResolvedMyAvatarUrl()) {
+                    runtimeProfile = buildRuntimeAvatarProfile(playerId, nick, buildLocalPersonalizationEntry(), true);
+                }
+            }
+            if (!runtimeProfile) {
+                if (window.__hxdAvatarProfilesByPlayerId) delete window.__hxdAvatarProfilesByPlayerId[playerId];
+                scheduleAvatarPublish(true);
+                return;
+            }
+        }
+        window.__hxdAvatarProfilesByPlayerId = window.__hxdAvatarProfilesByPlayerId || {};
+        window.__hxdAvatarProfilesByPlayerId[playerId] = runtimeProfile;
+        scheduleAvatarPublish(true);
+    }
+
+    function isVerifiedCacheStale(nick, playerId) {
         var entry = getVerifiedCacheEntry(nick);
         if (!entry) return true;
-        return !entry.__fetchedAt || (Date.now() - entry.__fetchedAt > VERIFIED_CACHE_TTL_MS);
+        if (!entry.__fetchedAt || (Date.now() - entry.__fetchedAt > VERIFIED_CACHE_TTL_MS)) return true;
+        if (playerId != null && !isNaN(playerId) && entry.__playerId != null &&
+            Number(entry.__playerId) !== Number(playerId)) {
+            return true;
+        }
+        return false;
+    }
+
+    function remotePlayerNeedsAvatarFetch(nick, playerId) {
+        if (!nick || playerId == null || isNaN(playerId)) return false;
+        if (isVerifiedCacheStale(nick, playerId)) return true;
+        var cacheEntry = verifiedCache[nick];
+        var runtimeProfile = window.__hxdAvatarProfilesByPlayerId &&
+            window.__hxdAvatarProfilesByPlayerId[playerId];
+        if (!cacheEntry || !cacheEntry.avatar_url) return true;
+        if (!runtimeProfile || !runtimeProfile.avatar_url) return true;
+        if (cacheEntry.__avatarFp && runtimeProfile.__avatarFp &&
+            cacheEntry.__avatarFp !== runtimeProfile.__avatarFp) {
+            return true;
+        }
+        return false;
+    }
+
+    function getRemotePlayersInRoom() {
+        var players = document.querySelectorAll('[class^="player-list-item"]');
+        if (!players.length) return [];
+
+        var localPlayerId = getLocalPlayerId();
+        var remotePlayers = [];
+        for (var i = 0; i < players.length; i++) {
+            if (isLocalPlayerRow(players[i], localPlayerId)) continue;
+            var nameEl = players[i].querySelector('[data-hook="name"]');
+            if (!nameEl) continue;
+            var nick = cleanNick(getNickText(nameEl));
+            var playerId = parseInt(players[i].dataset.playerId, 10);
+            if (nick && !isNaN(playerId)) {
+                remotePlayers.push({ nick: nick, playerId: playerId });
+            }
+        }
+        return remotePlayers;
+    }
+
+    function remoteAvatarProfileChanged(prev, next) {
+        if (!prev && !next) return false;
+        if (!prev || !next) return true;
+        if (avatarUrlFingerprint(prev.avatar_url) !== avatarUrlFingerprint(next.avatar_url)) return true;
+        if (readAvatarBool(prev.avatar_disabled, false) !== readAvatarBool(next.avatar_disabled, false)) return true;
+        if (readAvatarBool(prev.avatar_visible_self_only, true) !== readAvatarBool(next.avatar_visible_self_only, true)) return true;
+        if (readAvatarBool(prev.avatar_visible_team, false) !== readAvatarBool(next.avatar_visible_team, false)) return true;
+        if (readAvatarBool(prev.avatar_visible_rival, false) !== readAvatarBool(next.avatar_visible_rival, false)) return true;
+        return false;
+    }
+
+    function remotePlayerProfileChanged(prev, next) {
+        if (remoteAvatarProfileChanged(prev, next)) return true;
+        if (!prev || !next) return true;
+        if (Boolean(prev.verified) !== Boolean(next.verified)) return true;
+        if (Boolean(prev.isPro) !== Boolean(next.isPro)) return true;
+        if (String(prev.badge || '') !== String(next.badge || '')) return true;
+        if (String(prev.banner || '') !== String(next.banner || '')) return true;
+        if (String(prev.font || '') !== String(next.font || '')) return true;
+        if (String(prev.nick_color || '') !== String(next.nick_color || '')) return true;
+        if (String(prev.nick_gradient || '') !== String(next.nick_gradient || '')) return true;
+        if (String(prev.verified_color || '') !== String(next.verified_color || '')) return true;
+        if (String(prev.verified_gradient || '') !== String(next.verified_gradient || '')) return true;
+        return false;
+    }
+
+    function refreshRemoteAvatarsInRoom(force) {
+        if (!isActive && !force) return;
+        if (!document.querySelector('.room-view') && !document.querySelector('.game-view')) return;
+        if (!force && verifiedFetchInFlight > 0) return;
+
+        var remotePlayers = getRemotePlayersInRoom();
+        if (!remotePlayers.length) return;
+
+        var roomId = getRoomId();
+        fetchVerifiedUsers(remotePlayers, roomId, function(result) {
+            var changed = false;
+            for (var i = 0; i < remotePlayers.length; i++) {
+                var nick = remotePlayers[i].nick;
+                var playerId = remotePlayers[i].playerId;
+                var prev = verifiedCache[nick] || null;
+                var next = result[nick];
+                if (!next) continue;
+                var merged = applyRemoteAvatarPollUpdate(prev, next);
+                if (remoteAvatarProfileChanged(prev, merged)) changed = true;
+                verifiedCache[nick] = merged;
+                if (merged.__playerId == null && playerId != null && !isNaN(playerId)) {
+                    merged.__playerId = playerId;
+                }
+                setAvatarRuntimeProfile(playerId, nick, merged, false);
+            }
+            window.__verifiedCache = verifiedCache;
+            if (changed) {
+                publishAvatarProfilesToRuntime();
+                try { window.dispatchEvent(new Event('hxd-avatar-image-loaded')); } catch (eLoaded) {}
+            }
+        });
+    }
+
+    function startRemoteAvatarPoll() {
+        if (remoteAvatarPollTimer) return;
+        remoteAvatarPollTimer = setInterval(function() {
+            refreshRemoteAvatarsInRoom(false);
+        }, REMOTE_AVATAR_POLL_MS);
+    }
+
+    function stopRemoteAvatarPoll() {
+        if (!remoteAvatarPollTimer) return;
+        clearInterval(remoteAvatarPollTimer);
+        remoteAvatarPollTimer = null;
+    }
+
+    function republishRoomAvatarsFromList() {
+        var players = document.querySelectorAll('[class^="player-list-item"]');
+        if (!players.length) return false;
+
+        var localPlayerId = getLocalPlayerId();
+        if (localPlayerId == null) {
+            var runtimeLocalId = getLocalPlayerIdFromPage();
+            if (runtimeLocalId != null && !isNaN(runtimeLocalId)) {
+                window.__myLocalPlayerId = runtimeLocalId;
+                localPlayerId = runtimeLocalId;
+            }
+        }
+
+        var publishedAny = false;
+        for (var i = 0; i < players.length; i++) {
+            var item = players[i];
+            var nameEl = item.querySelector('[data-hook="name"]');
+            if (!nameEl) continue;
+            var nick = cleanNick(getNickText(nameEl));
+            var playerId = parseInt(item.dataset.playerId, 10);
+            if (isNaN(playerId)) continue;
+
+            if (isLocalPlayerRow(item, localPlayerId)) {
+                window.__myLocalPlayerId = playerId;
+                setAvatarRuntimeProfile(playerId, nick, buildLocalPersonalizationEntry(), true);
+                publishedAny = true;
+            } else if (nick) {
+                var cacheEntry = verifiedCache[nick];
+                if (cacheEntry && cacheEntry.avatar_url) {
+                    setAvatarRuntimeProfile(playerId, nick, cacheEntry, false);
+                    publishedAny = true;
+                }
+            }
+        }
+
+        publishAvatarProfilesToRuntime();
+        return publishedAny;
     }
 
     function scheduleFullRefresh(delay) {
@@ -718,7 +1400,7 @@
         processDebounceTimer = setTimeout(function() {
             processDebounceTimer = null;
             processPlayers();
-        }, delay || 120);
+        }, delay == null ? 40 : delay);
     }
 
     function applyBadge(item) {
@@ -737,6 +1419,16 @@
         var isLocalRow = isLocalPlayerRow(item, localPlayerId);
         var localProSettings = getLocalProSettings();
         var forceVisibleWhenDisabled = false;
+
+        if (isLocalRow && !isNaN(playerId)) {
+            window.__myLocalPlayerId = playerId;
+            setAvatarRuntimeProfile(playerId, name, buildLocalPersonalizationEntry(), true);
+        } else if (!isNaN(playerId)) {
+            var avatarCacheInfo = verifiedCache[name];
+            if (avatarCacheInfo && avatarCacheInfo.avatar_url) {
+                setAvatarRuntimeProfile(playerId, name, avatarCacheInfo, false);
+            }
+        }
 
         var showBadge = false;
         var userRoleBadge = null;
@@ -785,7 +1477,11 @@
                 }
             }
             if (info) {
-                var remoteQualifies = remoteHasPersonalization(info);
+                if ((info.verified || info.isPro) && !info.__proLocked) {
+                    info.__proLocked = true;
+                    verifiedCache[name] = info;
+                }
+                var remoteQualifies = info.__proLocked || remoteHasPersonalization(info);
                 userRoleBadge = remoteQualifies ? normalizeUserBadge(info.badge) : null;
                 forceVisibleWhenDisabled = Boolean(remoteQualifies);
                 if (remoteQualifies) {
@@ -1085,8 +1781,10 @@
         }
     }
 
-    function processPlayers() {
-        if (!isActive) return;
+    function processPlayers(allowInactive, forceFetchAll) {
+        var inRoom = Boolean(document.querySelector('.room-view') || document.querySelector('.game-view'));
+        var hasPlayers = Boolean(document.querySelector('[class^="player-list-item"]'));
+        if (!isActive && !allowInactive && !(inRoom && hasPlayers)) return;
         
         var localPlayerId = getLocalPlayerId();
         if (localPlayerId == null) {
@@ -1101,6 +1799,10 @@
             activeRoomId = roomId || null;
             verifiedCache = {};
             window.__verifiedCache = verifiedCache;
+            window.__hxdAvatarProfilesByPlayerId = {};
+            scheduleAvatarPublish();
+            lastSentPlayerId = null;
+            lastSentPlayerAt = 0;
         }
         syncLocalPersonalizationCache();
         
@@ -1124,6 +1826,13 @@
                 var localRawNick = getNickText(localNameEl);
                 var localNick = cleanNick(localRawNick);
                 storeLocalGameNick(localNick);
+                var localRowPlayerId = parseInt(localRow.dataset.playerId, 10);
+                var effectiveLocalId = resolveEffectivePlayerId(localRowPlayerId, localPlayerId);
+                if (effectiveLocalId != null && !isNaN(effectiveLocalId)) {
+                    window.__myLocalPlayerId = effectiveLocalId;
+                    if (localPlayerId == null) localPlayerId = effectiveLocalId;
+                }
+                setAvatarRuntimeProfile(effectiveLocalId, localNick, buildLocalPersonalizationEntry(), true);
                 
                 if (!localNickSent) {
                     sendGameNickToServer(localNick, roomId);
@@ -1147,45 +1856,60 @@
                 // Sempre aplica badge (applyBadge já verifica se precisa)
                 applyBadge(players[i]);
                 
-                // Busca pelo nick limpo (só se não tiver no cache)
-                if (nick && isVerifiedCacheStale(nick)) {
+                // Busca pelo nick limpo (só se não tiver no cache ou faltar perfil runtime)
+                var remotePlayerId = parseInt(players[i].dataset.playerId, 10);
+                if (nick && (forceFetchAll || remotePlayerNeedsAvatarFetch(nick, remotePlayerId))) {
                     playersToResolve.push({
                         nick: nick,
-                        playerId: parseInt(players[i].dataset.playerId, 10)
+                        playerId: remotePlayerId
                     });
                 }
             }
         }
 
+        republishRoomAvatarsFromList();
+
         if (playersToResolve.length === 0) return;
 
         fetchVerifiedUsers(playersToResolve, roomId, function(result) {
             for (var nick in result) {
-                setVerifiedCacheEntry(nick, result[nick]);
+                var matchedPlayer = null;
+                for (var rp = 0; rp < playersToResolve.length; rp++) {
+                    if (playersToResolve[rp].nick === nick) {
+                        matchedPlayer = playersToResolve[rp];
+                        break;
+                    }
+                }
+                setVerifiedCacheEntry(nick, result[nick], matchedPlayer ? matchedPlayer.playerId : null);
             }
             for (var k = 0; k < playersToResolve.length; k++) {
                 var pendingNick = playersToResolve[k].nick;
-                if (!verifiedCache[pendingNick] || !verifiedCache[pendingNick].__fetchedAt) {
-                    setVerifiedCacheEntry(pendingNick, { verified: false, playerId: null, discordId: null, isPro: false });
+                if (!result[pendingNick] && !verifiedCache[pendingNick]) {
+                    setVerifiedCacheEntry(pendingNick, { verified: false, playerId: null, discordId: null, isPro: false }, playersToResolve[k].playerId);
+                }
+                if (verifiedCache[pendingNick]) {
+                    setAvatarRuntimeProfile(
+                        playersToResolve[k].playerId,
+                        pendingNick,
+                        verifiedCache[pendingNick],
+                        false
+                    );
                 }
             }
             window.__verifiedCache = verifiedCache;
-            try {
-                localStorage.setItem('haxclient_verified_cache', JSON.stringify(verifiedCache));
-            } catch(e) {}
-            
-            // Aplica só nos jogadores que buscamos
             var ps = document.querySelectorAll('[class^="player-list-item"]');
             for (var m = 0; m < ps.length; m++) {
-                var nameEl = ps[m].querySelector('[data-hook="name"]');
-                if (nameEl) {
-                    var rawNick = getNickText(nameEl);
-                    var nick = cleanNick(rawNick); // Nick limpo para comparação
+                var psNameEl = ps[m].querySelector('[data-hook="name"]');
+                if (psNameEl) {
+                    var rawNick = getNickText(psNameEl);
+                    var nick = cleanNick(rawNick);
                     if (result[nick] || playersToResolve.some(function(entry) { return entry.nick === nick; })) {
+                        setAvatarRuntimeProfile(parseInt(ps[m].dataset.playerId, 10), nick, verifiedCache[nick], isLocalPlayerRow(ps[m], localPlayerId));
                         applyBadge(ps[m]);
                     }
                 }
             }
+            republishRoomAvatarsFromList();
         });
     }
 
@@ -1202,6 +1926,7 @@
             if (nameEl) {
                 var nick = cleanNick(getNickText(nameEl));
                 storeLocalGameNick(nick);
+                setAvatarRuntimeProfile(parseInt(localCandidate.dataset.playerId, 10), nick, buildLocalPersonalizationEntry(), true);
                 sendGameNickToServer(nick, roomId);
             }
         }
@@ -1211,27 +1936,47 @@
             var remoteNameEl = items[i].querySelector('[data-hook="name"]');
             if (!remoteNameEl) continue;
             var remoteNick = cleanNick(getNickText(remoteNameEl));
-            if (!remoteNick || !isVerifiedCacheStale(remoteNick)) continue;
+            var remotePlayerId = parseInt(items[i].dataset.playerId, 10);
+            if (!remoteNick || !remotePlayerNeedsAvatarFetch(remoteNick, remotePlayerId)) continue;
             newPlayersToResolve.push({
                 nick: remoteNick,
-                playerId: parseInt(items[i].dataset.playerId, 10)
+                playerId: remotePlayerId
             });
         }
         if (newPlayersToResolve.length) {
             fetchVerifiedUsers(newPlayersToResolve, roomId, function(result) {
                 for (var nick in result) {
-                    setVerifiedCacheEntry(nick, result[nick]);
+                    var matchedNewPlayer = null;
+                    for (var np = 0; np < newPlayersToResolve.length; np++) {
+                        if (newPlayersToResolve[np].nick === nick) {
+                            matchedNewPlayer = newPlayersToResolve[np];
+                            break;
+                        }
+                    }
+                    setVerifiedCacheEntry(nick, result[nick], matchedNewPlayer ? matchedNewPlayer.playerId : null);
                 }
                 for (var k = 0; k < newPlayersToResolve.length; k++) {
                     var pendingNick = newPlayersToResolve[k].nick;
-                    if (!verifiedCache[pendingNick] || !verifiedCache[pendingNick].__fetchedAt) {
-                        setVerifiedCacheEntry(pendingNick, { verified: false, playerId: null, discordId: null, isPro: false });
+                    if (!result[pendingNick] && !verifiedCache[pendingNick]) {
+                        setVerifiedCacheEntry(pendingNick, { verified: false, playerId: null, discordId: null, isPro: false }, newPlayersToResolve[k].playerId);
+                    }
+                    if (verifiedCache[pendingNick]) {
+                        setAvatarRuntimeProfile(
+                            newPlayersToResolve[k].playerId,
+                            pendingNick,
+                            verifiedCache[pendingNick],
+                            false
+                        );
                     }
                 }
                 window.__verifiedCache = verifiedCache;
                 for (var m = 0; m < items.length; m++) {
+                    var itemNameEl = items[m].querySelector('[data-hook="name"]');
+                    var itemNick = itemNameEl ? cleanNick(getNickText(itemNameEl)) : '';
+                    setAvatarRuntimeProfile(parseInt(items[m].dataset.playerId, 10), itemNick, verifiedCache[itemNick], isLocalPlayerRow(items[m], localPlayerId));
                     applyBadge(items[m]);
                 }
+                republishRoomAvatarsFromList();
             });
         }
         scheduleFullRefresh(40);
@@ -1290,10 +2035,16 @@
         isActive = true;
         attachListObservers(lists);
         ensureApplyProfileButton();
-        ensureLocalProSettings();
+        if (!localSettingsLoaded) {
+            ensureLocalProSettings(function() {
+                refreshBadges();
+                refreshBanners();
+                refreshFonts();
+            });
+        }
         if (typeof window.__proLoadSettings === 'function') {
             window.__proLoadSettings().then(function() {
-                scheduleFullRefresh(20);
+                scheduleFullRefresh(0);
             }).catch(function() {});
         }
 
@@ -1302,11 +2053,13 @@
                 if (!isActive) return;
                 ensureApplyProfileButton();
                 processPlayers();
-            }, 1200);
+            }, 600);
         }
+        startRemoteAvatarPoll();
 
+        runFastRoomBootstrap();
         fetchMyStatus(true, function() {
-            processPlayers();
+            runFastRoomBootstrap();
         });
     }
 
@@ -1315,9 +2068,13 @@
         observerInitialized = false;
         window.__myLocalPlayerId = null;
         lastSentPlayerId = null;
+        lastSentPlayerRoomId = null;
+        lastSentPlayerAt = 0;
         activeRoomId = null;
         verifiedCache = {};
         window.__verifiedCache = verifiedCache;
+        window.__hxdAvatarProfilesByPlayerId = {};
+        scheduleAvatarPublish();
         clearLocalPlayerMarks();
         var applyBtn = document.getElementById('hax-apply-profile-btn');
         if (applyBtn) applyBtn.remove();
@@ -1325,9 +2082,14 @@
             clearInterval(refreshTimer);
             refreshTimer = null;
         }
+        stopRemoteAvatarPoll();
         if (processDebounceTimer) {
             clearTimeout(processDebounceTimer);
             processDebounceTimer = null;
+        }
+        if (avatarPublishTimer) {
+            clearTimeout(avatarPublishTimer);
+            avatarPublishTimer = null;
         }
         if (observerRetryTimer) {
             clearTimeout(observerRetryTimer);
@@ -1349,12 +2111,54 @@
     }
 
     function applyProfilesNow() {
-        fetchMyStatus(true, function() {
-            processPlayers();
+        syncLocalAvatarFromStorage();
+        if (myDiscordId) pruneAvatarBlobCacheForOwner(myDiscordId);
+        publishAvatarGlobals();
+        var localPlayerId = getLocalPlayerId();
+        if (localPlayerId == null) localPlayerId = getLocalPlayerIdFromPage();
+        if (localPlayerId != null && !isNaN(localPlayerId)) {
+            var localNick = getLocalNick() || cleanNick(window.__haxLocalGameNick || '') || '';
+            setAvatarRuntimeProfile(localPlayerId, localNick, buildLocalPersonalizationEntry(), true);
+        }
+        resyncRoomAvatarProfiles(true);
+        refreshRemoteAvatarsInRoom(true);
+    }
+
+    function resyncRoomAvatarProfiles(forceStatus) {
+        function runResync() {
+            publishAvatarGlobals();
+            syncAvatarRuntimeForLocalPlayer();
+            republishRoomAvatarsFromList();
+            var hasPlayers = Boolean(document.querySelector('[class^="player-list-item"]'));
+            if (isActive) {
+                processPlayers(false, true);
+            } else if (hasPlayers) {
+                processPlayers(true, true);
+            }
+            publishAvatarProfilesToRuntime();
             refreshBadges();
             refreshBanners();
             refreshFonts();
-        });
+        }
+        runResync();
+        if (forceStatus) {
+            fetchMyStatus(true, runResync);
+            if (!localSettingsLoaded) {
+                ensureLocalProSettings(runResync);
+            }
+        }
+    }
+
+    function scheduleRoomAvatarResync(delayMs) {
+        delayMs = delayMs == null ? 0 : delayMs;
+        setTimeout(function() {
+            runFastRoomBootstrap();
+            resyncRoomAvatarProfiles(true);
+            setTimeout(runFastRoomBootstrap, 50);
+            setTimeout(function() { resyncRoomAvatarProfiles(false); }, 150);
+            setTimeout(runFastRoomBootstrap, 300);
+            setTimeout(function() { resyncRoomAvatarProfiles(false); }, 550);
+        }, delayMs);
     }
 
     function findRoomToolbarHost() {
@@ -1410,6 +2214,12 @@
         window.__refreshProBanners = refreshBanners;
         window.__refreshProFonts = refreshFonts;
         window.__hxdSyncLocalPersonalizationCache = syncLocalPersonalizationCache;
+        publishAvatarGlobals();
+        startNicknameInputWatcher();
+        window.addEventListener('hxd-avatar-profile-changed', applyProfilesNow);
+        window.addEventListener('storage', function() {
+            resyncRoomAvatarProfiles(false);
+        });
         window.addEventListener('hax-verified-toggle-changed', function() {
             if (isVerifiedEnabled()) {
                 processPlayers();
@@ -1421,11 +2231,13 @@
         fetchMyStatus(function() {
             Injector.onView('room-view', function() {
                 ensureApplyProfileButton();
-                setTimeout(startObserver, 100);
+                startObserver();
+                scheduleRoomAvatarResync(0);
             });
 
             Injector.onView('game-view', function() {
-                setTimeout(recoverRoomProfilesIfNeeded, 120);
+                scheduleRoomAvatarResync(0);
+                recoverRoomProfilesIfNeeded();
             });
             
             Injector.onViewLeave('room-view', function() {
@@ -1439,7 +2251,7 @@
             });
             
             if (document.querySelector('.room-view')) {
-                setTimeout(startObserver, 100);
+                startObserver();
             }
 
             recoverRoomProfilesIfNeeded();
@@ -1448,7 +2260,7 @@
                     try {
                         recoverRoomProfilesIfNeeded();
                     } catch (e) {}
-                }, 750);
+                }, 400);
             }
 
         });

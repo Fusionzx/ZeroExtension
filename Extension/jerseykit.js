@@ -809,17 +809,7 @@
             hideRoomlistJerseyInpanel(doc);
             return;
         }
-        if (window.FriendsSystem && typeof FriendsSystem.closeFriendsPanel === 'function') {
-            try {
-                FriendsSystem.closeFriendsPanel(doc);
-            } catch (eF) {}
-        }
-        if (window.TeamsSystem && typeof TeamsSystem.closeRoomlistTeamsIfOpen === 'function') {
-            try {
-                TeamsSystem.closeRoomlistTeamsIfOpen(doc);
-            } catch (eT) {}
-        }
-        dialog.classList.remove('zero-profile-mode', 'zero-teams-mode', 'zero-friends-mode', 'zero-pro-mode');
+        dialog.classList.remove('zero-profile-mode', 'zero-pro-mode');
         if (window.__hxdSetRoomlistDialogProMode) {
             try {
                 window.__hxdSetRoomlistDialogProMode(doc, dialog, false);

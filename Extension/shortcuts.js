@@ -4,6 +4,7 @@
     var roomListObservers = [];
     var roomRefreshInterval = null;
     var roomRetryTimer = null;
+    var escFixInstalled = false;
     var refreshActionBarsScheduled = null;
     var localProfileMenuTarget = null;
     var localProfileMenuCleanup = null;
@@ -230,6 +231,9 @@
     }
 
     function isLocalPlayerItem(item) {
+        if (item && item.dataset && item.dataset.haxLocalPlayer === '1') {
+            return true;
+        }
         var pid = parsePlayerId(item);
         var lid = getGameLocalPlayerId();
         if (!isNaN(pid) && lid != null && !isNaN(lid)) {
@@ -311,6 +315,7 @@
         if (bar) bar.remove();
         var kb = item.querySelector('.hxd-host-kb-actions');
         if (kb) kb.remove();
+        if (item.dataset) delete item.dataset.hxdShortcutsKey;
         setPingPassthrough(item, false);
     }
 
@@ -720,13 +725,31 @@
     function ensureActionBar(item) {
         if (!item || !item.dataset) return;
 
+        var nameEl = item.querySelector('[data-hook="name"]');
+        var validPlayer = hasValidPlayerId(item);
+        var localPlayer = isLocalPlayerItem(item);
+        var roomAdmin = isRoomAdmin();
+        var nextKey = [
+            validPlayer ? 'v1' : 'v0',
+            localPlayer ? 'l1' : 'l0',
+            roomAdmin ? 'a1' : 'a0',
+            getPlayerName(item)
+        ].join('|');
+
+        if (item.dataset.hxdShortcutsKey === nextKey) {
+            var existingMute = item.querySelector('.room-mute-shortcut');
+            if (existingMute) {
+                setMuteButtonState(existingMute, isPlayerMuted(getPlayerName(item)));
+            }
+            return;
+        }
+
         removeActionBar(item);
+        item.dataset.hxdShortcutsKey = nextKey;
 
         restoreOriginalPlayerContextMenu(item);
 
-        var nameEl = item.querySelector('[data-hook="name"]');
-
-        if (nameEl && hasValidPlayerId(item) && !isLocalPlayerItem(item) && !item.querySelector('.room-mute-shortcut')) {
+        if (nameEl && validPlayer && !localPlayer && !item.querySelector('.room-mute-shortcut')) {
             var muteBtn = createActionButton('', 'mute', function() {
                 toggleMutePlayer(item, muteBtn);
             });
@@ -737,7 +760,7 @@
             item.insertBefore(muteBtn, nameEl);
         }
 
-        if (isRoomAdmin() && nameEl && hasValidPlayerId(item) && !isLocalPlayerItem(item) && nameEl.parentNode) {
+        if (roomAdmin && nameEl && validPlayer && !localPlayer && nameEl.parentNode) {
             var wrap = document.createElement('span');
             wrap.className = 'hxd-host-kb-actions';
             wrap.style.cssText = 'display:inline-flex;gap:3px;align-items:center;margin-left:6px;vertical-align:middle;flex-shrink:0;';
@@ -1092,6 +1115,27 @@
         }
     }
 
+    function installSafeEscapeHandler() {
+        if (escFixInstalled) return;
+        escFixInstalled = true;
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key !== 'Escape') return;
+            if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
+            if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+            if (!document.querySelector('.game-view')) return;
+            if (document.querySelector('.dialog')) return;
+
+            var menuBtn = document.querySelector('.game-view button[data-hook="menu"]');
+            if (!menuBtn) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+            menuBtn.click();
+        }, true);
+    }
+
     function installPlayerContextMenuGuard() {
         return;
     }
@@ -1112,6 +1156,7 @@
     });
 
     installHostAdminHotkeys();
+    installSafeEscapeHandler();
     installPlayerContextMenuGuard();
     observeRoomLists();
 
