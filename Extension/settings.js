@@ -4109,6 +4109,9 @@
 
         var checkInterval = null;
         var settingsObserver = null;
+        var settingsOpenBurstObserver = null;
+        var settingsOpenBurstStopTimer = null;
+        var observedSettingsHosts = [];
 
         ensureSettingsPreviewStyles(document);
         fetchSettingsPreviewHtml(function () {});
@@ -4157,6 +4160,7 @@
             }
 
             if (settingsDialog && previewRoot) {
+                stopSettingsOpenBurst();
                 pushSettingsPreviewContext(document);
             }
             if (settingsDialog && !sidebar && !previewRoot) {
@@ -4173,6 +4177,7 @@
                 if (settingsDialog.isConnected) {
                     delete settingsDialog.dataset.hxdPreviewMounting;
                 }
+                if (success) stopSettingsOpenBurst();
                 if (!success && settingsDialog.isConnected && !document.getElementById('settings-sidebar-panel')) {
                     modifySettingsDialog(document);
                 }
@@ -4187,25 +4192,88 @@
             }, delay || 0);
         };
 
+        var stopSettingsOpenBurst = function () {
+            if (settingsOpenBurstStopTimer) {
+                clearTimeout(settingsOpenBurstStopTimer);
+                settingsOpenBurstStopTimer = null;
+            }
+            if (settingsOpenBurstObserver) {
+                settingsOpenBurstObserver.disconnect();
+                settingsOpenBurstObserver = null;
+            }
+        };
+
+        var armSettingsOpenBurst = function () {
+            markSettingsOpening(window);
+            var delays = [0, 25, 75, 150, 300, 600, 1000];
+            for (var d = 0; d < delays.length; d++) {
+                (function (delay) {
+                    setTimeout(function () {
+                        scheduleSettingsDialogCheck(0);
+                    }, delay);
+                })(delays[d]);
+            }
+            if (!settingsOpenBurstObserver && document.body) {
+                settingsOpenBurstObserver = new MutationObserver(function () {
+                    scheduleSettingsDialogCheck(0);
+                });
+                try {
+                    settingsOpenBurstObserver.observe(document.body, { childList: true, subtree: true });
+                } catch (eBurstObserve) {}
+            }
+            if (settingsOpenBurstStopTimer) clearTimeout(settingsOpenBurstStopTimer);
+            settingsOpenBurstStopTimer = setTimeout(stopSettingsOpenBurst, 1600);
+        };
+        try { window.__hxdArmSettingsOpenBurst = armSettingsOpenBurst; } catch (eArmExport) {}
+
+        var isSettingsTrigger = function (target) {
+            return !!(target && target.closest && target.closest('[data-hook="settings"], [data-cmd="settings"]'));
+        };
+
+        document.addEventListener('pointerdown', function (e) {
+            if (isSettingsTrigger(e.target)) armSettingsOpenBurst();
+        }, true);
+        document.addEventListener('click', function (e) {
+            if (isSettingsTrigger(e.target)) armSettingsOpenBurst();
+        }, true);
+
+        var observeSettingsHost = function (el) {
+            if (!el || !settingsObserver) return;
+            for (var i = 0; i < observedSettingsHosts.length; i++) {
+                if (observedSettingsHosts[i] === el) return;
+            }
+            try {
+                settingsObserver.observe(el, { childList: true });
+                observedSettingsHosts.push(el);
+            } catch (eObserveHost) {}
+        };
+
+        var refreshSettingsHosts = function () {
+            observeSettingsHost(document.body);
+            var hosts = document.querySelectorAll('[data-hook="popups"], .game-view');
+            for (var i = 0; i < hosts.length; i++) observeSettingsHost(hosts[i]);
+        };
+
         var startChecking = function () {
             if (!settingsObserver) {
-                settingsObserver = new MutationObserver(function () {
+                settingsObserver = new MutationObserver(function (mutations) {
+                    for (var m = 0; m < mutations.length; m++) {
+                        var nodes = mutations[m].addedNodes || [];
+                        for (var n = 0; n < nodes.length; n++) {
+                            var node = nodes[n];
+                            if (!node || node.nodeType !== 1) continue;
+                            if (node.matches && (node.matches('[data-hook="popups"]') || node.matches('.game-view'))) {
+                                observeSettingsHost(node);
+                            }
+                            if (node.querySelectorAll) {
+                                var found = node.querySelectorAll('[data-hook="popups"], .game-view');
+                                for (var f = 0; f < found.length; f++) observeSettingsHost(found[f]);
+                            }
+                        }
+                    }
                     scheduleSettingsDialogCheck(40);
                 });
-                var observed = false;
-                var hosts = document.querySelectorAll('[data-hook="popups"], .game-view, body');
-                for (var i = 0; i < hosts.length; i++) {
-                    if (!hosts[i]) continue;
-                    try {
-                        settingsObserver.observe(hosts[i], { childList: true });
-                        observed = true;
-                    } catch (eObserve) {}
-                }
-                if (!observed && document.body) {
-                    try {
-                        settingsObserver.observe(document.body, { childList: true });
-                    } catch (eBodyObserve) {}
-                }
+                refreshSettingsHosts();
             }
             scheduleSettingsDialogCheck(0);
         };
@@ -4219,6 +4287,8 @@
                 settingsObserver.disconnect();
                 settingsObserver = null;
             }
+            observedSettingsHosts = [];
+            stopSettingsOpenBurst();
             hideTooltip();
         };
 

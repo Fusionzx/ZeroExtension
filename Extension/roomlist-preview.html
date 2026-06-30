@@ -182,6 +182,33 @@
 
     .country-menu.open { display: block; }
 
+    .country-sort-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding: 2px 2px 6px;
+      margin-bottom: 4px;
+      border-bottom: 1px solid var(--theme-border);
+    }
+
+    .country-sort-btn {
+      height: 30px;
+      border: none;
+      border-radius: 6px;
+      background: var(--theme-bg-primary);
+      color: var(--theme-text-secondary);
+      font: inherit;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .country-sort-btn:hover,
+    .country-sort-btn.active {
+      background: var(--theme-text-primary);
+      color: var(--theme-bg-primary);
+    }
+
     .country-item {
       width: 100%;
       height: 34px;
@@ -1653,6 +1680,7 @@
       title: 'Salas', lead: '{n} salas disponibles', leadOne: '1 sala disponible', leadSel: ' · {name} seleccionada',
       all: 'Todos', pro: 'Pro', fav: 'Favoritos',
       countryFilter: 'Filtrar pais', countryAll: 'Todos los paises',
+      countrySortAlpha: 'A-Z', countrySortCount: 'Mas salas',
       colDist: 'Dist.', colName: 'Nombre', colPlayers: 'Jugadores',
       empty: 'No hay salas que coincidan',
       loading: 'Cargando…',
@@ -1700,6 +1728,7 @@
       title: 'Rooms', lead: '{n} rooms available', leadOne: '1 room available', leadSel: ' · {name} selected',
       all: 'All', pro: 'Pro', fav: 'Favorites',
       countryFilter: 'Filter country', countryAll: 'All countries',
+      countrySortAlpha: 'A-Z', countrySortCount: 'Most rooms',
       colDist: 'Dist.', colName: 'Name', colPlayers: 'Players',
       empty: 'No matching rooms',
       loading: 'Loading…',
@@ -1747,6 +1776,7 @@
       title: 'Salas', lead: '{n} salas disponíveis', leadOne: '1 sala disponível', leadSel: ' · {name} selecionada',
       all: 'Todos', pro: 'Pro', fav: 'Favoritos',
       countryFilter: 'Filtrar pais', countryAll: 'Todos os paises',
+      countrySortAlpha: 'A-Z', countrySortCount: 'Mais salas',
       colDist: 'Dist.', colName: 'Nome', colPlayers: 'Jogadores',
       empty: 'Nenhuma sala encontrada',
       loading: 'Carregando…',
@@ -1798,6 +1828,7 @@
   var filterMode = 'all';
   var countryFilter = 'all';
   var countryMenuOpen = false;
+  var countrySortMode = 'alpha';
   var searchQuery = '';
   var isLive = false;
   var roomsLoading = window.parent !== window;
@@ -1824,6 +1855,10 @@
   var hoveredRowName = null;
   var lastSyncedInpanelMode = '';
   var currentPlayerNick = '';
+
+  try {
+    countrySortMode = localStorage.getItem('hxd_room_country_sort') === 'count' ? 'count' : 'alpha';
+  } catch (eCountrySort) {}
 
   var navbar = document.getElementById('navbar');
   var searchToggle = document.getElementById('search-toggle');
@@ -1961,6 +1996,7 @@
       return { code: code, count: counts[code] };
     });
     items.sort(function (a, b) {
+      if (countrySortMode === 'count' && b.count !== a.count) return b.count - a.count;
       return a.code.localeCompare(b.code);
     });
     return { items: items, total: total };
@@ -1969,7 +2005,11 @@
   function renderCountryMenu() {
     if (!countryMenu) return;
     var stats = getCountryStats();
-    var html = '<button type="button" class="country-item' + (countryFilter === 'all' ? ' active' : '') + '" data-country="all">' +
+    var html = '<div class="country-sort-row">' +
+      '<button type="button" class="country-sort-btn' + (countrySortMode === 'alpha' ? ' active' : '') + '" data-country-sort="alpha">' + escHtml(t('countrySortAlpha')) + '</button>' +
+      '<button type="button" class="country-sort-btn' + (countrySortMode === 'count' ? ' active' : '') + '" data-country-sort="count">' + escHtml(t('countrySortCount')) + '</button>' +
+      '</div>' +
+      '<button type="button" class="country-item' + (countryFilter === 'all' ? ' active' : '') + '" data-country="all">' +
       '<span>' + escHtml(t('countryAll')) + '</span><span class="country-item-count">' + rooms.length + '</span></button>';
     for (var i = 0; i < stats.items.length; i++) {
       var item = stats.items[i];
@@ -3485,6 +3525,13 @@
 
   if (countryMenu) {
     countryMenu.addEventListener('click', function (e) {
+      var sortBtn = e.target.closest('[data-country-sort]');
+      if (sortBtn && countryMenu.contains(sortBtn)) {
+        countrySortMode = sortBtn.getAttribute('data-country-sort') === 'count' ? 'count' : 'alpha';
+        try { localStorage.setItem('hxd_room_country_sort', countrySortMode); } catch (eSortStore) {}
+        renderCountryMenu();
+        return;
+      }
       var btn = e.target.closest('.country-item');
       if (!btn || !countryMenu.contains(btn)) return;
       var code = btn.getAttribute('data-country') || 'all';

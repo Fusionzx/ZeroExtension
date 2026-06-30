@@ -1767,6 +1767,9 @@
                     window.__hxdSettingsRoomlistSession = true;
                 } catch (eRlFlag) {}
             }
+            if (typeof window.__hxdArmSettingsOpenBurst === 'function') {
+                try { window.__hxdArmSettingsOpenBurst(); } catch (eArmSettings) {}
+            }
             var settingsBtn = iframeDoc.querySelector('.roomlist-view [data-hook="settings"]');
             if (settingsBtn) settingsBtn.click();
         } else if (action === 'replays') {
