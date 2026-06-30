@@ -93,6 +93,14 @@
             return document.hidden || document.visibilityState === 'hidden';
         }
 
+        function isRoomMenuVisible() {
+            try {
+                return !!window.__hxdRoomMenuVisible;
+            } catch (e) {
+                return false;
+            }
+        }
+
         function hasCallbacks() {
             for (var id in callbacks) {
                 if (Object.prototype.hasOwnProperty.call(callbacks, id)) return true;
@@ -122,7 +130,9 @@
 
         function useTimerFrame() {
             if (readEnabled() && isBackground()) return true;
-            return !isBackground() && getSavedFpsLimit() > 0;
+            if (isBackground()) return false;
+            if (getSavedFpsLimit() > 0) return true;
+            return readEnabled() && isRoomMenuVisible();
         }
 
         function clearNativeFrame() {

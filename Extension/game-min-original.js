@@ -4444,6 +4444,9 @@
             this.Bd = this.Re = 0;
             this.za = a;
             this.l = new za(a.xc);
+            try {
+                window.__hxdRoomMenuVisible = !1
+            } catch (d) {}
             let b = new ac(this.l);
             b.Hi(a.U);
             window.document.addEventListener("keydown", M(this, this.Fa));
@@ -4511,6 +4514,9 @@
             window.document.removeEventListener("mouseup", M(this, this.ld));
             window.onbeforeunload = null;
             window.cancelAnimationFrame(this.Re);
+            try {
+                window.__hxdRoomMenuVisible = !1
+            } catch (a) {}
             window.clearInterval(this.Sh);
             window.clearInterval(this.lj);
             this.W.la()
@@ -4836,7 +4842,10 @@
         we(a) {
             this.od != a && (this.od = a,
             this.f.classList.toggle("showing-room-view", this.od),
-            this.od ? this.us.appendChild(this.Xa.f) : this.Xa.f.remove())
+            this.od ? this.us.appendChild(this.Xa.f) : this.Xa.f.remove());
+            try {
+                window.__hxdRoomMenuVisible = !!this.od
+            } catch (b) {}
         }
         Zk() {
             return null != za.Tq
@@ -8347,6 +8356,9 @@
             }
             ;
             this.l = new za(a.xc);
+            try {
+                window.__hxdRoomMenuVisible = !1
+            } catch (d) {}
             window.top.document.body.classList.add("hb-playing");
             this.Uh = new ac(this.l,a.U.oa(a.xc).D);
             this.Uh.Hi(a.U);
@@ -8530,6 +8542,9 @@
             window.document.removeEventListener("mouseup", M(this, this.ld));
             window.onbeforeunload = null;
             window.cancelAnimationFrame(this.Re);
+            try {
+                window.__hxdRoomMenuVisible = !1
+            } catch (a) {}
             window.top.document.body.classList.remove("hb-playing");
             this.W.la();
             window.clearInterval(this.Sh);
