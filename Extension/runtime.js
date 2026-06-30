@@ -100,27 +100,29 @@
             return false;
         }
 
-        function getTargetFps() {
+        function getSavedFpsLimit() {
             var fps = 0;
             try {
                 fps = parseInt(window.localStorage.getItem('fps_limit'), 10) || 0;
             } catch (e) {}
-            if (fps < 1) fps = maxSchedulerFps;
+            if (fps > 0 && fps < 6) {
+                fps = [0, 30, 60, 75, 144, 240][fps] || fps;
+                try {
+                    window.localStorage.setItem('fps_limit', String(fps));
+                } catch (eMigrate) {}
+            }
+            if (fps < 1) fps = 0;
             if (fps > maxSchedulerFps) fps = maxSchedulerFps;
             return fps;
         }
 
-        function isUncapped() {
-            try {
-                return (parseInt(window.localStorage.getItem('fps_limit'), 10) || 0) < 1;
-            } catch (e) {
-                return true;
-            }
+        function getTargetFps() {
+            return getSavedFpsLimit() || maxSchedulerFps;
         }
 
         function useTimerFrame() {
             if (readEnabled() && isBackground()) return true;
-            return !isBackground() && isUncapped();
+            return !isBackground() && getSavedFpsLimit() > 0;
         }
 
         function clearNativeFrame() {

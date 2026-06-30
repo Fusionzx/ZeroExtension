@@ -3686,9 +3686,13 @@
                 return y + 1
             });
             f("fps", m.j.Rh, function(y) {
-                return y
+                return [0, 30, 60, 75, 144, 240][y] || 0
             }, function(y) {
-                return y
+                y = parseInt(y, 10) || 0;
+                if (0 < y && 6 > y)
+                    return y;
+                y = [0, 30, 60, 75, 144, 240].indexOf(y);
+                return 0 > y ? 0 : y
             });
             let r = l.get("resscale-value")
               , rr = l.get("resscale-range");
@@ -12840,7 +12844,15 @@
             m.j.Uk.ha(b("show_indicators", !0) || b("show_chat_indicator", !0));
             m.j.li.ha(b("low_latency_canvas", !1));
             m.j.Qm.ha(b("image_smoothing", !0));
-            m.j.Rh.ha(c("fps_limit", 0));
+            let fpsLimitValue = c("fps_limit", 0);
+            if (0 < fpsLimitValue && 6 > fpsLimitValue) {
+                fpsLimitValue = [0, 30, 60, 75, 144, 240][fpsLimitValue] || 0;
+                try {
+                    ls.setItem("fps_limit", "" + fpsLimitValue)
+                } catch (fpsStoreE) {}
+            }
+            0 > fpsLimitValue && (fpsLimitValue = 0);
+            m.j.Rh.ha(fpsLimitValue);
             m.j.Mi.ha(d("resolution_scale", 1));
             m.j.Rd.ha(null != ls.getItem("view_mode") ? c("view_mode", -1) : c("viewmode", -1));
             m.j.kk.ha(c("chat_height", 160));
@@ -12909,7 +12921,7 @@
             q("tmisc-culling", m.j.Wm.v());
             if (dlg) {
                 let fpsSel = dlg.querySelector('[data-hook="fps"]');
-                fpsSel && (fpsSel.selectedIndex = Math.max(0, [0, 30, 60, 144, 240].indexOf(m.j.Rh.v())));
+                fpsSel && (fpsSel.selectedIndex = Math.max(0, [0, 30, 60, 75, 144, 240].indexOf(m.j.Rh.v())));
                 let vmSel = dlg.querySelector('[data-hook="viewmode"]');
                 vmSel && (vmSel.selectedIndex = Math.max(0, m.j.Rd.v() + 1));
                 let qmSel = dlg.querySelector('[data-hook="qualitymode"]');
