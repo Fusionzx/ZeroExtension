@@ -4166,19 +4166,27 @@
             });
         };
 
-        var startChecking = function () {
+        var scheduleSettingsDialogCheck = function (delay) {
             if (checkInterval) return;
-            checkInterval = setInterval(checkSettingsDialog, 80);
+            checkInterval = setTimeout(function () {
+                checkInterval = null;
+                checkSettingsDialog();
+            }, delay || 0);
+        };
+
+        var startChecking = function () {
             if (!settingsObserver) {
-                settingsObserver = new MutationObserver(checkSettingsDialog);
+                settingsObserver = new MutationObserver(function () {
+                    scheduleSettingsDialogCheck(40);
+                });
                 settingsObserver.observe(document.documentElement, { childList: true, subtree: true });
             }
-            checkSettingsDialog();
+            scheduleSettingsDialogCheck(0);
         };
 
         var stopChecking = function () {
             if (checkInterval) {
-                clearInterval(checkInterval);
+                clearTimeout(checkInterval);
                 checkInterval = null;
             }
             if (settingsObserver) {

@@ -3888,7 +3888,7 @@
     misc_avatar_border_inset: { es: 'Borde hacia adentro', en: 'Inset border', pt: 'Borda para dentro' },
     misc_avatar_border_inset_h: { es: 'Si está apagado, el borde queda afuera del avatar (por defecto).', en: 'When off, the border stays outside the avatar (default).', pt: 'Desligado, a borda fica fora do avatar (padrão).' },
     misc_split: { es: 'Mensajes partidos', en: 'Split messages', pt: 'Mensagens divididas' },
-    misc_override: { es: 'Override idioma manual', en: 'Manual language override', pt: 'Override idioma manual' },
+    misc_override: { es: 'Cambiar bandera', en: 'Change flag', pt: 'Alterar bandeira' },
     look_glass: { es: 'Glass UI', en: 'Glass UI', pt: 'Glass UI' },
     look_glass_h: { es: 'Efecto vidrio en paneles del cliente', en: 'Glass effect on client panels', pt: 'Efeito vidro nos painéis do cliente' },
     seg_themes: { es: 'Temas', en: 'Themes', pt: 'Temas' },
@@ -6077,7 +6077,7 @@
         bl.innerHTML = '<button class="btn" type="button">' + t('misc_override') + '</button>';
         var overrideBtn = bl.querySelector('.btn');
         overrideBtn.onclick = function () { Bridge.clickParentHook('loc-ovr-btn'); };
-        reg('misc', t('misc_override'), 'loc-ovr traducao manual', overrideBtn);
+        reg('misc', t('misc_override'), 'loc-ovr bandeira flag location localizacao pais', overrideBtn);
         p.appendChild(bl);
       } catch (eMisc) {
         p.appendChild(listGroup('Misc', '', [

@@ -73,7 +73,7 @@
         var nativeHandle = null;
         var timerHandle = null;
         var lastFrameTime = 0;
-        var maxBackgroundFps = 240;
+        var maxSchedulerFps = 240;
 
         function readEnabled() {
             try {
@@ -105,9 +105,22 @@
             try {
                 fps = parseInt(window.localStorage.getItem('fps_limit'), 10) || 0;
             } catch (e) {}
-            if (fps < 1) fps = maxBackgroundFps;
-            if (fps > maxBackgroundFps) fps = maxBackgroundFps;
+            if (fps < 1) fps = maxSchedulerFps;
+            if (fps > maxSchedulerFps) fps = maxSchedulerFps;
             return fps;
+        }
+
+        function isUncapped() {
+            try {
+                return (parseInt(window.localStorage.getItem('fps_limit'), 10) || 0) < 1;
+            } catch (e) {
+                return true;
+            }
+        }
+
+        function useTimerFrame() {
+            if (readEnabled() && isBackground()) return true;
+            return !isBackground() && isUncapped();
         }
 
         function clearNativeFrame() {
@@ -127,7 +140,7 @@
         function scheduleFrame() {
             if (!hasCallbacks()) return;
 
-            if (readEnabled() && isBackground()) {
+            if (useTimerFrame()) {
                 clearNativeFrame();
                 if (timerHandle !== null) return;
 

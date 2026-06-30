@@ -3842,11 +3842,11 @@
                 c("loc-ovr", "Location override", y);
                 let F = l.get("loc-ovr-btn");
                 F.disabled = !a;
-                null == y ? (F.textContent = "Override location",
+                null == y ? (F.textContent = "Alterar bandeira",
                 F.onclick = function() {
                     H.h(Mc.mq)
                 }
-                ) : (F.textContent = "Remove override",
+                ) : (F.textContent = "Remover bandeira",
                 F.onclick = function() {
                     m.j.af.ha(null);
                     ub()
