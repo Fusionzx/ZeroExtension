@@ -4715,6 +4715,8 @@
             this.tl = this.sl = this.vl = null;
             this.ib = new yb;
             this.od = !1;
+            this.hxdRoomViewLastUpdate = 0;
+            this.hxdRoomViewLastSig = "";
             this.Jf = new zb;
             this.Ka = new cb;
             this.Xa = new Ab(a);
@@ -4810,7 +4812,8 @@
         }
         A(a) {
             null == a.U.M && this.we(!0);
-            this.od && this.Xa.A(a.U, a.U.oa(a.xc));
+            let hxdLocalPlayer = a.U.oa(a.xc);
+            this.od && this.hxdUpdateRoomView(a.U, hxdLocalPlayer);
             H.h(this.Xl);
             this.si.disabled = null == a.U.M;
             let b = m.j.Rd.v()
@@ -4839,8 +4842,34 @@
             this.ib.A(a);
             m.Qa.sk.wt(a)
         }
+        hxdUpdateRoomView(a, b) {
+            let c = window.performance.now()
+              , d = this.hxdRoomViewSig(a, b);
+            if (d == this.hxdRoomViewLastSig && 180 > c - this.hxdRoomViewLastUpdate)
+                return;
+            this.hxdRoomViewLastSig = d;
+            this.hxdRoomViewLastUpdate = c;
+            this.Xa.A(a, b)
+        }
+        hxdRoomViewSig(a, b) {
+            try {
+                let c = a.K
+                  , d = (a.M ? "1" : "0") + ":" + (b ? b.Z + "," + (b.fb ? "1" : "0") : "n") + ":" + a.Ga + ":" + a.kb + ":" + (a.Ac ? "1" : "0") + ":" + c.length
+                  , e = 0;
+                for (; e < c.length; ) {
+                    let f = c[e++]
+                      , g = f.fa == u.ia ? 1 : f.fa == u.Da ? 2 : 0;
+                    d += "|" + f.Z + "," + g + "," + (f.fb ? 1 : 0) + "," + f.zb + "," + (f.country || "") + "," + f.D
+                }
+                return d
+            } catch (c) {
+                return "" + window.performance.now()
+            }
+        }
         we(a) {
             this.od != a && (this.od = a,
+            this.hxdRoomViewLastUpdate = 0,
+            this.hxdRoomViewLastSig = "",
             this.f.classList.toggle("showing-room-view", this.od),
             this.od ? this.us.appendChild(this.Xa.f) : this.Xa.f.remove());
             try {
