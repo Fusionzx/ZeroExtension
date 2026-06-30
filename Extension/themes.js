@@ -778,6 +778,14 @@
         } catch (eMsg) {}
     });
 
+    window.addEventListener('storage', function(ev) {
+        if (!ev || ev.key !== STORAGE_KEY) return;
+        try {
+            loadSavedTheme();
+            applyTheme(currentTheme);
+        } catch (eStorageTheme) {}
+    });
+
     // Inicializa
     function init() {
         ensureThemeBackgroundStyles();
@@ -803,7 +811,7 @@
                 proceedInitAfterDisk();
             });
         } else {
-            setTimeout(proceedInitAfterDisk, 450);
+            proceedInitAfterDisk();
         }
     }
 
