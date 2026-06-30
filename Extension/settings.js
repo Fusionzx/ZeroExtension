@@ -31,11 +31,9 @@
 
     function shouldSuppressSettingsEsc(doc) {
         var win = doc && doc.defaultView ? doc.defaultView : window;
-        var hasSettings = isSettingsEscTarget(doc);
-        if (!hasSettings) return false;
         if (win.__hxdSuppressSettingsEscUntil && Date.now() < win.__hxdSuppressSettingsEscUntil) return true;
         if (win.__hxdSettingsOpeningUntil && Date.now() < win.__hxdSettingsOpeningUntil) return true;
-        return true;
+        return isSettingsEscTarget(doc);
     }
 
     function handleSettingsEscKeydown(e, doc) {
@@ -78,7 +76,6 @@
         }, true);
         doc.addEventListener('keyup', function (e) {
             if (!e || (e.key !== 'Escape' && e.keyCode !== 27)) return;
-            if (!isSettingsEscTarget(doc)) return;
             if (!doc.defaultView || Date.now() > (doc.defaultView.__hxdSuppressSettingsEscUntil || 0)) return;
             e.preventDefault();
             e.stopPropagation();
@@ -326,7 +323,6 @@
                 }, true);
                 doc.addEventListener('keyup', function (e) {
                     if (!e || (e.key !== 'Escape' && e.keyCode !== 27)) return;
-                    if (!isSettingsEscTarget(doc)) return;
                     if (!doc.defaultView || Date.now() > (doc.defaultView.__hxdSuppressSettingsEscUntil || 0)) return;
                     e.preventDefault();
                     e.stopPropagation();

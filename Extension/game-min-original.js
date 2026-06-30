@@ -5280,7 +5280,9 @@
     }
     function __hxdHasSettingsPopup() {
         try {
-            return Boolean(window.document.querySelector('.dialog.settings-view, .settings-view, iframe[src*="settings-preview"]'));
+            return Boolean(window.document.querySelector('.dialog.settings-view, .settings-view, iframe[src*="settings-preview"]')) ||
+                (window.__hxdSettingsOpeningUntil && Date.now() < window.__hxdSettingsOpeningUntil) ||
+                (window.__hxdSuppressSettingsEscUntil && Date.now() < window.__hxdSuppressSettingsEscUntil);
         } catch (e) {
             return false;
         }
