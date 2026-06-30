@@ -1289,12 +1289,12 @@
             window.clearTimeout(this.ue);
             this.ue = null;
             window.clearInterval(this.Nl);
-            this.aa.onmessage = null;
-            this.aa.onerror = null;
-            this.aa.onclose = null;
-            this.aa.onopen = null;
-            this.aa.close();
-            this.aa = null;
+            null != this.aa && (this.aa.onmessage = null,
+            this.aa.onerror = null,
+            this.aa.onclose = null,
+            this.aa.onopen = null,
+            this.aa.close(),
+            this.aa = null);
             this.Kk()
         }
         Vi(a) {
@@ -1321,7 +1321,7 @@
                 null != this.aa && 1 == this.aa.readyState && null == this.ue && (this.Qi(),
                 this.ue = window.setTimeout(function() {
                     b.ue = null;
-                    1 == b.aa.readyState && b.Mg && b.Qi()
+                    null != b.aa && 1 == b.aa.readyState && b.Mg && b.Qi()
                 }, 1E4))
             }
         }
@@ -5284,7 +5284,7 @@
     }
     function __hxdHasSettingsPopup() {
         try {
-            return Boolean(window.document.querySelector('.dialog.settings-view, .settings-view, iframe[src*="settings-preview"]')) ||
+            return Boolean(window.__hxdSettingsPopupOpen) ||
                 (window.__hxdSettingsOpeningUntil && Date.now() < window.__hxdSettingsOpeningUntil) ||
                 (window.__hxdSuppressSettingsEscUntil && Date.now() < window.__hxdSuppressSettingsEscUntil);
         } catch (e) {
@@ -5293,6 +5293,7 @@
     }
     function __hxdMarkSettingsOpening() {
         try {
+            window.__hxdSettingsPopupOpen = true;
             window.__hxdSettingsOpeningUntil = Date.now() + 1500;
             window.__hxdSuppressSettingsEscUntil = Date.now() + 1500;
         } catch (e) {}
@@ -9356,11 +9357,26 @@
                 }
                 )
             }
-            this.c = new AudioContext;
+            this.c = new (window.AudioContext || window.webkitAudioContext);
             this.qg = this.c.createGain();
             this.Gi();
             this.qg.connect(this.c.destination);
             let c = this;
+            try {
+                if (this.c && this.c.state !== "running") {
+                    let d = function() {
+                        try {
+                            c.c && c.c.state !== "closed" && c.c.resume()
+                        } catch (e) {}
+                        window.document.removeEventListener("pointerdown", d, !0);
+                        window.document.removeEventListener("keydown", d, !0);
+                        window.document.removeEventListener("touchstart", d, !0)
+                    };
+                    window.document.addEventListener("pointerdown", d, !0);
+                    window.document.addEventListener("keydown", d, !0);
+                    window.document.addEventListener("touchstart", d, !0)
+                }
+            } catch (d) {}
             this.Xo = Promise.all([b("sounds/chat.wav").then(function(d) {
                 return c.ik = d
             }), b("sounds/highlight.wav").then(function(d) {
@@ -9380,9 +9396,15 @@
             })])
         }
         rm() {
-            this.c.resume()
+            try {
+                this.c && this.c.state !== "closed" && this.c.resume()
+            } catch (a) {}
         }
         md(a) {
+            if (null == a) return;
+            try {
+                this.c && this.c.state === "suspended" && this.c.resume()
+            } catch (resumeE) {}
             var cfg = __hxdGetProCustomSoundsCfg();
             if (cfg && a != null) {
                 var slot =

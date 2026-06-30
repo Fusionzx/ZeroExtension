@@ -1961,7 +1961,6 @@
       return { code: code, count: counts[code] };
     });
     items.sort(function (a, b) {
-      if (b.count !== a.count) return b.count - a.count;
       return a.code.localeCompare(b.code);
     });
     return { items: items, total: total };

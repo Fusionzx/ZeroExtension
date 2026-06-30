@@ -15,18 +15,29 @@
     function markSettingsOpening(win) {
         if (!win) return;
         try {
+            win.__hxdSettingsPopupOpen = true;
             win.__hxdSuppressSettingsEscUntil = Date.now() + 1500;
             win.__hxdSettingsOpeningUntil = Date.now() + 1500;
         } catch (eMarkOpen) {}
     }
 
+    function setSettingsPopupOpen(doc, open) {
+        if (!doc) doc = document;
+        try { doc.__hxdSettingsPopupOpen = !!open; } catch (eDocFlag) {}
+        try {
+            var win = doc.defaultView || window;
+            win.__hxdSettingsPopupOpen = !!open;
+        } catch (eWinFlag) {}
+    }
+
     function isSettingsEscTarget(doc) {
         if (!doc) return false;
-        return Boolean(
-            doc.querySelector('.dialog.settings-view') ||
-            doc.getElementById('hxd-settings-preview-root') ||
-            doc.querySelector('#hxd-settings-preview-frame')
-        );
+        try {
+            var win = doc.defaultView || window;
+            return !!(doc.__hxdSettingsPopupOpen || win.__hxdSettingsPopupOpen);
+        } catch (eFlagRead) {
+            return false;
+        }
     }
 
     function shouldSuppressSettingsEsc(doc) {
@@ -4110,6 +4121,7 @@
             var sidebar = document.getElementById('settings-sidebar-panel');
             var previewRoot = document.getElementById('hxd-settings-preview-root');
             var isOpen = !!settingsDialog;
+            setSettingsPopupOpen(document, isOpen);
 
             if (isOpen) {
                 if (settingsCloseTimer) {
@@ -4122,6 +4134,7 @@
                     settingsCloseTimer = setTimeout(function () {
                         settingsCloseTimer = null;
                         if (!document.querySelector('.dialog.settings-view')) {
+                            setSettingsPopupOpen(document, false);
                             settingsWasOpen = false;
                             clearSettingsOpenedFromRoomlist(document);
                             document.hxdRoomlistThemePending = true;
@@ -4179,7 +4192,20 @@
                 settingsObserver = new MutationObserver(function () {
                     scheduleSettingsDialogCheck(40);
                 });
-                settingsObserver.observe(document.documentElement, { childList: true, subtree: true });
+                var observed = false;
+                var hosts = document.querySelectorAll('[data-hook="popups"], .game-view, body');
+                for (var i = 0; i < hosts.length; i++) {
+                    if (!hosts[i]) continue;
+                    try {
+                        settingsObserver.observe(hosts[i], { childList: true });
+                        observed = true;
+                    } catch (eObserve) {}
+                }
+                if (!observed && document.body) {
+                    try {
+                        settingsObserver.observe(document.body, { childList: true });
+                    } catch (eBodyObserve) {}
+                }
             }
             scheduleSettingsDialogCheck(0);
         };
