@@ -30,8 +30,6 @@
         "vip.js",
         "roomlist.js",
         "scoreboard.js",
-        "smart-extrapolation.js",
-        "split-extrapolation.js",
         "jerseykit.js",
         "chathistory.js",
         "chatlinks.js",
