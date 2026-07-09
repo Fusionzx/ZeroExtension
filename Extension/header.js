@@ -58,6 +58,7 @@
     if (!Injector.isMainFrame()) return;
     if (window.__headerInjected) return;
     window.__headerInjected = true;
+    if (!/^\/play(\/|$)/.test(window.location.pathname)) return;
 
 
     var HEADER_BAR_PX = 48;
