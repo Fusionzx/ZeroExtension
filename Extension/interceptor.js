@@ -64,6 +64,42 @@
         return true;
     }
 
+    // Bloqueia requisicoes para redes de anuncio
+    function setupAdBlocking() {
+        if (typeof chrome.declarativeNetRequest !== 'object') return;
+        var adRules = [
+            { id: 1001, filter: '||cpmstar.com^' },
+            { id: 1002, filter: '||doubleclick.net^' },
+            { id: 1003, filter: '||googlesyndication.com^' },
+            { id: 1004, filter: '||googleadservices.com^' },
+            { id: 1005, filter: '||adservice.google.com^' },
+            { id: 1006, filter: '||moatads.com^' },
+            { id: 1007, filter: '||pubmatic.com^' },
+            { id: 1008, filter: '||rubiconproject.com^' },
+            { id: 1009, filter: '||openx.net^' }
+        ];
+        var rules = adRules.map(function(r) {
+            return {
+                id: r.id,
+                priority: 1,
+                action: { type: 'block' },
+                condition: {
+                    urlFilter: r.filter,
+                    resourceTypes: ['image', 'sub_frame', 'script', 'xmlhttprequest', 'other']
+                }
+            };
+        });
+        chrome.declarativeNetRequest.updateDynamicRules({
+            removeRuleIds: adRules.map(function(r) { return r.id; }),
+            addRules: rules
+        }, function() {
+            var err = chrome.runtime.lastError;
+            if (err) console.warn('DNR addRules error:', err.message);
+        });
+    }
+
+    setupAdBlocking();
+
     chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         var action = request && request.action;
         if (action === 'openExternalLink') return openExternalLink(request, sendResponse);

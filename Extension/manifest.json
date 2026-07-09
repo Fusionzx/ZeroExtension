@@ -40,7 +40,8 @@
   ],
   "permissions": [
     "downloads",
-    "tabs"
+    "tabs",
+    "declarativeNetRequest"
   ],
   "host_permissions": [
     "*://www.haxball.com/*",
