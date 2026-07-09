@@ -10,6 +10,17 @@
     var BASE_URL = 'http://127.0.0.1:5483';
     var EXTENSION_ORDER = ['core', 'hxd-sync-input-tolerance', 'welcome', 'styles', 'themes', 'hxd-performance', 'header', 'settings', 'discord', 'verified', 'vip', 'roomlist', 'scoreboard', 'jerseykit', 'chatlinks', 'hideui', 'quickavatar', 'hosttoken', 'leaveroom', 'shortcuts', 'chat-expand', 'translate', 'goal-celebration', 'ads', 'security', 'inputboost'];
 
+    function isDesktopRuntime() {
+        try {
+            return !!(
+                window.electronAPI ||
+                (window.process && window.process.versions && window.process.versions.electron) ||
+                /\bElectron\//i.test(navigator.userAgent || '')
+            );
+        } catch (e) {}
+        return false;
+    }
+
     function extensionBaseUrl() {
         try {
             if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
@@ -237,17 +248,19 @@
     
     // Carrega o game script do servidor local
     function loadGameScript() {
-        try {
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', BASE_URL + '/secure/game-script', false);
-            xhr.send();
-            if (xhr.status === 200) {
-                var response = JSON.parse(xhr.responseText);
-                if (response.script) {
-                    return appendScriptText(response.script, 'haxball-zero://secure/game-script');
+        if (isDesktopRuntime()) {
+            try {
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', BASE_URL + '/secure/game-script', false);
+                xhr.send();
+                if (xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    if (response.script) {
+                        return appendScriptText(response.script, 'haxball-zero://secure/game-script');
+                    }
                 }
-            }
-        } catch (e) {}
+            } catch (e) {}
+        }
         var base = extensionBaseUrl();
         if (base) {
             if (appendScriptUrl(base + 'game-min-original.js')) return true;
@@ -259,22 +272,24 @@
     
     // Carrega as extensões do servidor local
     function loadExtensions() {
-        try {
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', BASE_URL + '/secure/extensions', false);
-            xhr.send();
-            if (xhr.status === 200) {
-                var response = JSON.parse(xhr.responseText);
-                if (response.scripts) {
-                    EXTENSION_ORDER.forEach(function(name) {
-                        if (response.scripts[name]) {
-                            appendScriptText(response.scripts[name], 'haxball-zero://secure/extensions/' + name + '.js');
-                        }
-                    });
-                    return true;
+        if (isDesktopRuntime()) {
+            try {
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', BASE_URL + '/secure/extensions', false);
+                xhr.send();
+                if (xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    if (response.scripts) {
+                        EXTENSION_ORDER.forEach(function(name) {
+                            if (response.scripts[name]) {
+                                appendScriptText(response.scripts[name], 'haxball-zero://secure/extensions/' + name + '.js');
+                            }
+                        });
+                        return true;
+                    }
                 }
-            }
-        } catch (e) {}
+            } catch (e) {}
+        }
         var base = extensionBaseUrl();
         var loaded = false;
         if (base) {
@@ -293,6 +308,7 @@
     
     // Fecha o app
     function closeApp() {
+        if (!isDesktopRuntime()) return;
         try {
             var xhr = new XMLHttpRequest();
             xhr.open('POST', BASE_URL + '/close', false);
