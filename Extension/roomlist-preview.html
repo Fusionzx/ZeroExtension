@@ -3479,7 +3479,7 @@
   document.addEventListener('click', function (e) {
     ctxMenu.classList.remove('open');
     if (countryFilterWrap && !countryFilterWrap.contains(e.target)) closeCountryMenu();
-    if (!document.getElementById('nav-shell').contains(e.target)) closeSearch();
+    if (!document.getElementById('nav-shell') || !document.getElementById('nav-shell').contains(e.target)) closeSearch();
   });
 
   document.addEventListener('keydown', function (e) {
