@@ -27,14 +27,6 @@
         );
     }
 
-    function disableDownloadShelf() {
-        try {
-            if (chrome.downloads && chrome.downloads.setShelfEnabled) {
-                chrome.downloads.setShelfEnabled(false);
-            }
-        } catch (e) {}
-    }
-
     function sendSafe(sendResponse, payload) {
         try {
             if (typeof sendResponse === 'function') sendResponse(payload);
@@ -55,8 +47,6 @@
     }
 
     function downloadFile(request, sendResponse) {
-        disableDownloadShelf();
-
         var filename = request && request.filename ? String(request.filename) : 'download.bin';
         var url = request && request.url ? String(request.url) : '';
         if (request && request.base64) {
@@ -73,8 +63,6 @@
         });
         return true;
     }
-
-    disableDownloadShelf();
 
     chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         var action = request && request.action;

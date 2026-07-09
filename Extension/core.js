@@ -24,27 +24,42 @@ var Injector = {
     },
 
     waitForElement: function(selector, timeout) {
-        timeout = timeout || 10000;
-        return new Promise(function(resolve, reject) {
-            var el = document.querySelector(selector);
-            if (el) return resolve(el);
+        timeout = typeof timeout === 'number' ? timeout : 10000;
+        return new Promise(function(resolve) {
+            var observer = null;
+            var timer = null;
+            var settled = false;
 
-            var check = function() {
-                if (!document.body) {
-                    setTimeout(check, 10);
-                    return;
-                }
-                var observer = new MutationObserver(function(_, obs) {
-                    var found = document.querySelector(selector);
-                    if (found) {
-                        obs.disconnect();
-                        resolve(found);
-                    }
+            function finish(found) {
+                if (settled) return;
+                settled = true;
+                if (observer) observer.disconnect();
+                if (timer) clearTimeout(timer);
+                resolve(found || null);
+            }
+
+            function find() {
+                var found = document.querySelector(selector);
+                if (found) finish(found);
+                return found;
+            }
+
+            if (find()) return;
+
+            function observe() {
+                if (settled) return;
+                // `body` may be created between the first lookup and this observer.
+                // Check again before observing, otherwise waitForElement('body') always times out.
+                if (find()) return;
+                var root = document.body || document.documentElement || document;
+                observer = new MutationObserver(function() {
+                    find();
                 });
-                observer.observe(document.body, { childList: true, subtree: true });
-                setTimeout(function() { observer.disconnect(); reject(new Error('Timeout: ' + selector)); }, timeout);
-            };
-            check();
+                observer.observe(root, { childList: true, subtree: true });
+            }
+
+            observe();
+            timer = setTimeout(function() { finish(null); }, timeout);
         });
     },
 
@@ -140,6 +155,7 @@ var Injector = {
          */
         var viewSelector = '.view-wrapper, div.room-view, div.game-view';
         this.waitForElement(viewSelector).then(function(el) {
+            if (!el) return;
             var currentView = el;
             if (currentView.classList && !currentView.classList.contains('view-wrapper')) {
                 var p = currentView.parentNode;

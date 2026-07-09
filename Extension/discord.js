@@ -293,6 +293,41 @@
         if (ok) ok.style.setProperty('display', 'none', 'important');
     }
 
+    // The game keeps the nickname in its own input state.  Assigning .value and
+    // clicking immediately works in some Chromium builds, but not in all of them.
+    // Update it through the native setter and submit on the following animation frame.
+    function submitNativeNick(iframeDoc, dialog, nickInput, okBtn, nickname) {
+        var value = String(nickname || '').trim();
+        if (!value || !iframeDoc || !nickInput || !okBtn) return false;
+
+        try {
+            var inputPrototype = iframeDoc.defaultView && iframeDoc.defaultView.HTMLInputElement ?
+                iframeDoc.defaultView.HTMLInputElement.prototype : Object.getPrototypeOf(nickInput);
+            var valueDescriptor = inputPrototype && Object.getOwnPropertyDescriptor(inputPrototype, 'value');
+            if (valueDescriptor && valueDescriptor.set) valueDescriptor.set.call(nickInput, value);
+            else nickInput.value = value;
+
+            var EventCtor = (iframeDoc.defaultView && iframeDoc.defaultView.Event) || Event;
+            nickInput.dispatchEvent(new EventCtor('input', { bubbles: true }));
+            nickInput.dispatchEvent(new EventCtor('change', { bubbles: true }));
+
+            okBtn.disabled = false;
+            okBtn.style.setProperty('display', 'flex', 'important');
+
+            var submit = function() {
+                if (!okBtn.isConnected) return;
+                try { okBtn.focus(); } catch (eFocus) {}
+                okBtn.click();
+            };
+            var frame = iframeDoc.defaultView && iframeDoc.defaultView.requestAnimationFrame;
+            if (typeof frame === 'function') frame.call(iframeDoc.defaultView, submit);
+            else setTimeout(submit, 0);
+            return true;
+        } catch (eSubmit) {
+            return false;
+        }
+    }
+
     function ensureNickDialogStyles(iframeDoc) {
         if (!iframeDoc || !iframeDoc.head || iframeDoc.getElementById('hxd-zero-auth-styles')) return;
         var style = iframeDoc.createElement('style');
@@ -493,11 +528,7 @@
                     localStorage.setItem('ghost_nick', cn);
                     localStorage.setItem('haxball_nick', cn);
                 } catch (eLs) {}
-                nickInput.value = cn;
-                nickInput.dispatchEvent(new Event('input', { bubbles: true }));
-                okBtn.style.display = '';
-                okBtn.disabled = false;
-                okBtn.click();
+                submitNativeNick(iframeDoc, dialog, nickInput, okBtn, cn);
             };
             containerGh.appendChild(enterBtnGh);
 
@@ -645,11 +676,7 @@
                         game_nick: customNick
                     }));
                 }
-                nickInput.value = customNick;
-                nickInput.dispatchEvent(new Event('input', { bubbles: true }));
-                okBtn.style.display = '';
-                okBtn.disabled = false;
-                okBtn.click();
+                submitNativeNick(iframeDoc, dialog, nickInput, okBtn, customNick);
             };
             btnContainer.appendChild(enterBtn);
 
