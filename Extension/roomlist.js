@@ -2830,7 +2830,7 @@
         var startChecking = function() {
             if (checkInterval) return;
             Injector.log('Roomlist: startChecking');
-            checkInterval = setInterval(checkAndModify, 50);
+            checkInterval = setInterval(checkAndModify, 200);
             checkAndModify();
         };
         
