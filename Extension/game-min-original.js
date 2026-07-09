@@ -4844,12 +4844,26 @@
         }
         hxdUpdateRoomView(a, b) {
             let c = window.performance.now()
-              , d = this.hxdRoomViewSig(a, b);
-            if (d == this.hxdRoomViewLastSig && 180 > c - this.hxdRoomViewLastUpdate)
+              , d = this.hxdRoomViewFastSig(a, b)
+              , e = this.hxdRoomViewLastCheck || 0;
+            if (d == this.hxdRoomViewLastFastSig && 220 > c - e)
+                return;
+            this.hxdRoomViewLastFastSig = d;
+            this.hxdRoomViewLastCheck = c;
+            d = this.hxdRoomViewSig(a, b);
+            if (d == this.hxdRoomViewLastSig)
                 return;
             this.hxdRoomViewLastSig = d;
             this.hxdRoomViewLastUpdate = c;
             this.Xa.A(a, b)
+        }
+        hxdRoomViewFastSig(a, b) {
+            try {
+                let c = a.K;
+                return (a.M ? "1" : "0") + ":" + (b ? b.Z + "," + (b.fb ? "1" : "0") : "n") + ":" + a.Ga + ":" + a.kb + ":" + (a.Ac ? "1" : "0") + ":" + c.length
+            } catch (c) {
+                return ""
+            }
         }
         hxdRoomViewSig(a, b) {
             try {
@@ -4870,6 +4884,8 @@
             this.od != a && (this.od = a,
             this.hxdRoomViewLastUpdate = 0,
             this.hxdRoomViewLastSig = "",
+            this.hxdRoomViewLastCheck = 0,
+            this.hxdRoomViewLastFastSig = "",
             this.f.classList.toggle("showing-room-view", this.od),
             this.od ? this.us.appendChild(this.Xa.f) : this.Xa.f.remove());
             try {

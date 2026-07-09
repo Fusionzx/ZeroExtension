@@ -40,7 +40,7 @@
     var observerRetryTimer = null;
     var observerWatchdogTimer = null;
     var VERIFIED_CACHE_TTL_MS = 400;
-    var REMOTE_AVATAR_POLL_MS = 500;
+    var REMOTE_AVATAR_POLL_MS = 1500;
     var verifiedFetchInFlight = 0;
     var VERIFIED_DISABLED_KEY = 'hax_verified_disabled';
     var activeRoomId = null;
@@ -50,6 +50,8 @@
     var nicknameInputDebounceTimer = null;
     var localSettingsLoaded = false;
     var localSettingsRequestInFlight = false;
+    var lastProcessPlayersSig = '';
+    var lastProcessPlayersAt = 0;
     
     
     // Remove o caractere invisível do nick para obter o nick limpo (compatibilidade com nicks antigos)
@@ -1723,6 +1725,20 @@
         }
     }
 
+    function buildProcessPlayersSig(players, localPlayerId, roomId) {
+        var parts = [roomId || '', localPlayerId == null ? '' : String(localPlayerId), String(players.length)];
+        for (var i = 0; i < players.length; i++) {
+            var item = players[i];
+            var nameEl = item.querySelector('[data-hook="name"]');
+            parts.push(
+                item.dataset && item.dataset.playerId ? item.dataset.playerId : '',
+                item.dataset && item.dataset.haxLocalPlayer ? item.dataset.haxLocalPlayer : '',
+                nameEl ? cleanNick(getNickText(nameEl)) : ''
+            );
+        }
+        return parts.join('|');
+    }
+
     function processPlayers(allowInactive, forceFetchAll) {
         var inRoom = Boolean(document.querySelector('.room-view') || document.querySelector('.game-view'));
         var hasPlayers = Boolean(document.querySelector('[class^="player-list-item"]'));
@@ -1754,6 +1770,13 @@
         
         var players = document.querySelectorAll('[class^="player-list-item"]');
         if (!players.length) return;
+        var processSig = buildProcessPlayersSig(players, localPlayerId, roomId);
+        var processNow = Date.now();
+        if (!forceFetchAll && processSig === lastProcessPlayersSig && processNow - lastProcessPlayersAt < 3000) {
+            return;
+        }
+        lastProcessPlayersSig = processSig;
+        lastProcessPlayersAt = processNow;
         clearLocalPlayerMarks();
 
         var playersToResolve = [];
@@ -1995,7 +2018,7 @@
                 if (!isActive) return;
                 ensureApplyProfileButton();
                 processPlayers();
-            }, 600);
+            }, 1200);
         }
         startRemoteAvatarPoll();
 
@@ -2016,6 +2039,8 @@
         verifiedCache = {};
         window.__verifiedCache = verifiedCache;
         window.__hxdAvatarProfilesByPlayerId = {};
+        lastProcessPlayersSig = '';
+        lastProcessPlayersAt = 0;
         scheduleAvatarPublish();
         clearLocalPlayerMarks();
         var applyBtn = document.getElementById('hax-apply-profile-btn');
@@ -2202,7 +2227,7 @@
                     try {
                         recoverRoomProfilesIfNeeded();
                     } catch (e) {}
-                }, 400);
+                }, 1500);
             }
 
         });
