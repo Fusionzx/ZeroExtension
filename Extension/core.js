@@ -5,7 +5,6 @@ var __hxdNoop = function() { };
 if (typeof console !== 'undefined') {
     console.log = __hxdNoop;
     console.warn = __hxdNoop;
-    console.error = __hxdNoop;
     console.info = __hxdNoop;
 }
 

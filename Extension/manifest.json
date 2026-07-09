@@ -12,9 +12,7 @@
         "*://html5.haxball.com/*"
       ],
       "js": [
-        "browser-loader.js",
-        "core.js",
-        "header.js"
+        "browser-loader.js"
       ],
       "run_at": "document_start",
       "all_frames": true
