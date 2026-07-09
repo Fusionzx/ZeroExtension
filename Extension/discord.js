@@ -28,6 +28,19 @@
     var isLoaded = false;
     var userStatusReady = false;
     var LOCAL_DISCORD_NAME_KEY = 'hxd_local_discord_name';
+
+    function isDesktopRuntime() {
+        try {
+            return !!(
+                window.electronAPI ||
+                (window.process && window.process.versions && window.process.versions.electron) ||
+                (window.HaxDesktopConfig && window.HaxDesktopConfig.IS_ELECTRON === true) ||
+                /\bElectron\//i.test(navigator.userAgent || '')
+            );
+        } catch (e) {
+            return false;
+        }
+    }
     var DISCORD_SVG = '<svg width="24" height="24" viewBox="0 0 71 55" fill="#5865F2"><path d="M60.1 4.9A58.5 58.5 0 0045.4.2a.2.2 0 00-.2.1 40.8 40.8 0 00-1.8 3.7 54 54 0 00-16.2 0A37.4 37.4 0 0025.4.3a.2.2 0 00-.2-.1 58.4 58.4 0 00-14.7 4.6.2.2 0 00-.1.1C1.5 18.7-.9 32 .3 45.2v.1a58.7 58.7 0 0017.9 9.1.2.2 0 00.3-.1 42 42 0 003.6-5.9.2.2 0 00-.1-.3 38.7 38.7 0 01-5.5-2.6.2.2 0 01 0-.4l1.1-.9a.2.2 0 01.2 0 41.9 41.9 0 0035.6 0 .2.2 0 01.2 0l1.1.9a.2.2 0 010 .4 36.3 36.3 0 01-5.5 2.6.2.2 0 00-.1.3 47.2 47.2 0 003.6 5.9.2.2 0 00.3.1 58.5 58.5 0 0018-9.1v-.1c1.4-15-2.3-28-9.8-39.6a.2.2 0 00-.1-.1zM23.7 37.1c-3.4 0-6.2-3.1-6.2-7s2.7-7 6.2-7 6.3 3.2 6.2 7-2.8 7-6.2 7zm23 0c-3.4 0-6.2-3.1-6.2-7s2.7-7 6.2-7 6.3 3.2 6.2 7-2.8 7-6.2 7z"/></svg>';
 
     function getLanguage() {
@@ -161,6 +174,10 @@
 
     function fetchUserStatus() {
         return new Promise(function(resolve) {
+            if (!isDesktopRuntime()) {
+                resolve(applyUserStatus(getLocalTestUser()));
+                return;
+            }
             var xhr = new XMLHttpRequest();
             xhr.open('GET', LOCAL_SERVER + '/user', true);
             xhr.timeout = 8000;
@@ -288,9 +305,49 @@
         var h1 = dialog.querySelector('h1');
         var li = dialog.querySelector('.label-input');
         var ok = dialog.querySelector('button[data-hook="ok"]');
-        if (h1) h1.style.setProperty('display', 'none', 'important');
-        if (li) li.style.setProperty('display', 'none', 'important');
-        if (ok) ok.style.setProperty('display', 'none', 'important');
+        function hide(el) {
+            if (!el) return;
+            if (el.style.getPropertyValue('display') === 'none' && el.style.getPropertyPriority('display') === 'important') return;
+            el.style.setProperty('display', 'none', 'important');
+        }
+        hide(h1);
+        hide(li);
+        hide(ok);
+    }
+
+    function restoreNativeNickDialogChrome(dialog) {
+        if (!dialog) return;
+        var nodes = [
+            dialog.querySelector('h1'),
+            dialog.querySelector('.label-input'),
+            dialog.querySelector('button[data-hook="ok"]')
+        ];
+        for (var i = 0; i < nodes.length; i++) {
+            if (nodes[i]) nodes[i].style.removeProperty('display');
+        }
+        dialog.classList.remove('hxd-zero-auth');
+    }
+
+    function setupBrowserNickDialog(dialog, nickInput, okBtn) {
+        stripDiscordInjectionsFromDialog(dialog);
+        dialog.removeAttribute('data-discord-setup');
+        restoreNativeNickDialogChrome(dialog);
+        if (dialog.dataset.hxdBrowserNickBound === '1') return;
+        dialog.dataset.hxdBrowserNickBound = '1';
+
+        function storeNativeNick() {
+            var nick = cleanLocalName(nickInput.value);
+            if (!nick) return;
+            gameNick = nick;
+            try {
+                localStorage.setItem('haxball_nick', nick);
+                localStorage.setItem('ghost_nick', nick);
+            } catch (eStore) {}
+        }
+
+        nickInput.addEventListener('input', storeNativeNick);
+        nickInput.addEventListener('change', storeNativeNick);
+        okBtn.addEventListener('click', storeNativeNick, true);
     }
 
     // The game keeps the nickname in its own input state.  Assigning .value and
@@ -311,8 +368,7 @@
             nickInput.dispatchEvent(new EventCtor('input', { bubbles: true }));
             nickInput.dispatchEvent(new EventCtor('change', { bubbles: true }));
 
-            okBtn.disabled = false;
-            okBtn.style.setProperty('display', 'flex', 'important');
+            if (okBtn.disabled) okBtn.disabled = false;
 
             var submit = function() {
                 if (!okBtn.isConnected) return;
@@ -376,7 +432,7 @@
     var lastPresence = { roomName: null, roomLink: null, isOnline: null };
     
     function updatePresence(roomName, roomLink, isOnline) {
-        if (!discordId || isShellAnonymousMode()) return;
+        if (!isDesktopRuntime() || !discordId || isShellAnonymousMode()) return;
         
         // Só envia se houver mudança
         if (lastPresence.roomName === roomName && 
@@ -436,6 +492,13 @@
             (labelText.indexOf('change') !== -1 && labelText.indexOf('name') !== -1) ||
             (titleText.indexOf('cambi') !== -1 && titleText.indexOf('nombre') !== -1);
         if (!isNickDialog) return;
+
+        // Chrome/Iron has no Electron bridge or local session service. Let the
+        // game's own nickname control handle the submit instead of replacing it.
+        if (!isDesktopRuntime()) {
+            setupBrowserNickDialog(dialog, nickInput, okBtn);
+            return;
+        }
 
         ensureNickDialogStyles(iframeDoc);
         dialog.classList.add('hxd-zero-auth');
@@ -914,7 +977,24 @@
                     dialogObservedDoc = doc;
                     dialogNickScheduled = false;
                     var dv = doc.defaultView;
-                    dialogObserver = new MutationObserver(function() {
+                    function dialogMutationNeedsCheck(mutations) {
+                        for (var mi = 0; mi < mutations.length; mi++) {
+                            var mutation = mutations[mi];
+                            var target = mutation.target;
+                            var targetIsNickView = !!(target && target.closest && target.closest('.choose-nickname-view'));
+                            for (var ni = 0; ni < mutation.addedNodes.length; ni++) {
+                                var node = mutation.addedNodes[ni];
+                                if (!node || node.nodeType !== 1) continue;
+                                if (node.matches && node.matches('.choose-nickname-view, .choose-nickname-view .dialog')) return true;
+                                if (node.querySelector && node.querySelector('.choose-nickname-view, .choose-nickname-view .dialog')) return true;
+                                if (targetIsNickView) return true;
+                            }
+                        }
+                        return false;
+                    }
+
+                    dialogObserver = new MutationObserver(function(mutations) {
+                        if (!dialogMutationNeedsCheck(mutations)) return;
                         var w = dv || window;
                         if (dialogNickScheduled) return;
                         dialogNickScheduled = true;
@@ -992,8 +1072,21 @@
             } catch (e) {}
         };
 
-        // Observa quando iframe aparece
-        var mainObserver = new MutationObserver(checkIframe);
+        // Observe only new game iframes. Re-running the full lookup for every
+        // room-list mutation is expensive and can lock up weaker browsers.
+        var mainObserver = new MutationObserver(function(mutations) {
+            for (var mi = 0; mi < mutations.length; mi++) {
+                for (var ni = 0; ni < mutations[mi].addedNodes.length; ni++) {
+                    var node = mutations[mi].addedNodes[ni];
+                    if (!node || node.nodeType !== 1) continue;
+                    if ((node.matches && node.matches('iframe[src*="game.html"], iframe[src*="html5.haxball"], iframe[src*="haxball.com"]')) ||
+                        (node.querySelector && node.querySelector('iframe[src*="game.html"], iframe[src*="html5.haxball"], iframe[src*="haxball.com"]'))) {
+                        checkIframe();
+                        return;
+                    }
+                }
+            }
+        });
         mainObserver.observe(document.body, { childList: true, subtree: true });
         checkIframe();
     }
