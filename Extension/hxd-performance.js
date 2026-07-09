@@ -238,6 +238,21 @@
         }
     }
 
+    // Migração 1.3.0 → 2.0.1: sound_main='0' ficou stale (settings.js 1.3.0 setava como
+    // otimização, game-min-original.js 2.0.1 lê localStorage direto e mantém desligado)
+    try {
+        if (!localStorage.getItem('hxd_migrated_201')) {
+            if (localStorage.getItem('sound_main') === '0') localStorage.removeItem('sound_main');
+            if (localStorage.getItem('sound_chat') === '0') localStorage.removeItem('sound_chat');
+            if (localStorage.getItem('sound_highlight') === '0') localStorage.removeItem('sound_highlight');
+            if (localStorage.getItem('sound_kick') === '0') localStorage.removeItem('sound_kick');
+            if (localStorage.getItem('sound_goal') === '0') localStorage.removeItem('sound_goal');
+            if (localStorage.getItem('sound_join') === '0') localStorage.removeItem('sound_join');
+            if (localStorage.getItem('sound_leave') === '0') localStorage.removeItem('sound_leave');
+            localStorage.setItem('hxd_migrated_201', '1');
+        }
+    } catch (eMig) {}
+
     window.HxdPerformance = {
         SNAPSHOT_KEYS: SNAPSHOT_KEYS.slice(),
         collectSnapshot: collectSnapshot,
