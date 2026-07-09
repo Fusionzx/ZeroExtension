@@ -308,6 +308,19 @@
                 return chrome.runtime.getURL(path);
             }
         } catch (eUrl) {}
+        try {
+            if (window.__hxdExtensionBaseUrl) {
+                return String(window.__hxdExtensionBaseUrl).replace(/\/?$/, '/') + path;
+            }
+        } catch (eBase) {}
+        try {
+            var scripts = document.getElementsByTagName('script');
+            for (var i = scripts.length - 1; i >= 0; i--) {
+                var src = scripts[i] && scripts[i].src ? String(scripts[i].src) : '';
+                if (!src || src.indexOf('runtime.js') === -1) continue;
+                return src.replace(/runtime\.js(?:[?#].*)?$/, path);
+            }
+        } catch (eScriptUrl) {}
         return path;
     }
 
@@ -564,33 +577,10 @@
             if (callback) callback(getLocalProSettings());
             return;
         }
-        if (localSettingsRequestInFlight) {
-            if (callback) setTimeout(function() { ensureLocalProSettings(callback, false); }, 120);
-            return;
-        }
-
-        localSettingsRequestInFlight = true;
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', LOCAL_SERVER + '/vip/settings', true);
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState !== 4) return;
-            localSettingsRequestInFlight = false;
-            localSettingsLoaded = true;
-            try {
-                var data = JSON.parse(xhr.responseText || '{}');
-                if (data && typeof data === 'object') {
-                    updateLocalProSettings(data);
-                }
-            } catch (e) {}
-            if (callback) callback(getLocalProSettings());
-            if (isActive) scheduleFullRefresh(20);
-        };
-        xhr.onerror = function() {
-            localSettingsRequestInFlight = false;
-            localSettingsLoaded = true;
-            if (callback) callback(getLocalProSettings());
-        };
-        xhr.send();
+        localSettingsRequestInFlight = false;
+        localSettingsLoaded = true;
+        if (callback) callback(getLocalProSettings());
+        if (isActive) scheduleFullRefresh(20);
     }
 
     function syncLocalPersonalizationCache() {
@@ -704,91 +694,26 @@
             force = false;
         }
         if (!force && statusLoaded) { if (callback) callback(); return; }
-        
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', LOCAL_SERVER + '/user', true);
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === 4) {
-                try {
-                    var data = JSON.parse(xhr.responseText);
-                    if (data && (data.logged_in || data.discord_id)) {
-                        myVerified = Boolean(data.is_verified);
-                        myDiscordId = data.discord_id || null;
-                        myBadge = normalizeUserBadge(data.badge);
-                        myIsPro = Boolean(data.is_pro || data.is_vip);
-                        myAvatarUrl = data.avatar_url || null;
-                        myAvatarDisabled = readAvatarBool(data.avatar_disabled, false);
-                        myAvatarVisibleSelfOnly = readAvatarBool(data.avatar_visible_self_only, true);
-                        myAvatarVisibleTeam = readAvatarBool(data.avatar_visible_team, false);
-                        myAvatarVisibleRival = readAvatarBool(data.avatar_visible_rival, false);
-                        myAvatarTeamBorder = readAvatarBool(data.avatar_team_border, false);
-                        var skipBorderStyleSync = window.__hxdAvatarBorderEditUntil &&
-                          Date.now() < window.__hxdAvatarBorderEditUntil;
-                        if (!skipBorderStyleSync) {
-                          myAvatarTeamBorderRed = Math.min(2, Math.max(0, parseInt(data.avatar_team_border_red, 10) || 1));
-                          myAvatarTeamBorderBlue = Math.min(2, Math.max(0, parseInt(data.avatar_team_border_blue, 10) || 1));
-                          myAvatarTeamBorderWidth = Math.min(8, Math.max(1, parseInt(data.avatar_team_border_width, 10) || 3));
-                          myAvatarTeamBorderInset = readAvatarBool(data.avatar_team_border_inset, false);
-                          try {
-                            localStorage.setItem('hxd_avatar_team_border_red', String(myAvatarTeamBorderRed));
-                            localStorage.setItem('hxd_avatar_team_border_blue', String(myAvatarTeamBorderBlue));
-                            localStorage.setItem('hxd_avatar_team_border_width', String(myAvatarTeamBorderWidth));
-                            localStorage.setItem('hxd_avatar_team_border_inset', myAvatarTeamBorderInset ? '1' : '0');
-                          } catch (eBorderStore) {}
-                        }
-                        if (data.game_nick) {
-                            storeLocalGameNick(data.game_nick);
-                        }
 
-                        window.__proStatus = {
-                            is_pro: Boolean(data.is_pro),
-                            is_vip: Boolean(data.is_vip)
-                        };
-
-                        var localSettings = {
-                            banner: data.banner ?? null,
-                            font: data.font ?? null,
-                            nick_color: data.nick_color ?? null,
-                            nick_gradient: data.nick_gradient ?? null,
-                            verified_color: data.verified_color ?? null,
-                            verified_gradient: data.verified_gradient ?? null,
-                            custom_banner_color1: data.custom_banner_color1 ?? null,
-                            custom_banner_color2: data.custom_banner_color2 ?? null,
-                            goal_anthem_enabled: data.goal_anthem_enabled,
-                            goal_anthem_text: data.goal_anthem_text,
-                            goal_anthem_audio_url: data.goal_anthem_audio_url
-                        };
-
-                        updateLocalProSettings(localSettings);
-                        localSettingsLoaded = true;
-                        publishAvatarGlobals();
-                        syncAvatarRuntimeForLocalPlayer();
-                        if (isActive) {
-                            scheduleFullRefresh(20);
-                        }
-                    } else {
-                        myVerified = false;
-                        myDiscordId = null;
-                        myBadge = null;
-                        myIsPro = false;
-                        myAvatarUrl = null;
-                        myAvatarDisabled = false;
-                        myAvatarVisibleSelfOnly = true;
-                        myAvatarVisibleTeam = false;
-                        myAvatarVisibleRival = false;
-                        myAvatarTeamBorder = false;
-                        publishAvatarGlobals();
-                    }
-                    statusLoaded = true;
-                } catch (e) {}
-                syncLocalPersonalizationCache();
-                if (callback) callback();
-            }
-        };
-        xhr.onerror = function() { 
-            if (callback) callback(); 
-        };
-        xhr.send();
+        myVerified = true;
+        myDiscordId = 'zero-local-test';
+        myBadge = null;
+        myIsPro = true;
+        myAvatarUrl = null;
+        myAvatarDisabled = readAvatarBool(localStorage.getItem('hxd_avatar_disabled'), false);
+        myAvatarVisibleSelfOnly = readAvatarBool(localStorage.getItem('hxd_avatar_visible_self_only'), true);
+        myAvatarVisibleTeam = readAvatarBool(localStorage.getItem('hxd_avatar_visible_team'), false);
+        myAvatarVisibleRival = readAvatarBool(localStorage.getItem('hxd_avatar_visible_rival'), false);
+        myAvatarTeamBorder = readAvatarBool(localStorage.getItem('hxd_avatar_team_border'), false);
+        window.__proStatus = { is_pro: true, is_vip: true, allpro: true };
+        window.__vipStatus = { is_vip: true };
+        localSettingsLoaded = true;
+        publishAvatarGlobals();
+        syncLocalPersonalizationCache();
+        syncAvatarRuntimeForLocalPlayer();
+        if (isActive) scheduleFullRefresh(20);
+        statusLoaded = true;
+        if (callback) callback();
     }
 
     function sendPlayerIdToServer(playerId, roomId) {
@@ -798,11 +723,6 @@
         lastSentPlayerId = playerId;
         lastSentPlayerRoomId = normalizedRoomId;
         lastSentPlayerAt = now;
-        
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', LOCAL_SERVER + '/session/player-id', true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.send(JSON.stringify({ player_id: playerId, room_id: roomId }));
     }
 
     // Pega o nick do jogador local
@@ -829,11 +749,6 @@
         storeLocalGameNick(gameNick);
         var localPlayerId = getLocalPlayerId();
         if (localPlayerId == null) localPlayerId = getLocalPlayerIdFromPage();
-        
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', LOCAL_SERVER + '/session/game-nick', true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.send(JSON.stringify({ game_nick: gameNick, room_id: roomId, player_id: localPlayerId }));
     }
 
     function readNicknameInputNick() {
@@ -875,10 +790,6 @@
 
     function notifyLeaveRoom() {
         lastSentPlayerId = null;
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', LOCAL_SERVER + '/session/leave-room', true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.send('{}');
     }
 
     function fetchVerifiedUsers(players, roomId, callback) {
@@ -897,6 +808,10 @@
         if (!payloadPlayers.length) { callback({}); return; }
 
         verifiedFetchInFlight++;
+        syncLocalPersonalizationCache();
+        verifiedFetchInFlight = Math.max(0, verifiedFetchInFlight - 1);
+        callback({});
+        return;
 
         function finishFetch(result) {
             verifiedFetchInFlight = Math.max(0, verifiedFetchInFlight - 1);

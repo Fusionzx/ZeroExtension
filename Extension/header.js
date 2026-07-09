@@ -4,38 +4,27 @@
 (function() {
     if (typeof window.__hxdIsAnonymousMode !== 'function') {
         window.__hxdIsAnonymousMode = function() {
-            try {
-                if (localStorage.getItem('hxd_anonymous_mode') === '1') return true;
-                if (localStorage.getItem('ghost_mode') === 'true') return true;
-                return false;
-            } catch (eA) {
-                return false;
-            }
+            return false;
         };
     }
     if (typeof window.__hxdSetAnonymousMode !== 'function') {
-        window.__hxdSetAnonymousMode = function(on) {
+        window.__hxdSetAnonymousMode = function() {
             try {
-                if (on) {
-                    localStorage.setItem('hxd_anonymous_mode', '1');
-                    localStorage.setItem('ghost_mode', 'true');
-                } else {
-                    localStorage.removeItem('hxd_anonymous_mode');
-                    localStorage.removeItem('ghost_mode');
-                }
+                localStorage.removeItem('hxd_anonymous_mode');
+                localStorage.removeItem('ghost_mode');
             } catch (eS) {}
             try {
-                window.dispatchEvent(new CustomEvent('hxd-anonymous-mode-changed', { detail: { on: !!on } }));
+                window.dispatchEvent(new CustomEvent('hxd-anonymous-mode-changed', { detail: { on: false } }));
             } catch (eE) {}
         };
     }
 
     if (typeof window.__hxdPostAnonymousToGameFrame !== 'function') {
-        window.__hxdPostAnonymousToGameFrame = function(on) {
+        window.__hxdPostAnonymousToGameFrame = function() {
             try {
                 var ifr = document.querySelector('iframe[src*="game.html"], iframe[src*="html5.haxball"], iframe[src*="haxball.com"]');
                 if (ifr && ifr.contentWindow) {
-                    ifr.contentWindow.postMessage({ type: 'hxd-sync-anonymous', on: !!on }, '*');
+                    ifr.contentWindow.postMessage({ type: 'hxd-sync-anonymous', on: false }, '*');
                 }
             } catch (eP) {}
         };
@@ -210,12 +199,14 @@
         #custom-header #room-link-btn:hover { background: var(--theme-bg-hover, #333); }\
         #custom-header .header-right { grid-column: 3; justify-self: end; display: flex; justify-content: flex-end; align-items: center; gap: 6px; flex-shrink: 0; }\
         #custom-header #discord-btn {\
-            background: transparent; border: none; color: var(--theme-text-muted, #666); cursor: pointer; padding: 4px; display: flex;\
+            display: none !important;\
+            background: transparent; border: none; color: var(--theme-text-muted, #666); cursor: pointer; padding: 4px;\
             transition: color 0.12s ease;\
         }\
         #custom-header #discord-btn:hover { color: #5865F2; }\
         #custom-header #ghost-mode-btn {\
-            background: transparent; border: none; color: var(--theme-text-muted, #666); cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center;\
+            display: none !important;\
+            background: transparent; border: none; color: var(--theme-text-muted, #666); cursor: pointer; padding: 4px; align-items: center; justify-content: center;\
             transition: color 0.12s ease;\
         }\
         #custom-header #ghost-mode-btn:hover { color: #a78bfa; }\

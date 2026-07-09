@@ -39,6 +39,15 @@
     var profileDataCache = null;
     var profileDataPromise = null;
 
+    function scheduleRoomlistPreviewEnsure(doc, delay) {
+        if (!doc) return;
+        if (doc.hxdRoomlistPreviewEnsureTimer) return;
+        doc.hxdRoomlistPreviewEnsureTimer = setTimeout(function () {
+            doc.hxdRoomlistPreviewEnsureTimer = null;
+            ensureRoomlistPreview(doc);
+        }, typeof delay === 'number' ? delay : 80);
+    }
+
     function safeJsonParse(value, fallback) {
         try {
             return JSON.parse(value);
@@ -750,12 +759,7 @@
             profileDataCache = null;
         }
         if (profileDataPromise) return profileDataPromise;
-        profileDataPromise = fetchJson('/user').then(function(user) {
-            var loggedIn = user && user.logged_in ? user : getLocalProfileUser();
-            profileDataCache = { user: loggedIn };
-            profileDataPromise = null;
-            return profileDataCache;
-        }).catch(function(error) {
+        profileDataPromise = Promise.resolve().then(function() {
             profileDataPromise = null;
             profileDataCache = { user: getLocalProfileUser() };
             return profileDataCache;
@@ -966,13 +970,13 @@
 
     function injectRoomlistPreviewBootStyles(doc) {
         var css =
-            '.roomlist-view .dialog:not(:has(#hxd-roomlist-preview-frame)) > h1,' +
-            '.roomlist-view .dialog:not(:has(#hxd-roomlist-preview-frame)) > p,' +
-            '.roomlist-view .dialog:not(:has(#hxd-roomlist-preview-frame)) > .content,' +
-            '.roomlist-view .dialog:not(:has(#hxd-roomlist-preview-frame)) table.header,' +
-            '.roomlist-view .dialog:not(:has(#hxd-roomlist-preview-frame)) .buttons,' +
-            '.roomlist-view .dialog:not(:has(#hxd-roomlist-preview-frame)) #room-search,' +
-            '.roomlist-view .dialog:not(:has(#hxd-roomlist-preview-frame)) #sidebar-panel,' +
+            'html.hxd-roomlist-preview-active .roomlist-view .dialog > h1,' +
+            'html.hxd-roomlist-preview-active .roomlist-view .dialog > p,' +
+            'html.hxd-roomlist-preview-active .roomlist-view .dialog > .content,' +
+            'html.hxd-roomlist-preview-active .roomlist-view .dialog table.header,' +
+            'html.hxd-roomlist-preview-active .roomlist-view .dialog .buttons,' +
+            'html.hxd-roomlist-preview-active .roomlist-view .dialog #room-search,' +
+            'html.hxd-roomlist-preview-active .roomlist-view .dialog #sidebar-panel,' +
             'html.hxd-roomlist-preview-pending .roomlist-view .dialog > h1,' +
             'html.hxd-roomlist-preview-pending .roomlist-view .dialog > p,' +
             'html.hxd-roomlist-preview-pending .roomlist-view .dialog > .content,' +
@@ -982,18 +986,18 @@
             'html.hxd-roomlist-preview-pending .roomlist-view #sidebar-panel{' +
                 'display:none!important;' +
             '}' +
-            '.roomlist-view .dialog:not(:has(#hxd-roomlist-preview-frame)) > .splitter,' +
+            'html.hxd-roomlist-preview-active .roomlist-view .dialog > .splitter,' +
             'html.hxd-roomlist-preview-pending .roomlist-view .dialog > .splitter{' +
                 'position:absolute!important;left:0!important;top:0!important;width:100%!important;height:100%!important;' +
                 'overflow:hidden!important;opacity:0!important;visibility:hidden!important;' +
                 'pointer-events:none!important;z-index:-1!important;' +
             '}' +
-            '.roomlist-view .dialog:not(:has(#hxd-roomlist-preview-frame)),' +
+            'html.hxd-roomlist-preview-active .roomlist-view .dialog,' +
             'html.hxd-roomlist-preview-pending .roomlist-view .dialog{' +
                 'background:var(--theme-bg-secondary,#1a1a1a)!important;' +
                 'border:none!important;box-shadow:none!important;padding:0!important;overflow:hidden!important;' +
             '}' +
-            '#hxd-roomlist-preview-root:not(:has(#hxd-roomlist-preview-frame)){' +
+            '#hxd-roomlist-preview-root{' +
                 'position:relative;width:100%;height:100%;' +
                 'background:var(--theme-bg-secondary,#1a1a1a);' +
             '}';
@@ -1028,7 +1032,6 @@
         ensureRoomlistPreviewStyles(doc);
         applyRoomlistPreviewDialogSize(dialog);
         removeLegacyRoomlistChrome(doc);
-        try { doc.documentElement.classList.add('hxd-roomlist-preview-active'); } catch (eA) {}
     }
 
     function ensureRoomlistPreviewShell(doc, dialog) {
@@ -1055,7 +1058,7 @@
             prepareRoomlistPreviewDialog(doc, dialog);
             ensureRoomlistPreviewShell(doc, dialog);
             if (!doc.getElementById('hxd-roomlist-preview-frame') && dialog.dataset.hxdPreviewMounting !== '1') {
-                ensureRoomlistPreview(doc);
+                scheduleRoomlistPreviewEnsure(doc, 80);
             }
         };
 
@@ -1072,6 +1075,19 @@
                 return chrome.runtime.getURL('roomlist-preview.html');
             }
         } catch (eUrl) {}
+        try {
+            if (window.__hxdExtensionBaseUrl) {
+                return String(window.__hxdExtensionBaseUrl).replace(/\/?$/, '/') + 'roomlist-preview.html';
+            }
+        } catch (eBase) {}
+        try {
+            var scripts = document.getElementsByTagName('script');
+            for (var i = scripts.length - 1; i >= 0; i--) {
+                var src = scripts[i] && scripts[i].src ? String(scripts[i].src) : '';
+                if (!src || src.indexOf('runtime.js') === -1) continue;
+                return src.replace(/runtime\.js(?:[?#].*)?$/, 'roomlist-preview.html');
+            }
+        } catch (eScriptUrl) {}
         return null;
     }
 
@@ -2803,7 +2819,7 @@
             var roomlistView = document.querySelector('.roomlist-view');
 
             if (roomlistView) {
-                ensureRoomlistPreview(document);
+                scheduleRoomlistPreviewEnsure(document, 80);
             } else {
                 teardownRoomlistPreview(document);
                 teardownRoomListLoadingOverlay(document);
@@ -2856,7 +2872,8 @@
         init();
     }
 
-    bootRoomlistPreviewPipeline(document);
+    // O preview agora nasce pelo Injector.onView + checkAndModify.
+    // Evita observar o documento inteiro com subtree:true enquanto o HaxBall adiciona centenas de salas.
 
     try {
         window.__hxdForceRoomlistPreviewSync = function (doc, force) {

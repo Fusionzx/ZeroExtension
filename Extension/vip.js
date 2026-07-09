@@ -90,27 +90,8 @@
     }
 
     function loadProStatus() {
-        return fetch(API_BASE + '/vip/status').then(function(r) { return r.json(); }).then(function(data) {
-            proStatus = Object.assign({}, data || {}, { is_pro: true, is_vip: true, allpro: true });
-            window.__proStatus = proStatus;
-            window.__vipStatus = { is_vip: true };
-            try {
-                localStorage.setItem(
-                    'haxclient_pro_snapshot',
-                    JSON.stringify({
-                        is_pro: true,
-                        is_vip: true,
-                        allpro: true,
-                        at: Date.now()
-                    })
-                );
-            } catch (eSnap) {
-            }
-            return proStatus;
-        }).catch(function() {
-            applyProSnapshotFromStorage();
-            return proStatus;
-        });
+        applyProSnapshotFromStorage();
+        return Promise.resolve(proStatus);
     }
 
     function attachDiscordIdToBody(body) {
@@ -146,58 +127,29 @@
     }
 
     function loadProSettings() {
-        return fetch(API_BASE + '/vip/settings').then(function(r) { return r.json(); }).then(function(data) {
-            var cached = window.__proSettings;
-            if (!cached) {
-                try { cached = JSON.parse(localStorage.getItem('haxclient_pro_settings') || 'null') || null; } catch(e) {}
-            }
-            proSettings = Object.assign({}, cached || {}, data || {});
-            window.__proSettings = proSettings;
-            try { localStorage.setItem('haxclient_pro_settings', JSON.stringify(proSettings)); } catch(e) {}
-            if (window.__refreshVerifiedBadges) window.__refreshVerifiedBadges();
-            if (window.__refreshProBanners) window.__refreshProBanners();
-            if (window.__refreshProFonts) window.__refreshProFonts();
-            return proSettings;
-        }).catch(function() {
-            var fallback = window.__proSettings;
-            if (!fallback) {
-                try { fallback = JSON.parse(localStorage.getItem('haxclient_pro_settings') || 'null') || null; } catch(e) {}
-            }
-            proSettings = fallback || {};
-            window.__proSettings = proSettings;
-            return proSettings;
-        });
+        var fallback = window.__proSettings;
+        if (!fallback) {
+            try { fallback = JSON.parse(localStorage.getItem('haxclient_pro_settings') || 'null') || null; } catch(e) {}
+        }
+        proSettings = fallback || {};
+        window.__proSettings = proSettings;
+        return Promise.resolve(proSettings);
     }
 
     function saveProSettings(settings) {
-        return fetch(API_BASE + '/vip/settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(attachDiscordIdToBody(settings))
-        }).then(function(r) {
-            return r.json().then(function(data) {
-                if (!r.ok) {
-                    return { success: false, error: (data && data.error) || r.statusText || 'HTTP ' + r.status };
-                }
-                if (isProSettingsSaveResponseOk(data)) {
-                    proSettings = Object.assign({}, proSettings, settings);
-                    window.__proSettings = proSettings;
-                    try { localStorage.setItem('haxclient_pro_settings', JSON.stringify(proSettings)); } catch(e) {}
-                    if (window.__hxdInvalidateProSettingsCache) {
-                        try { window.__hxdInvalidateProSettingsCache(); } catch (eInv) {}
-                    }
-                    if (window.__hxdSyncLocalPersonalizationCache) {
-                        try {
-                            window.__hxdSyncLocalPersonalizationCache();
-                        } catch (eSync) {}
-                    }
-                    if (window.__refreshVerifiedBadges) window.__refreshVerifiedBadges();
-                    if (window.__refreshProBanners) window.__refreshProBanners();
-                    if (window.__refreshProFonts) window.__refreshProFonts();
-                }
-                return data;
-            });
-        });
+        proSettings = Object.assign({}, proSettings || {}, attachDiscordIdToBody(settings));
+        window.__proSettings = proSettings;
+        try { localStorage.setItem('haxclient_pro_settings', JSON.stringify(proSettings)); } catch(e) {}
+        if (window.__hxdInvalidateProSettingsCache) {
+            try { window.__hxdInvalidateProSettingsCache(); } catch (eInv) {}
+        }
+        if (window.__hxdSyncLocalPersonalizationCache) {
+            try { window.__hxdSyncLocalPersonalizationCache(); } catch (eSync) {}
+        }
+        if (window.__refreshVerifiedBadges) window.__refreshVerifiedBadges();
+        if (window.__refreshProBanners) window.__refreshProBanners();
+        if (window.__refreshProFonts) window.__refreshProFonts();
+        return Promise.resolve({ success: true, saved: true });
     }
 
     function openPaymentPage() {
@@ -465,13 +417,8 @@
     function renderProContent(popup, status) {
         renderProPopupLoading(popup, 'Cargando personalización...');
         loadProSettings().then(function(settings) {
-            fetch(API_BASE + '/user').then(function(r) { return r.json(); }).then(function(u) {
-                if (!u || !u.logged_in) u = getLocalUser();
-                renderProUI(popup, status, settings, u.nick || 'Player', u);
-            }).catch(function() {
-                var u = getLocalUser();
-                renderProUI(popup, status, settings, u.nick || 'Player', u);
-            });
+            var u = getLocalUser();
+            renderProUI(popup, status, settings, u.nick || 'Player', u);
         });
     }
 
@@ -1266,13 +1213,6 @@
         var localUser = getLocalUser();
         window.__myNick = localUser.nick;
         try { localStorage.setItem('haxclient_my_nick', localUser.nick); } catch(eLocalNick) {}
-        fetch(API_BASE + '/user').then(function(r) { return r.json(); }).then(function(data) {
-            if (!data || !data.logged_in) data = localUser;
-            if (data.nick) {
-                window.__myNick = data.nick;
-                try { localStorage.setItem('haxclient_my_nick', data.nick); } catch(e) {}
-            }
-        }).catch(function() {});
         loadProStatus().then(function(status) {
             if (status.is_pro || status.is_vip) loadProSettings();
         });

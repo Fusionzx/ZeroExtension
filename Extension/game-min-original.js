@@ -7504,8 +7504,13 @@
             let b = new qb(m.j.pe.v());
             b.Bl = function(c) {
                 m.j.pe.ha(c);
-                m.Qa.rm();
-                a()
+                try {
+                    m.Qa.rm()
+                } catch (d) {}
+                b.__hxdContinuePending || (b.__hxdContinuePending = !0,
+                window.setTimeout(function() {
+                    a()
+                }, 0))
             }
             ;
             C.Na(b.f);

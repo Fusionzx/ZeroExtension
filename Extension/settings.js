@@ -3128,25 +3128,6 @@
                 return row;
             }
 
-            var existingMiscBlock = miscsec.querySelector('[data-hook="hax-client-miscsec-extra"]');
-            if (existingMiscBlock && !existingMiscBlock.querySelector('[data-hook="hax-row-anonymous"]')) {
-                var anonymousOnly = makeGameStyleToggleRow(
-                    t('Anonymous mode toggle'),
-                    t('Anonymous mode tooltip'),
-                    function() {
-                        return window.__hxdIsAnonymousMode && window.__hxdIsAnonymousMode();
-                    },
-                    function() {
-                        var cur = window.__hxdIsAnonymousMode && window.__hxdIsAnonymousMode();
-                        if (window.__hxdSetAnonymousMode) {
-                            window.__hxdSetAnonymousMode(!cur);
-                        }
-                    }
-                );
-                anonymousOnly.setAttribute('data-hook', 'hax-row-anonymous');
-                existingMiscBlock.appendChild(anonymousOnly);
-            }
-
             var miscExtraExisting = miscsec.querySelector('[data-hook="hax-client-miscsec-extra"]');
             if (miscExtraExisting && !miscExtraExisting.querySelector('[data-hook="hax-row-no-match-status"]')) {
                 var noMatchRowLegacy = makeGameStyleToggleRow(
@@ -3239,21 +3220,6 @@
             );
             zoomRow.setAttribute('data-hook', 'hax-row-zero-zoom');
 
-            var anonymousRow = makeGameStyleToggleRow(
-                t('Anonymous mode toggle'),
-                t('Anonymous mode tooltip'),
-                function() {
-                    return window.__hxdIsAnonymousMode && window.__hxdIsAnonymousMode();
-                },
-                function() {
-                    var cur = window.__hxdIsAnonymousMode && window.__hxdIsAnonymousMode();
-                    if (window.__hxdSetAnonymousMode) {
-                        window.__hxdSetAnonymousMode(!cur);
-                    }
-                }
-            );
-            anonymousRow.setAttribute('data-hook', 'hax-row-anonymous');
-
             var noMatchStatusRow = makeGameStyleToggleRow(
                 t('No match status text'),
                 t('No match status text tooltip'),
@@ -3338,7 +3304,6 @@
 
             block.appendChild(verifiedRow);
             block.appendChild(zoomRow);
-            block.appendChild(anonymousRow);
             block.appendChild(noMatchStatusRow);
             block.appendChild(oldScoreboardRow);
             block.appendChild(buttonsLayoutRow);

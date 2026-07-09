@@ -425,6 +425,7 @@
 
     function createWelcomePopup() {
         if (document.getElementById('welcome-popup-overlay')) return;
+        if (isNicknameViewOpen()) return;
 
         injectWelcomeFontsOnce();
         injectWelcomeStylesOnce();
@@ -615,11 +616,32 @@
     /** Reutilizar estilos wc-* (progreso, cabecera, botones) en otros flujos, p. ej. creación de equipo. */
     window.__hxdInjectWelcomeStyles = injectWelcomeStylesOnce;
 
+    function isNicknameViewOpen() {
+        try {
+            return !!document.querySelector('.choose-nickname-view');
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function showWelcomeWhenReady() {
+        if (!isNicknameViewOpen()) {
+            createWelcomePopup();
+            return;
+        }
+        var observer = new MutationObserver(function() {
+            if (isNicknameViewOpen()) return;
+            observer.disconnect();
+            setTimeout(createWelcomePopup, 300);
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
     // Mostra o popup ao carregar (apenas se não viu essa versão)
     Injector.waitForElement('body').then(function() {
         var seenVersion = localStorage.getItem('haxball_welcome_seen');
         if (seenVersion !== WELCOME_FLOW_VERSION) {
-            setTimeout(createWelcomePopup, 800);
+            localStorage.setItem('haxball_welcome_seen', WELCOME_FLOW_VERSION);
         }
     });
 })();

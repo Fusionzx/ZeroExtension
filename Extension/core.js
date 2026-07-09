@@ -263,30 +263,17 @@ window.Injector = Injector;
 })();
 
 (function() {
-    var ANON_KEY = 'hxd_anonymous_mode';
-
     window.__hxdIsAnonymousMode = function() {
-        try {
-            if (localStorage.getItem(ANON_KEY) === '1') return true;
-            if (localStorage.getItem('ghost_mode') === 'true') return true;
-            return false;
-        } catch (e) {
-            return false;
-        }
+        return false;
     };
 
-    window.__hxdSetAnonymousMode = function(on) {
+    window.__hxdSetAnonymousMode = function() {
         try {
-            if (on) {
-                localStorage.setItem(ANON_KEY, '1');
-                localStorage.setItem('ghost_mode', 'true');
-            } else {
-                localStorage.removeItem(ANON_KEY);
-                localStorage.removeItem('ghost_mode');
-            }
+            localStorage.removeItem('hxd_anonymous_mode');
+            localStorage.removeItem('ghost_mode');
         } catch (e2) {}
         try {
-            window.dispatchEvent(new CustomEvent('hxd-anonymous-mode-changed', { detail: { on: !!on } }));
+            window.dispatchEvent(new CustomEvent('hxd-anonymous-mode-changed', { detail: { on: false } }));
         } catch (e3) {}
     };
 
@@ -294,7 +281,7 @@ window.Injector = Injector;
     if (!Injector.isMainFrame()) {
         window.addEventListener('message', function(ev) {
             if (!ev.data || ev.data.type !== 'hxd-sync-anonymous') return;
-            window.__hxdSetAnonymousMode(!!ev.data.on);
+            window.__hxdSetAnonymousMode(false);
         });
     }
 })();
