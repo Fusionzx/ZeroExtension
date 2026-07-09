@@ -13,6 +13,7 @@
       ],
       "js": [
         "browser-loader.js",
+        "core.js",
         "header.js"
       ],
       "run_at": "document_start",
