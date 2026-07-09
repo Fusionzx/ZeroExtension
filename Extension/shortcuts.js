@@ -1100,7 +1100,7 @@
                 scheduleRefreshActionBars();
             });
             // Sin attributes: injectar botones cambia el DOM hijo y con subtree+síncrono reentraba en bucle.
-            observer.observe(listRoots[j], { childList: true, subtree: true });
+            observer.observe(listRoots[j], { childList: true });
             roomListObservers.push(observer);
         }
 
@@ -1172,7 +1172,7 @@
                 beginGameHostDockTracking();
             }
         } catch (exGameDockPoll) {}
-    }, 500);
+    }, 2000);
 
     // Si Injector._initViewObserver falló (p.ej. bug del selector antiguo), recuperar al enganchar listas
     setInterval(function() {
@@ -1183,7 +1183,7 @@
                 observeRoomLists();
             }
         } catch (e) {}
-    }, 750);
+    }, 2000);
 })();
 (function() {
     'use strict';
