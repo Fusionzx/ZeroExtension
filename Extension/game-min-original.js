@@ -12840,6 +12840,7 @@
     m.j = new xc;
     window.__haxAddPlayerKey = function(a, b) {
         try {
+            if ("ToggleMenu" == b && "Escape" != a) return !0;
             let c = m.j.Jd.v();
             c.Pa(a, b);
             m.j.Jd.ha(c);
@@ -12851,6 +12852,7 @@
     ;
     window.__haxRemovePlayerKey = function(a) {
         try {
+            if ("Escape" == a) return !0;
             let b = m.j.Jd.v();
             b.sr(a);
             m.j.Jd.ha(b);
@@ -13015,7 +13017,11 @@
                     } catch (pkRepairError) {}
                     ls.setItem("hxd_togglemenu_escape_repaired_v2", "1")
                 }
-                m.j.Jd.ha(Aa.Th(pk))
+                let fixedPlayerKeys = Aa.Th(pk);
+                fixedPlayerKeys.Pa("Escape", "ToggleMenu");
+                pk = fixedPlayerKeys.Ce();
+                ls.setItem("player_keys", pk);
+                m.j.Jd.ha(fixedPlayerKeys)
             } catch (pkE) {}
             let qmIdx = c("quality_mode", 1);
             window._hxdQualityMultiplier = 1 == qmIdx ? 1 : .9;

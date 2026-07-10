@@ -4842,6 +4842,10 @@
       var code = opts.codes && opts.codes[label] ? opts.codes[label] : label;
       var btn = $('button', 'kb-key', label);
       btn.type = 'button';
+      if (opts.fixed) {
+        keysWrap.appendChild(btn);
+        return;
+      }
       var rm = $('button', 'kb-key-rm', '×');
       rm.type = 'button';
       rm.setAttribute('aria-label', 'Quitar');
@@ -4852,6 +4856,8 @@
       btn.appendChild(rm);
       keysWrap.appendChild(btn);
     });
+
+    if (opts.fixed) return;
 
     if (!keyLabels.length) {
       var empty = $('button', 'kb-key kb-key--empty', '—');
@@ -4953,8 +4959,11 @@
     }
 
     function refreshKeys() {
-      var labels = readKeysFromParentRow(getTarget());
+      var fixedToggleMenu = actionKey === 'ToggleMenu';
+      var labels = fixedToggleMenu ? ['Escape'] : readKeysFromParentRow(getTarget());
       renderKeySquares(keysWrap, labels, {
+        fixed: fixedToggleMenu,
+        codes: fixedToggleMenu ? { Escape: 'Escape' } : null,
         onAdd: function () {
           var target = getTarget();
           if (!target) return;
