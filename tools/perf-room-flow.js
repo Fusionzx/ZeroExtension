@@ -14,9 +14,11 @@ const DEFAULT_IRON = 'C:\\Program Files\\SRWare Iron (64-Bit)\\chrome.exe';
 const browserName = (process.env.HXD_BROWSER || 'brave').toLowerCase();
 const executablePath = process.env.HXD_BROWSER_PATH ||
   (browserName === 'iron' ? DEFAULT_IRON : DEFAULT_BRAVE);
+const startUrl = process.env.HXD_ROOM_URL || 'https://www.haxball.com/play';
 const repeat = Math.max(1, parseInt(process.env.HXD_REPEAT || '1', 10) || 1);
 const phaseMs = Math.max(800, parseInt(process.env.HXD_PHASE_MS || '2500', 10) || 2500);
-const nickPrefix = process.env.HXD_NICK || 'codex';
+const nickName = process.env.HXD_NICK || 'user';
+const afterJoinChat = process.env.HXD_AFTER_JOIN_CHAT || '';
 const makeRoom = process.env.HXD_CREATE_ROOM !== '0';
 const headed = process.env.HXD_HEADLESS !== '1';
 
@@ -298,6 +300,29 @@ async function ensureRoomOrGame(frame, name) {
   return { before, createResult, joinResult, reached };
 }
 
+async function waitForRoomOrGame(frame, timeoutMs = 30000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const state = await frame.evaluate(() => ({
+      inRoom: !!(document.querySelector('.room-view') || document.querySelector('.game-view')),
+      hasDialog: !!document.querySelector('.dialog'),
+      body: (document.body && document.body.innerText || '').slice(0, 300),
+      url: location.href,
+    })).catch((e) => ({ error: String(e && e.message || e) }));
+    if (state.inRoom) return { reached: true, state };
+    await frame.waitForTimeout(250);
+  }
+  return await frame.evaluate(() => ({
+    reached: false,
+    state: {
+      inRoom: !!(document.querySelector('.room-view') || document.querySelector('.game-view')),
+      hasDialog: !!document.querySelector('.dialog'),
+      body: (document.body && document.body.innerText || '').slice(0, 500),
+      url: location.href,
+    },
+  })).catch((e) => ({ reached: false, error: String(e && e.message || e) }));
+}
+
 async function toggleMenu(frame) {
   const out = { attempted: false, key: false, button: false };
   try {
@@ -322,6 +347,29 @@ async function toggleMenu(frame) {
   }
   await frame.waitForTimeout(400);
   return out;
+}
+
+async function sendChatCommand(frame, text) {
+  if (!text) return { skipped: true };
+  return await frame.evaluate((message) => {
+    var input = document.querySelector('.chatbox-view input[data-hook="input"]') ||
+      document.querySelector('input[data-hook="input"]');
+    if (!input) return { sent: false, reason: 'chat-input-missing' };
+    input.focus();
+    input.value = message;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    var ev = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      code: 'Enter',
+      keyCode: 13,
+      which: 13,
+      bubbles: true,
+      cancelable: true,
+    });
+    input.dispatchEvent(ev);
+    return { sent: true };
+  }, text);
 }
 
 async function runOnce(index) {
@@ -358,23 +406,34 @@ async function runOnce(index) {
   const summaries = [];
   let flow = {};
   try {
-    await page.goto('https://www.haxball.com/play', { waitUntil: 'domcontentloaded', timeout: 45000 });
+    await page.goto(startUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
     let frame = await findGameFrame(page);
     await waitForGameReady(frame);
     await injectPerfProbe(frame);
     summaries.push(await phase(frame, 'welcome-idle', 1200));
-    await clickOk(frame, `${nickPrefix}${Date.now().toString(36).slice(-5)}${index}`);
+    await clickOk(frame, nickName);
     await page.waitForTimeout(700);
     frame = await findGameFrame(page);
     summaries.push(await phase(frame, 'after-ok', phaseMs));
-    try {
-      await frame.waitForSelector('#hxd-roomlist-preview-root, .roomlist-view, .room-view, .game-view', { timeout: 30000 });
-    } catch (e) {
-      flow.waitAfterOkError = String(e && e.message || e);
+    if (/\bc=/.test(startUrl)) {
+      flow.directRoom = await waitForRoomOrGame(frame, 45000);
+      summaries.push(await phase(frame, 'direct-room-idle', phaseMs));
+      flow.room = { direct: true, reached: !!(flow.directRoom && flow.directRoom.reached) };
+      if (flow.room.reached && afterJoinChat) {
+        flow.afterJoinChat = await sendChatCommand(frame, afterJoinChat).catch((e) => ({
+          sent: false,
+          error: String(e && e.message || e),
+        }));
+      }
+    } else {
+      try {
+        await frame.waitForSelector('#hxd-roomlist-preview-root, .roomlist-view, .room-view, .game-view', { timeout: 30000 });
+      } catch (e) {
+        flow.waitAfterOkError = String(e && e.message || e);
+      }
+      summaries.push(await phase(frame, 'roomlist-idle', phaseMs));
+      flow.room = await ensureRoomOrGame(frame, `Zero Perf ${Date.now().toString(36)}`);
     }
-    summaries.push(await phase(frame, 'roomlist-idle', phaseMs));
-
-    flow.room = await ensureRoomOrGame(frame, `Codex Perf ${Date.now().toString(36)}`);
     summaries.push(await phase(frame, 'room-after-create-or-wait', phaseMs));
 
     flow.menuToggle1 = await toggleMenu(frame);
