@@ -4803,7 +4803,9 @@
       ev.preventDefault();
       ev.stopPropagation();
       if (ev.key === 'Escape') {
-        finish(cleanupLocal, null);
+        // Escape is a valid key binding (for example, ToggleMenu), not a
+        // cancellation while the key-capture overlay is active.
+        finish(cleanupLocal, 'Escape');
         return;
       }
       if (ev.code) finish(cleanupLocal, ev.code);
