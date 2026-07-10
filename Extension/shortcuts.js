@@ -1358,8 +1358,8 @@
             if (typeof window.electronAPI === 'undefined' || typeof window.electronAPI.setZeroZoomClientEnabled !== 'function') {
                 return;
             }
-            // Camera zoom must not scale the surrounding application UI.
-            window.electronAPI.setZeroZoomClientEnabled(false).catch(function() {});
+            var en = localStorage.getItem('hax_zero_zoom') !== '0';
+            window.electronAPI.setZeroZoomClientEnabled(en).catch(function() {});
         } catch (eBootZ) {}
     })();
 

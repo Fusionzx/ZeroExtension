@@ -8,69 +8,6 @@ if (typeof console !== 'undefined') {
     console.info = __hxdNoop;
 }
 
-(function syncBrowserZoomForHaxball() {
-    function installHudZoomCompensation() {
-        function install() {
-            if (!document.head || document.getElementById('hxd-browser-zoom-compensation')) return false;
-            var style = document.createElement('style');
-            style.id = 'hxd-browser-zoom-compensation';
-            style.textContent =
-                'html[data-hxd-browser-zoom-factor] #custom-header {' +
-                    'zoom: var(--hxd-browser-zoom-inverse, 1) !important;' +
-                    'width: var(--hxd-browser-zoom-percent, 100%) !important;' +
-                '}' +
-                'html[data-hxd-browser-zoom-factor] .game-state-view .bar {' +
-                    'zoom: var(--hxd-browser-zoom-inverse, 1) !important;' +
-                    'width: var(--hxd-browser-zoom-percent, 100%) !important;' +
-                '}' +
-                'html[data-hxd-browser-zoom-factor] .room-view .container,' +
-                'html[data-hxd-browser-zoom-factor] .game-view > .bottom-section > *,' +
-                'html[data-hxd-browser-zoom-factor] .game-view > .buttons,' +
-                'html[data-hxd-browser-zoom-factor] .game-view > [data-hook="popups"] > * {' +
-                    'zoom: var(--hxd-browser-zoom-inverse, 1) !important;' +
-                '}';
-            document.head.appendChild(style);
-            return true;
-        }
-
-        if (install()) return;
-        var observer = new MutationObserver(function () {
-            if (install()) observer.disconnect();
-        });
-        observer.observe(document.documentElement || document, { childList: true, subtree: true });
-    }
-
-    function applyZoomFactor(value) {
-        var factor = Number(value);
-        if (!isFinite(factor) || factor <= 0) factor = 1;
-        try {
-            document.documentElement.style.setProperty('--hxd-browser-zoom', String(factor));
-            document.documentElement.style.setProperty('--hxd-browser-zoom-inverse', String(1 / factor));
-            document.documentElement.style.setProperty('--hxd-browser-zoom-percent', String(factor * 100) + '%');
-            document.documentElement.setAttribute('data-hxd-browser-zoom-factor', String(factor));
-        } catch (eApplyZoom) {}
-    }
-
-    installHudZoomCompensation();
-
-    try {
-        if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
-            chrome.runtime.sendMessage({ action: 'getPageZoom' }, function (response) {
-                if (!chrome.runtime.lastError && response && response.success) {
-                    applyZoomFactor(response.zoomFactor);
-                }
-            });
-
-            chrome.runtime.onMessage.addListener(function (request) {
-                if (!request || request.action !== 'hxdPageZoomChanged') return false;
-                applyZoomFactor(request.zoomFactor);
-                return false;
-            });
-        }
-    } catch (eSyncZoom) {}
-
-})();
-
 var Injector = {
     waitForHead: function() {
         return new Promise(function(resolve) {

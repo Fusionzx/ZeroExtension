@@ -64,44 +64,6 @@
         return true;
     }
 
-    function isHaxballUrl(url) {
-        try {
-            var parsed = new URL(String(url || ''));
-            return parsed.hostname === 'haxball.com' ||
-                parsed.hostname === 'www.haxball.com' ||
-                parsed.hostname === 'html5.haxball.com' ||
-                /\.haxball\.com$/i.test(parsed.hostname);
-        } catch (e) {
-            return false;
-        }
-    }
-
-    function readTabZoom(tabId, sendResponse) {
-        if (typeof tabId !== 'number') {
-            sendSafe(sendResponse, { success: false, error: 'Missing tab id' });
-            return false;
-        }
-
-        chrome.tabs.getZoom(tabId, function (zoomFactor) {
-            var err = chrome.runtime.lastError;
-            sendSafe(sendResponse, err
-                ? { success: false, error: err.message }
-                : { success: true, zoomFactor: Number(zoomFactor) || 1 });
-        });
-        return true;
-    }
-
-    function publishTabZoom(tabId, zoomFactor) {
-        try {
-            chrome.tabs.sendMessage(tabId, {
-                action: 'hxdPageZoomChanged',
-                zoomFactor: Number(zoomFactor) || 1
-            }, function () {
-                void chrome.runtime.lastError;
-            });
-        } catch (e) {}
-    }
-
     // Bloqueia requisicoes para redes de anuncio
     function setupAdBlocking() {
         if (typeof chrome.declarativeNetRequest !== 'object') return;
@@ -138,25 +100,10 @@
 
     setupAdBlocking();
 
-    // Report the real browser zoom to the content scripts. The field keeps
-    // the browser zoom while the HUD applies its inverse scale in CSS.
-    if (chrome.tabs && chrome.tabs.onZoomChange) {
-        chrome.tabs.onZoomChange.addListener(function (info) {
-            if (!info || typeof info.tabId !== 'number') return;
-            chrome.tabs.get(info.tabId, function (tab) {
-                if (chrome.runtime.lastError || !tab || !isHaxballUrl(tab.url)) return;
-                publishTabZoom(info.tabId, info.newZoomFactor);
-            });
-        });
-    }
-
     chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         var action = request && request.action;
         if (action === 'openExternalLink') return openExternalLink(request, sendResponse);
         if (action === 'downloadFile') return downloadFile(request, sendResponse);
-        if (action === 'getPageZoom') {
-            return readTabZoom(sender && sender.tab ? sender.tab.id : null, sendResponse);
-        }
         return false;
     });
 })();

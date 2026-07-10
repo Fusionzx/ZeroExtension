@@ -3082,9 +3082,7 @@
         function hxdNotifyZeroZoomToMain(enabled) {
             try {
                 if (typeof window.electronAPI !== 'undefined' && typeof window.electronAPI.setZeroZoomClientEnabled === 'function') {
-                    // Keep zoom inside the game field; Electron page zoom
-                    // also enlarges the menu, sound button and header.
-                    window.electronAPI.setZeroZoomClientEnabled(false).catch(function() {});
+                    window.electronAPI.setZeroZoomClientEnabled(!!enabled).catch(function() {});
                 }
             } catch (eNz) {}
         }

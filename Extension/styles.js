@@ -292,8 +292,6 @@
         html {\
             --hxd-scoreboard-bg-alpha: 1;\
             --hxd-chat-bg-alpha: 1;\
-            --hxd-browser-zoom: 1;\
-            --hxd-browser-zoom-inverse: 1;\
         }\
         html:not([data-theme="default"]) .game-state-view .bar {\
             background: rgba(var(--theme-bg-primary-rgb, 20, 20, 20), var(--hxd-scoreboard-bg-alpha, 1)) !important;\
