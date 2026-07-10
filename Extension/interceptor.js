@@ -64,6 +64,41 @@
         return true;
     }
 
+    function isHaxballUrl(url) {
+        try {
+            var parsed = new URL(String(url || ''));
+            return parsed.hostname === 'haxball.com' ||
+                parsed.hostname === 'www.haxball.com' ||
+                parsed.hostname === 'html5.haxball.com' ||
+                /\.haxball\.com$/i.test(parsed.hostname);
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function lockTabZoomAt100(tabId, sendResponse) {
+        if (typeof tabId !== 'number') {
+            sendSafe(sendResponse, { success: false, error: 'Missing tab id' });
+            return false;
+        }
+
+        chrome.tabs.setZoomSettings(tabId, {
+            mode: 'manual',
+            scope: 'per-tab',
+            defaultZoomFactor: 1
+        }, function () {
+            // setZoomSettings can fail on a tab that is still being created;
+            // setZoom below is the authoritative reset and reports the result.
+            chrome.tabs.setZoom(tabId, 1, function () {
+                var err = chrome.runtime.lastError;
+                sendSafe(sendResponse, err
+                    ? { success: false, error: err.message }
+                    : { success: true, zoomFactor: 1 });
+            });
+        });
+        return true;
+    }
+
     // Bloqueia requisicoes para redes de anuncio
     function setupAdBlocking() {
         if (typeof chrome.declarativeNetRequest !== 'object') return;
@@ -100,10 +135,26 @@
 
     setupAdBlocking();
 
+    // Browser/page zoom changes CSS pixels and therefore resizes the HUD.
+    // HaxBall Zero owns only the field camera zoom, so always restore page
+    // zoom to 100% for HaxBall tabs.
+    if (chrome.tabs && chrome.tabs.onZoomChange) {
+        chrome.tabs.onZoomChange.addListener(function (info) {
+            if (!info || info.newZoomFactor === 1 || typeof info.tabId !== 'number') return;
+            chrome.tabs.get(info.tabId, function (tab) {
+                if (chrome.runtime.lastError || !tab || !isHaxballUrl(tab.url)) return;
+                lockTabZoomAt100(info.tabId);
+            });
+        });
+    }
+
     chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         var action = request && request.action;
         if (action === 'openExternalLink') return openExternalLink(request, sendResponse);
         if (action === 'downloadFile') return downloadFile(request, sendResponse);
+        if (action === 'lockPageZoom') {
+            return lockTabZoomAt100(sender && sender.tab ? sender.tab.id : null, sendResponse);
+        }
         return false;
     });
 })();
