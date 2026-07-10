@@ -323,7 +323,10 @@
 
         var css = getStylesCss();
 
-        if (style) { style.textContent = css; return; }
+        if (style) {
+            if (style.textContent !== css) style.textContent = css;
+            return;
+        }
 
         style = doc.createElement('style');
 
@@ -863,11 +866,83 @@
 
 
 
+        var tickScheduled = false;
+
         var tick = function () {
+
+            tickScheduled = false;
 
             if (doc.querySelector('.game-state-view')) ensureScoreboard(doc);
 
             else teardown(doc);
+
+        };
+
+        var scheduleTick = function () {
+
+            if (tickScheduled) return;
+
+            tickScheduled = true;
+
+            setTimeout(tick, 0);
+
+        };
+
+        var isOwnNode = function (node) {
+
+            return !!(node && node.nodeType === 1 && (
+
+                node.id === 'hxd-scoreboard-root' ||
+
+                node.id === 'hxd-scoreboard-styles' ||
+
+                node.id === 'hxd-scoreboard-font' ||
+
+                (node.closest && node.closest('#hxd-scoreboard-root'))
+
+            ));
+
+        };
+
+        var shouldTickForMutations = function (mutations) {
+
+            for (var mi = 0; mi < mutations.length; mi++) {
+
+                var target = mutations[mi].target;
+
+                if (isOwnNode(target)) continue;
+
+                var nodes = mutations[mi].addedNodes || [];
+
+                for (var ni = 0; ni < nodes.length; ni++) {
+
+                    var node = nodes[ni];
+
+                    if (!node || node.nodeType !== 1 || isOwnNode(node)) continue;
+
+                    if (node.matches && node.matches('.game-state-view,.game-view,.room-view,.roomlist-view')) return true;
+
+                    if (node.querySelector && node.querySelector('.game-state-view,.game-view,.room-view,.roomlist-view')) return true;
+
+                }
+
+                nodes = mutations[mi].removedNodes || [];
+
+                for (var ri = 0; ri < nodes.length; ri++) {
+
+                    node = nodes[ri];
+
+                    if (!node || node.nodeType !== 1 || isOwnNode(node)) continue;
+
+                    if (node.matches && node.matches('.game-state-view,.game-view,.room-view,.roomlist-view')) return true;
+
+                    if (node.querySelector && node.querySelector('.game-state-view,.game-view,.room-view,.roomlist-view')) return true;
+
+                }
+
+            }
+
+            return false;
 
         };
 
@@ -879,7 +954,11 @@
 
         if (!bootMo) {
 
-            bootMo = new MutationObserver(tick);
+            bootMo = new MutationObserver(function (mutations) {
+
+                if (shouldTickForMutations(mutations)) scheduleTick();
+
+            });
 
             bootMo.observe(doc.documentElement, { childList: true, subtree: true });
 
@@ -942,4 +1021,3 @@
     }
 
 })();
-
