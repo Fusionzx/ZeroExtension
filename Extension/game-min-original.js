@@ -4619,7 +4619,9 @@
             } catch (f) {}
             hz ? (1 == a ? b.Ld = 610 : (b.Ld = 0,
             b.Ig = 1 + .25 * (a - 2))) : (0 >= a ? b.Ld = 610 : (b.Ld = 0,
-            b.Ig = 1 + .25 * (a - 1)))
+            b.Ig = 1 + .25 * (a - 1)));
+            var browserZoom = parseFloat(document.documentElement.getAttribute("data-hxd-browser-zoom-factor") || "1");
+            isFinite(browserZoom) && 0 < browserZoom && (0 != b.Ld ? b.Ld /= browserZoom : b.Ig *= browserZoom)
         }
     }
     class sc {
@@ -4838,6 +4840,8 @@
             c.Ig = 1 + .25 * (b - 1))),
             this.ib.gb.Dh = d * window.devicePixelRatio,
             this.ib.f.style.paddingBottom = "0");
+            var browserZoom = parseFloat(document.documentElement.getAttribute("data-hxd-browser-zoom-factor") || "1");
+            isFinite(browserZoom) && 0 < browserZoom && (0 != c.Ld ? c.Ld /= browserZoom : c.Ig *= browserZoom);
             a = a.hg();
             this.ib.A(a);
             m.Qa.sk.wt(a)
@@ -12838,26 +12842,6 @@
         urls: "stun:stun4.l.google.com:19302"
     }];
     m.j = new xc;
-    window.__hxdAdjustFieldZoom = function(command) {
-        try {
-            let current = m.j.Rd.v();
-            let next;
-            if ("reset" == command)
-                next = 2;
-            else {
-                // Zero Zoom camera values: 2=100%, 3=125%, ... 8=250%.
-                // Dynamic/restricted modes start their first +/- step at 100%.
-                if (2 > current || 8 < current)
-                    current = 2;
-                next = "in" == command ? Math.min(8, current + 1) : Math.max(2, current - 1)
-            }
-            m.j.Rd.ha(next);
-            return next
-        } catch (e) {
-            return null
-        }
-    }
-    ;
     window.__haxAddPlayerKey = function(a, b) {
         try {
             let c = m.j.Jd.v();

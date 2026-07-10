@@ -76,27 +76,30 @@
         }
     }
 
-    function lockTabZoomAt100(tabId, sendResponse) {
+    function readTabZoom(tabId, sendResponse) {
         if (typeof tabId !== 'number') {
             sendSafe(sendResponse, { success: false, error: 'Missing tab id' });
             return false;
         }
 
-        chrome.tabs.setZoomSettings(tabId, {
-            mode: 'manual',
-            scope: 'per-tab',
-            defaultZoomFactor: 1
-        }, function () {
-            // setZoomSettings can fail on a tab that is still being created;
-            // setZoom below is the authoritative reset and reports the result.
-            chrome.tabs.setZoom(tabId, 1, function () {
-                var err = chrome.runtime.lastError;
-                sendSafe(sendResponse, err
-                    ? { success: false, error: err.message }
-                    : { success: true, zoomFactor: 1 });
-            });
+        chrome.tabs.getZoom(tabId, function (zoomFactor) {
+            var err = chrome.runtime.lastError;
+            sendSafe(sendResponse, err
+                ? { success: false, error: err.message }
+                : { success: true, zoomFactor: Number(zoomFactor) || 1 });
         });
         return true;
+    }
+
+    function publishTabZoom(tabId, zoomFactor) {
+        try {
+            chrome.tabs.sendMessage(tabId, {
+                action: 'hxdPageZoomChanged',
+                zoomFactor: Number(zoomFactor) || 1
+            }, function () {
+                void chrome.runtime.lastError;
+            });
+        } catch (e) {}
     }
 
     // Bloqueia requisicoes para redes de anuncio
@@ -135,15 +138,14 @@
 
     setupAdBlocking();
 
-    // Browser/page zoom changes CSS pixels and therefore resizes the HUD.
-    // HaxBall Zero owns only the field camera zoom, so always restore page
-    // zoom to 100% for HaxBall tabs.
+    // Report the real browser zoom to the content scripts. The field keeps
+    // the browser zoom while the HUD applies its inverse scale in CSS.
     if (chrome.tabs && chrome.tabs.onZoomChange) {
         chrome.tabs.onZoomChange.addListener(function (info) {
-            if (!info || info.newZoomFactor === 1 || typeof info.tabId !== 'number') return;
+            if (!info || typeof info.tabId !== 'number') return;
             chrome.tabs.get(info.tabId, function (tab) {
                 if (chrome.runtime.lastError || !tab || !isHaxballUrl(tab.url)) return;
-                lockTabZoomAt100(info.tabId);
+                publishTabZoom(info.tabId, info.newZoomFactor);
             });
         });
     }
@@ -152,8 +154,8 @@
         var action = request && request.action;
         if (action === 'openExternalLink') return openExternalLink(request, sendResponse);
         if (action === 'downloadFile') return downloadFile(request, sendResponse);
-        if (action === 'lockPageZoom') {
-            return lockTabZoomAt100(sender && sender.tab ? sender.tab.id : null, sendResponse);
+        if (action === 'getPageZoom') {
+            return readTabZoom(sender && sender.tab ? sender.tab.id : null, sendResponse);
         }
         return false;
     });

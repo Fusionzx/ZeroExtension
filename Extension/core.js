@@ -8,14 +8,62 @@ if (typeof console !== 'undefined') {
     console.info = __hxdNoop;
 }
 
-(function lockBrowserZoomForHaxball() {
+(function syncBrowserZoomForHaxball() {
+    function installTopLevelZoomCompensation() {
+        if (window.self !== window.top) return;
+
+        function install() {
+            if (!document.head || document.getElementById('hxd-browser-zoom-compensation')) return false;
+            var style = document.createElement('style');
+            style.id = 'hxd-browser-zoom-compensation';
+            style.textContent =
+                'html[data-hxd-browser-zoom-factor] {' +
+                    'overflow: hidden !important;' +
+                '}' +
+                'html[data-hxd-browser-zoom-factor] body {' +
+                    'zoom: var(--hxd-browser-zoom-inverse, 1) !important;' +
+                    'width: var(--hxd-browser-zoom-percent, 100%) !important;' +
+                    'height: var(--hxd-browser-zoom-percent, 100%) !important;' +
+                '}';
+            document.head.appendChild(style);
+            return true;
+        }
+
+        if (install()) return;
+        var observer = new MutationObserver(function () {
+            if (install()) observer.disconnect();
+        });
+        observer.observe(document.documentElement || document, { childList: true, subtree: true });
+    }
+
+    function applyZoomFactor(value) {
+        var factor = Number(value);
+        if (!isFinite(factor) || factor <= 0) factor = 1;
+        try {
+            document.documentElement.style.setProperty('--hxd-browser-zoom', String(factor));
+            document.documentElement.style.setProperty('--hxd-browser-zoom-inverse', String(1 / factor));
+            document.documentElement.style.setProperty('--hxd-browser-zoom-percent', String(factor * 100) + '%');
+            document.documentElement.setAttribute('data-hxd-browser-zoom-factor', String(factor));
+        } catch (eApplyZoom) {}
+    }
+
+    installTopLevelZoomCompensation();
+
     try {
-        if (window.self === window.top && chrome && chrome.runtime && chrome.runtime.sendMessage) {
-            chrome.runtime.sendMessage({ action: 'lockPageZoom' }, function () {
-                void chrome.runtime.lastError;
+        if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
+            chrome.runtime.sendMessage({ action: 'getPageZoom' }, function (response) {
+                if (!chrome.runtime.lastError && response && response.success) {
+                    applyZoomFactor(response.zoomFactor);
+                }
+            });
+
+            chrome.runtime.onMessage.addListener(function (request) {
+                if (!request || request.action !== 'hxdPageZoomChanged') return false;
+                applyZoomFactor(request.zoomFactor);
+                return false;
             });
         }
-    } catch (eLockZoom) {}
+    } catch (eSyncZoom) {}
 
 })();
 
