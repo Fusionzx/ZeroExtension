@@ -829,6 +829,14 @@
             min-width: 350px !important;\
             padding: 15px 20px !important;\
         }\
+        /* Camera zoom belongs to the field; keep HUD controls at a stable visual size. */\
+        html[style*="--hxd-field-camera-scale"] .game-view > .buttons,\
+        html[style*="--hxd-field-camera-scale"] .game-view > .scoreboard,\
+        html[style*="--hxd-field-camera-scale"] .game-view > .chatbox-view,\
+        html[style*="--hxd-field-camera-scale"] .game-state-view .scoreboard,\
+        html[style*="--hxd-field-camera-scale"] .chatbox-view {\
+            zoom: calc(1 / var(--hxd-field-camera-scale, 1));\
+        }\
         h1[data-hook="room-name"] {\
             border-bottom: 1px solid var(--theme-border) !important;\
             color: var(--theme-text-primary) !important;\
