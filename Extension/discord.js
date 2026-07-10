@@ -33,7 +33,7 @@
     }
 
     function getLocalUser() {
-        var nick = getStoredGameNick() || 'Zero';
+        var nick = getStoredGameNick();
         return {
             logged_in: true,
             nick: nick,

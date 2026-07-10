@@ -8310,7 +8310,8 @@
             this.Bc = this.Zc = 0;
             this.Yb = !1;
             this.W = this.Z = 0;
-            this.D = "Player";
+            // Keep the nickname empty until the user chooses one in HaxBall.
+            this.D = "";
             this.gh = this.zb = 0;
             this.country = null;
             this.Td = !1;
@@ -12980,7 +12981,27 @@
             } catch (opE) {}
             try {
                 let pk = ls.getItem("player_keys");
-                null != pk && m.j.Jd.ha(Aa.Th(pk))
+                // HaxBall's default ToggleMenu binding is Escape. Seed it
+                // only on a brand-new profile so an intentional removal is
+                // still respected.
+                if (null == pk) {
+                    pk = JSON.stringify({ Escape: "ToggleMenu" });
+                    ls.setItem("player_keys", pk)
+                } else if (null == ls.getItem("hxd_togglemenu_escape_defaulted")) {
+                    // Migrate existing profiles once. After this, removing
+                    // Escape remains the user's choice and will not be undone
+                    // on the next launch.
+                    try {
+                        let keyMap = Aa.Th(pk);
+                        if (null == keyMap.Escape) {
+                            keyMap.Pa("Escape", "ToggleMenu");
+                            pk = keyMap.Ce();
+                            ls.setItem("player_keys", pk)
+                        }
+                    } catch (pkMigrationError) {}
+                    ls.setItem("hxd_togglemenu_escape_defaulted", "1")
+                }
+                m.j.Jd.ha(Aa.Th(pk))
             } catch (pkE) {}
             let qmIdx = c("quality_mode", 1);
             window._hxdQualityMultiplier = 1 == qmIdx ? 1 : .9;

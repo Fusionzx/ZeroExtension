@@ -4724,6 +4724,19 @@
     if (!row) return false;
     var action = actionKey || resolveVanillaAction(label, row);
     if (!action) return false;
+
+    // The native settings handler treats Escape as “close settings”. Store it
+    // through the live key map directly so assigning ToggleMenu never closes
+    // the dialog that is currently capturing the key.
+    if (code === 'Escape') {
+      addVanillaKeyLive(action, code);
+      var escapeMap = loadPlayerKeysMap();
+      escapeMap[code] = action;
+      savePlayerKeysMap(escapeMap);
+      appendVanillaKeyChip(row, code);
+      return true;
+    }
+
     addVanillaKeyLive(action, code);
     var before = readKeysFromParentRow(row).join('\n');
     addVanillaKeyNative(row, code);
