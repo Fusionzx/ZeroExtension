@@ -1188,6 +1188,35 @@
 (function() {
     'use strict';
 
+    function fieldZoomCommandFromEvent(e) {
+        if (!e || (!e.ctrlKey && !e.metaKey)) return null;
+        if (e.key === '0' || e.code === 'Numpad0') return 'reset';
+        if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd') return 'in';
+        if (e.key === '-' || e.code === 'NumpadSubtract') return 'out';
+        return null;
+    }
+
+    document.addEventListener('keydown', function(e) {
+        var command = fieldZoomCommandFromEvent(e);
+        if (!command) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        if (typeof window.__hxdAdjustFieldZoom === 'function') {
+            window.__hxdAdjustFieldZoom(command);
+        }
+    }, true);
+
+    window.addEventListener('wheel', function(e) {
+        if (!e.ctrlKey && !e.metaKey) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        if (typeof window.__hxdAdjustFieldZoom === 'function') {
+            window.__hxdAdjustFieldZoom(e.deltaY < 0 ? 'in' : 'out');
+        }
+    }, { capture: true, passive: false });
+
     function clampExtrapolation(value) {
         value = parseInt(value, 10);
         if (isNaN(value)) value = 0;

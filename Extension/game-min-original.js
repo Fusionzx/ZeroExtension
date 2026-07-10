@@ -12838,6 +12838,26 @@
         urls: "stun:stun4.l.google.com:19302"
     }];
     m.j = new xc;
+    window.__hxdAdjustFieldZoom = function(command) {
+        try {
+            let current = m.j.Rd.v();
+            let next;
+            if ("reset" == command)
+                next = 2;
+            else {
+                // Zero Zoom camera values: 2=100%, 3=125%, ... 8=250%.
+                // Dynamic/restricted modes start their first +/- step at 100%.
+                if (2 > current || 8 < current)
+                    current = 2;
+                next = "in" == command ? Math.min(8, current + 1) : Math.max(2, current - 1)
+            }
+            m.j.Rd.ha(next);
+            return next
+        } catch (e) {
+            return null
+        }
+    }
+    ;
     window.__haxAddPlayerKey = function(a, b) {
         try {
             let c = m.j.Jd.v();

@@ -17,24 +17,6 @@ if (typeof console !== 'undefined') {
         }
     } catch (eLockZoom) {}
 
-    function isBrowserZoomShortcut(e) {
-        if (!e || (!e.ctrlKey && !e.metaKey)) return false;
-        return e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0' ||
-            e.code === 'NumpadAdd' || e.code === 'NumpadSubtract';
-    }
-
-    window.addEventListener('keydown', function (e) {
-        if (!isBrowserZoomShortcut(e)) return;
-        e.preventDefault();
-        e.stopPropagation();
-        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
-    }, true);
-
-    window.addEventListener('wheel', function (e) {
-        if (!e.ctrlKey && !e.metaKey) return;
-        e.preventDefault();
-        e.stopPropagation();
-    }, { capture: true, passive: false });
 })();
 
 var Injector = {
