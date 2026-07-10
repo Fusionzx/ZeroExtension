@@ -4619,9 +4619,7 @@
             } catch (f) {}
             hz ? (1 == a ? b.Ld = 610 : (b.Ld = 0,
             b.Ig = 1 + .25 * (a - 2))) : (0 >= a ? b.Ld = 610 : (b.Ld = 0,
-            b.Ig = 1 + .25 * (a - 1)));
-            var browserZoom = parseFloat(document.documentElement.getAttribute("data-hxd-browser-zoom-factor") || "1");
-            isFinite(browserZoom) && 0 < browserZoom && (0 != b.Ld ? b.Ld /= browserZoom : b.Ig *= browserZoom)
+            b.Ig = 1 + .25 * (a - 1)))
         }
     }
     class sc {
@@ -4840,8 +4838,6 @@
             c.Ig = 1 + .25 * (b - 1))),
             this.ib.gb.Dh = d * window.devicePixelRatio,
             this.ib.f.style.paddingBottom = "0");
-            var browserZoom = parseFloat(document.documentElement.getAttribute("data-hxd-browser-zoom-factor") || "1");
-            isFinite(browserZoom) && 0 < browserZoom && (0 != c.Ld ? c.Ld /= browserZoom : c.Ig *= browserZoom);
             a = a.hg();
             this.ib.A(a);
             m.Qa.sk.wt(a)

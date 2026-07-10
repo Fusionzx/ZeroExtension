@@ -9,21 +9,25 @@ if (typeof console !== 'undefined') {
 }
 
 (function syncBrowserZoomForHaxball() {
-    function installTopLevelZoomCompensation() {
-        if (window.self !== window.top) return;
-
+    function installHudZoomCompensation() {
         function install() {
             if (!document.head || document.getElementById('hxd-browser-zoom-compensation')) return false;
             var style = document.createElement('style');
             style.id = 'hxd-browser-zoom-compensation';
             style.textContent =
-                'html[data-hxd-browser-zoom-factor] {' +
-                    'overflow: hidden !important;' +
-                '}' +
-                'html[data-hxd-browser-zoom-factor] body {' +
+                'html[data-hxd-browser-zoom-factor] #custom-header {' +
                     'zoom: var(--hxd-browser-zoom-inverse, 1) !important;' +
                     'width: var(--hxd-browser-zoom-percent, 100%) !important;' +
-                    'height: var(--hxd-browser-zoom-percent, 100%) !important;' +
+                '}' +
+                'html[data-hxd-browser-zoom-factor] .game-state-view .bar {' +
+                    'zoom: var(--hxd-browser-zoom-inverse, 1) !important;' +
+                    'width: var(--hxd-browser-zoom-percent, 100%) !important;' +
+                '}' +
+                'html[data-hxd-browser-zoom-factor] .room-view .container,' +
+                'html[data-hxd-browser-zoom-factor] .game-view > .bottom-section > *,' +
+                'html[data-hxd-browser-zoom-factor] .game-view > .buttons,' +
+                'html[data-hxd-browser-zoom-factor] .game-view > [data-hook="popups"] > * {' +
+                    'zoom: var(--hxd-browser-zoom-inverse, 1) !important;' +
                 '}';
             document.head.appendChild(style);
             return true;
@@ -47,7 +51,7 @@ if (typeof console !== 'undefined') {
         } catch (eApplyZoom) {}
     }
 
-    installTopLevelZoomCompensation();
+    installHudZoomCompensation();
 
     try {
         if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
