@@ -13001,6 +13001,20 @@
                     } catch (pkMigrationError) {}
                     ls.setItem("hxd_togglemenu_escape_defaulted", "1")
                 }
+                if (null == ls.getItem("hxd_togglemenu_escape_repaired_v2")) {
+                    // Repair profiles that were left without ToggleMenu by a
+                    // previous migration. This runs once; later manual
+                    // removal remains respected.
+                    try {
+                        let repairedKeys = Aa.Th(pk);
+                        if (null == repairedKeys.Escape) {
+                            repairedKeys.Pa("Escape", "ToggleMenu");
+                            pk = repairedKeys.Ce();
+                            ls.setItem("player_keys", pk)
+                        }
+                    } catch (pkRepairError) {}
+                    ls.setItem("hxd_togglemenu_escape_repaired_v2", "1")
+                }
                 m.j.Jd.ha(Aa.Th(pk))
             } catch (pkE) {}
             let qmIdx = c("quality_mode", 1);
