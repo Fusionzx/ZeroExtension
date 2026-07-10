@@ -4619,8 +4619,7 @@
             } catch (f) {}
             hz ? (1 == a ? b.Ld = 610 : (b.Ld = 0,
             b.Ig = 1 + .25 * (a - 2))) : (0 >= a ? b.Ld = 610 : (b.Ld = 0,
-            b.Ig = 1 + .25 * (a - 1))),
-            document.documentElement.style.setProperty("--hxd-field-camera-scale", String(b.Ig || 1))
+            b.Ig = 1 + .25 * (a - 1)))
         }
     }
     class sc {
@@ -4839,7 +4838,6 @@
             c.Ig = 1 + .25 * (b - 1))),
             this.ib.gb.Dh = d * window.devicePixelRatio,
             this.ib.f.style.paddingBottom = "0");
-            document.documentElement.style.setProperty("--hxd-field-camera-scale", String(c.Ig || 1));
             a = a.hg();
             this.ib.A(a);
             m.Qa.sk.wt(a)
