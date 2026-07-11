@@ -2695,6 +2695,8 @@
   function clearAvatarPreviewDataLocalOnly() {
     try { storageWin().localStorage.removeItem(AVATAR_PREVIEW_KEY); } catch (eParentClearAv) {}
     try { localStorage.removeItem(AVATAR_PREVIEW_KEY); } catch (eClearAv) {}
+    try { storageWin().localStorage.removeItem('hxd_avatar_original_gif'); } catch (eParentClearGif) {}
+    try { localStorage.removeItem('hxd_avatar_original_gif'); } catch (eClearGif) {}
     notifyAvatarProfileChanged();
   }
 
@@ -2906,7 +2908,7 @@
     var borderStyleOnly = payloadOverride && payloadOverride.__borderStyleOnly;
     if (!borderStyleOnly && imageData !== '' && !payloadOverride) hasAvatarDiscordSessionSync();
     if (!borderStyleOnly && !payloadOverride) {
-      if (imageData === '') setAvatarPreviewData('');
+      if (imageData === '') clearAvatarPreviewDataLocalOnly();
       else if (imageData) setAvatarPreviewData(imageData);
     }
     var xhr = new XMLHttpRequest();
@@ -2916,8 +2918,9 @@
       if (xhr.readyState !== 4) return;
       try {
         var data = JSON.parse(xhr.responseText || '{}');
-        if (data && data.success) {
-          if (typeof data.avatar_url === 'string') setAvatarPreviewData(data.avatar_url);
+      if (data && data.success) {
+          if (isClear) clearAvatarPreviewDataLocalOnly();
+          else if (typeof data.avatar_url === 'string') setAvatarPreviewData(data.avatar_url);
           else if (data.avatar_url === null) setAvatarPreviewData('');
           if (payloadOverride) {
             if (!borderStyleOnly) syncAvatarVisibilityControlsFromStorage();
@@ -2930,10 +2933,12 @@
           if (!silent) showToast(isClear ? t('misc_avatar_cleared') : t('misc_avatar_saved_local'), 'ok');
         }
       } catch (ePostAvatar) {
+        if (isClear) clearAvatarPreviewDataLocalOnly();
         if (!silent) showToast(isClear ? t('misc_avatar_cleared') : t('misc_avatar_saved_local'), 'ok');
       }
     };
     xhr.onerror = function () {
+      if (isClear) clearAvatarPreviewDataLocalOnly();
       if (!silent) showToast(isClear ? t('misc_avatar_cleared') : t('misc_avatar_saved_local'), 'ok');
     };
     var payload = payloadOverride ? Object.assign({}, payloadOverride) : getAvatarVisibilityPayload();
@@ -3654,8 +3659,30 @@
           syncAvatarPanelUi(previewRing, status);
           return;
         }
+        if (String(file.type || '').toLowerCase() === 'image/gif') {
+          // Keep the original GIF data; drawing it to canvas would flatten
+          // the animation to its first frame.
+          var gifReader = new FileReader();
+          gifReader.onload = function () {
+            var gifData = String(gifReader.result || '');
+            if (!gifData) {
+              status.textContent = t('misc_avatar_invalid');
+              return;
+            }
+            try { storageWin().localStorage.setItem('hxd_avatar_original_gif', gifData); } catch (eGifStorage) {}
+            setAvatarPreviewData(gifData);
+            syncAvatarPanelUi(previewRing, status);
+            postAvatarProfileToServer(gifData, false);
+          };
+          gifReader.onerror = function () {
+            status.textContent = t('misc_avatar_invalid');
+          };
+          gifReader.readAsDataURL(file);
+          return;
+        }
         status.textContent = t('misc_avatar_processing');
         openAvatarCropEditor(file, function (data) {
+          try { storageWin().localStorage.removeItem('hxd_avatar_original_gif'); } catch (eNonGifStorage) {}
           setAvatarPreviewData(data);
           syncAvatarPanelUi(previewRing, status);
           postAvatarProfileToServer(data, false);
@@ -3720,6 +3747,7 @@
     clearBtn.type = 'button';
     clearBtn.onclick = function (e) {
       e.stopPropagation();
+      try { storageWin().localStorage.removeItem('hxd_avatar_original_gif'); } catch (eGifClear) {}
       setAvatarPreviewData('');
       fileInput.value = '';
       syncAvatarPanelUi(previewRing, status);
@@ -3854,7 +3882,7 @@
     misc_avatar_save_remote_fail: { es: 'No se pudo guardar el avatar en la cuenta', en: 'Could not save avatar to the account', pt: 'Não foi possível salvar o avatar na conta' },
     misc_avatar_discord_required: { es: 'Para usar avatar tenés que iniciar sesión con Discord en la app.', en: 'To use avatars, sign in with Discord in the app.', pt: 'Para usar avatar, entre com Discord no app.' },
     misc_avatar_invalid: { es: 'Imagen inválida', en: 'Invalid image', pt: 'Imagem inválida' },
-    misc_avatar_formats: { es: 'JPG, PNG o WEBP. Después podés mover y hacer zoom.', en: 'JPG, PNG or WEBP. Then drag and zoom to crop.', pt: 'JPG, PNG ou WEBP. Depois arraste e dê zoom.' },
+    misc_avatar_formats: { es: 'JPG, PNG, WEBP o GIF.', en: 'JPG, PNG, WEBP or GIF.', pt: 'JPG, PNG, WEBP ou GIF.' },
     misc_avatar_crop_title: { es: 'Editar avatar', en: 'Edit avatar', pt: 'Editar avatar' },
     misc_avatar_crop_desc: { es: 'Arrastrá la imagen para moverla y usá el zoom para encuadrar.', en: 'Drag the image to move it and use zoom to frame it.', pt: 'Arraste a imagem para mover e use o zoom para enquadrar.' },
     misc_avatar_crop_zoom: { es: 'Zoom', en: 'Zoom', pt: 'Zoom' },
@@ -4724,6 +4752,19 @@
     if (!row) return false;
     var action = actionKey || resolveVanillaAction(label, row);
     if (!action) return false;
+
+    // The native settings handler treats Escape as “close settings”. Store it
+    // through the live key map directly so assigning ToggleMenu never closes
+    // the dialog that is currently capturing the key.
+    if (code === 'Escape') {
+      addVanillaKeyLive(action, code);
+      var escapeMap = loadPlayerKeysMap();
+      escapeMap[code] = action;
+      savePlayerKeysMap(escapeMap);
+      appendVanillaKeyChip(row, code);
+      return true;
+    }
+
     addVanillaKeyLive(action, code);
     var before = readKeysFromParentRow(row).join('\n');
     addVanillaKeyNative(row, code);
@@ -4829,6 +4870,10 @@
       var code = opts.codes && opts.codes[label] ? opts.codes[label] : label;
       var btn = $('button', 'kb-key', label);
       btn.type = 'button';
+      if (opts.fixed) {
+        keysWrap.appendChild(btn);
+        return;
+      }
       var rm = $('button', 'kb-key-rm', '×');
       rm.type = 'button';
       rm.setAttribute('aria-label', 'Quitar');
@@ -4839,6 +4884,8 @@
       btn.appendChild(rm);
       keysWrap.appendChild(btn);
     });
+
+    if (opts.fixed) return;
 
     if (!keyLabels.length) {
       var empty = $('button', 'kb-key kb-key--empty', '—');
@@ -4940,8 +4987,11 @@
     }
 
     function refreshKeys() {
-      var labels = readKeysFromParentRow(getTarget());
+      var fixedToggleMenu = actionKey === 'ToggleMenu';
+      var labels = fixedToggleMenu ? ['Escape'] : readKeysFromParentRow(getTarget());
       renderKeySquares(keysWrap, labels, {
+        fixed: fixedToggleMenu,
+        codes: fixedToggleMenu ? { Escape: 'Escape' } : null,
         onAdd: function () {
           var target = getTarget();
           if (!target) return;

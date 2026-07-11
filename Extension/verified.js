@@ -278,6 +278,8 @@
     function getResolvedMyAvatarUrl() {
         if (!hasAvatarDiscordSession()) return null;
         try {
+            var originalGif = localStorage.getItem('hxd_avatar_original_gif');
+            if (/^data:image\/gif/i.test(String(originalGif || ''))) return originalGif;
             var fromStorage = localStorage.getItem('hxd_settings_preview_avatar');
             if (fromStorage) return fromStorage;
         } catch (e) {}
@@ -288,8 +290,12 @@
 
     function syncLocalAvatarFromStorage() {
         try {
-            var fromStorage = localStorage.getItem('hxd_settings_preview_avatar');
-            if (fromStorage) myAvatarUrl = fromStorage;
+            var originalGif = localStorage.getItem('hxd_avatar_original_gif');
+            var fromStorage = /^data:image\/gif/i.test(String(originalGif || ''))
+                ? originalGif
+                : localStorage.getItem('hxd_settings_preview_avatar');
+            myAvatarUrl = fromStorage || null;
+            if (!myAvatarUrl) window.__hxdMyAvatarUrl = null;
         } catch (eStorage) {}
     }
 
@@ -971,7 +977,9 @@
 
         if (prev) {
             if (prev.discord_id && !incoming.discord_id) entry.discord_id = prev.discord_id;
-            if (prev.avatar_url && !incoming.avatar_url) entry.avatar_url = prev.avatar_url;
+            if (prev.avatar_url && !Object.prototype.hasOwnProperty.call(incoming, 'avatar_url')) {
+                entry.avatar_url = prev.avatar_url;
+            }
             if (prev.__proLocked || prev.isPro) {
                 entry.isPro = Boolean(prev.isPro || incoming.isPro);
                 entry.__proLocked = true;
@@ -1098,6 +1106,9 @@
 
     function buildRuntimeAvatarProfile(playerId, nick, profile, isLocal) {
         var data = profile || {};
+        // Image avatars are private to their owner. Remote profiles may still
+        // carry metadata from the API, but must never render their image here.
+        if (!isLocal) return null;
         var disabled = data.avatar_disabled !== undefined ? readAvatarBool(data.avatar_disabled, false) : (isLocal ? getAvatarStorageToggle('hxd_avatar_disabled', myAvatarDisabled) : false);
         var avatarUrl = data.avatar_url || (isLocal ? getResolvedMyAvatarUrl() : null);
         if (disabled || !avatarUrl) return null;
@@ -1161,9 +1172,6 @@
             window.__hxdAvatarProfilesByPlayerId[playerId];
         var runtimeProfile = buildRuntimeAvatarProfile(playerId, nick, profile, isLocal);
         if (!runtimeProfile) {
-            if (existing && existing.avatar_url && !isLocal) {
-                return;
-            }
             if (existing && existing.avatar_url && isLocal) {
                 var explicitlyDisabled = profile && readAvatarBool(profile.avatar_disabled, false);
                 if (!explicitlyDisabled && getResolvedMyAvatarUrl()) {

@@ -74,7 +74,7 @@
     }
 
     function getLocalProfileUser() {
-        var nick = 'Player';
+        var nick = '';
         try {
             nick = localStorage.getItem('haxball_nick') ||
                 localStorage.getItem('ghost_nick') ||
@@ -658,7 +658,7 @@
         if (wall) wall.style.display = 'none';
         if (main) main.style.display = 'block';
 
-        var nick = user.nick || user.username || 'Player';
+        var nick = user.nick || user.username || '';
         setText('zip-display', nick);
         var handleEl = iframeDoc.getElementById('zip-handle');
         var handleName = user.username || user.discord_username || '';
@@ -1561,7 +1561,7 @@
         var nick = getPlayerNickForPreview();
         var avatarUrl = getGameAvatarForPreview();
         if (user && user.discord_id) {
-            nick = user.nick || user.username || nick || 'Player';
+            nick = user.nick || user.username || nick || '';
             if (user.discord_avatar) avatarUrl = user.discord_avatar;
         }
         var tier = 'NOVATO+';
@@ -1571,7 +1571,7 @@
         }
         return {
             loggedIn: !!(user && user.discord_id),
-            nick: nick || 'Player',
+            nick: nick || '',
             handle: user && (user.username || user.discord_username) ? String(user.username || user.discord_username) : '',
             avatarUrl: avatarUrl || '',
             tier: tier,

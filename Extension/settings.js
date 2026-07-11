@@ -27,6 +27,10 @@
         try {
             var win = doc.defaultView || window;
             win.__hxdSettingsPopupOpen = !!open;
+            if (!open) {
+                win.__hxdSuppressSettingsEscUntil = 0;
+                win.__hxdSettingsOpeningUntil = 0;
+            }
         } catch (eWinFlag) {}
     }
 
@@ -41,10 +45,14 @@
     }
 
     function shouldSuppressSettingsEsc(doc) {
-        var win = doc && doc.defaultView ? doc.defaultView : window;
-        if (win.__hxdSuppressSettingsEscUntil && Date.now() < win.__hxdSuppressSettingsEscUntil) return true;
-        if (win.__hxdSettingsOpeningUntil && Date.now() < win.__hxdSettingsOpeningUntil) return true;
-        return isSettingsEscTarget(doc);
+        if (!doc) return false;
+        try {
+            return Boolean(doc.querySelector(
+                '.dialog.settings-view, #hxd-settings-preview-root, #hxd-settings-preview-frame'
+            ));
+        } catch (eSettingsUi) {
+            return false;
+        }
     }
 
     function handleSettingsEscKeydown(e, doc) {
@@ -65,6 +73,9 @@
         try { doc.defaultView.__hxdSuppressSettingsEscUntil = Date.now() + 900; } catch (eFlag) {}
         if (doc.__hxdCloseSettingsPreviewAnimated && isSettingsOpenedFromRoomlist(doc)) {
             doc.__hxdCloseSettingsPreviewAnimated();
+            try {
+                if (doc.defaultView && typeof doc.defaultView.__hxdMarkSettingsClosed === 'function') doc.defaultView.__hxdMarkSettingsClosed();
+            } catch (eAnimatedCloseOverlay) {}
             return true;
         }
         var win = doc.defaultView;
@@ -87,7 +98,7 @@
         }, true);
         doc.addEventListener('keyup', function (e) {
             if (!e || (e.key !== 'Escape' && e.keyCode !== 27)) return;
-            if (!doc.defaultView || Date.now() > (doc.defaultView.__hxdSuppressSettingsEscUntil || 0)) return;
+            if (!shouldSuppressSettingsEsc(doc)) return;
             e.preventDefault();
             e.stopPropagation();
             if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
@@ -312,11 +323,19 @@
                 var fromRoomlist = isSettingsOpenedFromRoomlist(doc);
                 if (fromRoomlist && typeof doc.__hxdCloseSettingsPreviewAnimated === 'function') {
                     doc.__hxdCloseSettingsPreviewAnimated();
+                    try {
+                        if (doc.defaultView && typeof doc.defaultView.__hxdMarkSettingsClosed === 'function') doc.defaultView.__hxdMarkSettingsClosed();
+                    } catch (eAnimatedCloseOverlay2) {}
                     return;
                 }
                 try { doc.defaultView.__hxdSuppressSettingsEscUntil = Date.now() + 900; } catch (eEscFlag) {}
                 clearSettingsOpenedFromRoomlist(doc);
                 if (closeBtn) closeBtn.click();
+                try {
+                    if (doc.defaultView && typeof doc.defaultView.__hxdMarkSettingsClosed === 'function') {
+                        doc.defaultView.__hxdMarkSettingsClosed();
+                    }
+                } catch (eCloseOverlay) {}
                 window.setTimeout(function () {
                     try {
                         var restore = doc.defaultView && doc.defaultView.__hxdRestoreGameFocusAfterSettingsClose;

@@ -26,6 +26,9 @@
         window.__hxdAvatarTeamBorderBlue = Number(globals.avatar_team_border_blue) || 0;
         window.__hxdAvatarTeamBorderWidth = Number(globals.avatar_team_border_width) || 3;
         window.__hxdAvatarTeamBorderInset = Boolean(globals.avatar_team_border_inset);
+        if (!window.__hxdMyAvatarUrl && typeof window.__hxdClearAvatarOverlay === 'function') {
+            try { window.__hxdClearAvatarOverlay(); } catch (eClearOverlay) {}
+        }
         try { window.dispatchEvent(new Event('hxd-avatar-image-loaded')); } catch (eEvt) {}
     }
 

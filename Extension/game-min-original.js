@@ -4516,6 +4516,7 @@
             window.cancelAnimationFrame(this.Re);
             try {
                 window.__hxdRoomMenuVisible = !1
+                __hxdSetAvatarOverlayVisible(false)
             } catch (a) {}
             window.clearInterval(this.Sh);
             window.clearInterval(this.lj);
@@ -4524,7 +4525,7 @@
         sf() {
             this.Re = window.requestAnimationFrame(M(this, this.sf));
             this.za.A();
-            this.Rc()
+            if (__hxdFpsRenderAllowed(this)) this.Rc()
         }
         Rc() {
             this.se.A();
@@ -4562,8 +4563,8 @@
                     a.stopPropagation();
                     return;
                 }
-                c ? this.W.Fa(a) : (this.l.Zk() ? this.l.ab(null) : (b = this.l,
-                b.we(!b.od)));
+                this.l.Zk() ? this.l.ab(null) : (b = this.l,
+                b.we(!b.od));
                 a.preventDefault();
                 break;
             case 48:
@@ -4740,11 +4741,13 @@
             try {
                 window.__hxdCloseSettingsPopup = function() {
                     b.ab(null);
+                    __hxdMarkSettingsClosed();
                     __hxdRestoreGameFocusAfterSettingsClose();
                 };
                 window.__hxdRestoreGameFocusAfterSettingsClose = __hxdRestoreGameFocusAfterSettingsClose;
                 window.addEventListener("hxd-close-settings-request", function() {
                     b.ab(null);
+                    __hxdMarkSettingsClosed();
                     __hxdRestoreGameFocusAfterSettingsClose();
                 });
                 __hxdInstallSettingsEscGuard(function() {
@@ -4753,16 +4756,17 @@
                 });
             } catch (hxdCloseSettingsE) {}
             new mc(a.get("sound"));
-            a.get("settings").onmousedown = __hxdMarkSettingsOpening;
+            a.get("settings").onmousedown = null;
             a.get("settings").onclick = function() {
-                __hxdMarkSettingsOpening();
                 let c = new na;
                 c.rb = function() {
                     b.ab(null);
+                    __hxdMarkSettingsClosed();
                     __hxdRestoreGameFocusAfterSettingsClose();
                 }
                 ;
-                b.ab(c.f)
+                b.ab(c.f);
+                __hxdMarkSettingsOpening()
             }
             ;
             this.Xa.ne = function() {
@@ -4890,6 +4894,7 @@
             this.od ? this.us.appendChild(this.Xa.f) : this.Xa.f.remove());
             try {
                 window.__hxdRoomMenuVisible = !!this.od
+                __hxdSetAvatarOverlayVisible(!this.od)
             } catch (b) {}
         }
         Zk() {
@@ -5160,6 +5165,8 @@
     function __hxdGetLocalAvatarUrl() {
         var storedUrl = null;
         try {
+            var originalGif = localStorage.getItem('hxd_avatar_original_gif');
+            if (/^data:image\/gif/i.test(String(originalGif || ''))) return originalGif;
             storedUrl = localStorage.getItem('hxd_settings_preview_avatar') || null;
         } catch (e) {}
         if (storedUrl) return storedUrl;
@@ -5242,20 +5249,242 @@
         try {
             if (!profile || !profile.avatar_url) return null;
             window.__hxdAvatarImageCache = window.__hxdAvatarImageCache || {};
-            var cached = window.__hxdAvatarImageCache[profile.avatar_url];
+            var avatarUrl = String(profile.avatar_url);
+            var urlLooksLikeGif = /^data:image\/gif/i.test(avatarUrl) || /\.gif(?:[?#]|$)/i.test(avatarUrl);
+            var cached = window.__hxdAvatarImageCache[avatarUrl];
             if (!cached) {
-                var img = new Image;
-                cached = window.__hxdAvatarImageCache[profile.avatar_url] = { img: img, loaded: false, failed: false };
-                img.onload = function() {
-                    cached.loaded = true;
-                    try { window.dispatchEvent(new Event('hxd-avatar-image-loaded')); } catch (eLoad) {}
-                };
-                img.onerror = function() { cached.failed = true };
-                img.src = profile.avatar_url;
+                cached = window.__hxdAvatarImageCache[avatarUrl] = { img: null, loaded: false, failed: false, isGif: urlLooksLikeGif, frame: null, decoder: null, frameIndex: 0, nextFrameAt: 0, decodePending: false };
+                if (urlLooksLikeGif) {
+                    __hxdStartAnimatedAvatarDecoder(cached, avatarUrl);
+                } else {
+                    var img = new Image;
+                    cached.img = img;
+                    img.onload = function() {
+                        cached.loaded = true;
+                        try { window.dispatchEvent(new Event('hxd-avatar-image-loaded')); } catch (eLoad) {}
+                    };
+                    img.onerror = function() { cached.failed = true };
+                    img.src = avatarUrl;
+                }
             }
-            return cached.loaded && !cached.failed ? cached.img : null;
+            return cached.loaded && !cached.failed ? cached : null;
         } catch (e) {
             return null;
+        }
+    }
+    var __hxdAvatarOverlay = null;
+    var __hxdAvatarOverlayFrame = 0;
+    function __hxdSetAvatarOverlayVisible(visible) {
+        if (__hxdAvatarOverlay && __hxdAvatarOverlay.root) {
+            __hxdAvatarOverlay.root.style.display = visible ? 'block' : 'none';
+        }
+    }
+    function __hxdClearAvatarOverlay() {
+        if (__hxdAvatarOverlay) {
+            for (var key in __hxdAvatarOverlay.entries) {
+                var entry = __hxdAvatarOverlay.entries[key];
+                if (entry && entry.el && entry.el.parentNode) entry.el.parentNode.removeChild(entry.el);
+            }
+            __hxdAvatarOverlay.entries = {};
+            __hxdSetAvatarOverlayVisible(false);
+        }
+        try { window.__hxdAvatarImageCache = {}; } catch (eCache) {}
+    }
+    function __hxdMarkSettingsClosed() {
+        try {
+            window.__hxdSettingsPopupOpen = false;
+            window.__hxdSettingsOpeningUntil = 0;
+            window.__hxdSuppressSettingsEscUntil = 0;
+        } catch (e) {}
+        __hxdSetAvatarOverlayVisible(!window.__hxdRoomMenuVisible);
+    }
+    window.__hxdSetAvatarOverlayVisible = __hxdSetAvatarOverlayVisible;
+    window.__hxdClearAvatarOverlay = __hxdClearAvatarOverlay;
+    window.__hxdMarkSettingsClosed = __hxdMarkSettingsClosed;
+    function __hxdFpsRenderAllowed(state) {
+        var limit = 0;
+        try { limit = parseInt(m.j.Rh.v(), 10) || parseInt(localStorage.getItem('fps_limit'), 10) || 0; } catch (e) {}
+        if (limit <= 0) {
+            state.__hxdLastRenderAt = 0;
+            return true;
+        }
+        var now = performance.now();
+        var interval = 1000 / limit;
+        if (state.__hxdLastRenderAt && now - state.__hxdLastRenderAt < interval) return false;
+        state.__hxdLastRenderAt = now;
+        return true;
+    }
+    function __hxdBeginAvatarOverlayFrame() {
+        __hxdAvatarOverlayFrame++;
+        if (!__hxdAvatarOverlay) return;
+        var settingsRoot = document.getElementById('hxd-settings-preview-root');
+        if (window.__hxdRoomMenuVisible || settingsRoot) {
+            __hxdSetAvatarOverlayVisible(false);
+            return;
+        }
+        __hxdSetAvatarOverlayVisible(true);
+        for (var key in __hxdAvatarOverlay.entries) {
+            if (__hxdAvatarOverlay.entries[key].frame !== __hxdAvatarOverlayFrame) {
+                __hxdAvatarOverlay.entries[key].el.style.display = 'none';
+            }
+        }
+    }
+    function __hxdDrawAnimatedAvatarOverlay(avatar, ctx, x, y, radius, borderColor, borderStyle) {
+        try {
+            if (!avatar || !avatar.img || !ctx || !ctx.canvas || !ctx.getTransform) return false;
+            if (!__hxdAvatarOverlay) {
+                var root = document.createElement('div');
+                root.id = 'hxd-avatar-overlay';
+                root.style.position = 'fixed';
+                root.style.left = '0';
+                root.style.top = '0';
+                root.style.width = '100vw';
+                root.style.height = '100vh';
+                root.style.pointerEvents = 'none';
+                root.style.zIndex = '2';
+                document.documentElement.appendChild(root);
+                __hxdAvatarOverlay = { root: root, entries: {} };
+            }
+            var key = String(avatar.img.src || avatar.img.currentSrc || '');
+            if (!key) return false;
+            var entry = __hxdAvatarOverlay.entries[key];
+            if (!entry) {
+                var el = new Image;
+                el.alt = '';
+                el.src = key;
+                el.draggable = false;
+                el.style.position = 'fixed';
+                el.style.display = 'none';
+                el.style.objectFit = 'cover';
+                el.style.borderRadius = '50%';
+                el.style.pointerEvents = 'none';
+                el.style.boxSizing = 'border-box';
+                __hxdAvatarOverlay.root.appendChild(el);
+                entry = __hxdAvatarOverlay.entries[key] = { el: el, frame: 0 };
+            }
+            var transform = ctx.getTransform();
+            var rect = ctx.canvas.getBoundingClientRect();
+            var scaleCssX = rect.width / Math.max(1, ctx.canvas.width);
+            var scaleCssY = rect.height / Math.max(1, ctx.canvas.height);
+            var px = transform.a * x + transform.c * y + transform.e;
+            var py = transform.b * x + transform.d * y + transform.f;
+            var worldScale = Math.sqrt(transform.a * transform.a + transform.b * transform.b);
+            var size = Math.max(1, radius * 2 * worldScale);
+            var cssWidth = size * scaleCssX;
+            var cssHeight = size * scaleCssY;
+            var avatarBorderWidth = 6;
+            entry.el.style.left = (rect.left + px * scaleCssX - cssWidth / 2) + 'px';
+            entry.el.style.top = (rect.top + py * scaleCssY - cssHeight / 2) + 'px';
+            entry.el.style.width = cssWidth + 'px';
+            entry.el.style.height = cssHeight + 'px';
+            entry.el.style.border = avatarBorderWidth + 'px solid #000';
+            entry.el.style.boxShadow = borderColor
+                ? '0 0 0 ' + (borderStyle && borderStyle.width ? borderStyle.width : 3) + 'px ' + borderColor
+                : 'none';
+            entry.el.style.display = 'block';
+            entry.frame = __hxdAvatarOverlayFrame;
+            return true;
+        } catch (eOverlay) {
+            return false;
+        }
+    }
+    function __hxdDecodeGifFallback(bytes) {
+        var b = new Uint8Array(bytes), p = 6;
+        function u16() { return b[p++] | (b[p++] << 8); }
+        function palette(n) { var a = []; for (var i = 0; i < n; i++) a.push([b[p++], b[p++], b[p++]]); return a; }
+        function blocks() { var a = []; for (;;) { var n = b[p++]; if (!n) return new Uint8Array(a); for (var i = 0; i < n; i++) a.push(b[p++]); } }
+        function lzw(data, min, count) {
+            var clear = 1 << min, end = clear + 1, next = end + 1, size = min + 1, bit = 0, prev = null, out = [];
+            var dict = [];
+            function code() { var v = 0; for (var i = 0; i < size; i++) { v |= ((data[bit >> 3] >> (bit & 7)) & 1) << i; bit++; } return v; }
+            while (out.length < count) { var c = code(); if (c === clear) { dict = []; next = end + 1; size = min + 1; prev = null; continue; } if (c === end) break; var seq; if (c < next) seq = c < clear ? [c] : dict[c]; else seq = prev ? prev.concat(prev[0]) : []; for (var j = 0; j < seq.length && out.length < count; j++) out.push(seq[j]); if (prev && next < 4096) { dict[next++] = prev.concat(seq[0]); if (next === (1 << size) && size < 12) size++; } prev = seq; }
+            return out;
+        }
+        var width = u16(), height = u16(), packed = b[p++]; p += 2;
+        var global = (packed & 128) ? palette(1 << ((packed & 7) + 1)) : null;
+        var canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height; var cctx = canvas.getContext('2d');
+        var frames = [], durations = [], delay = 100, transparent = null, disposal = 0;
+        while (p < b.length) { var marker = b[p++]; if (marker === 59) break; if (marker === 33) { var label = b[p++]; if (label === 249) { p++; var gp = b[p++], rawDelay = u16() * 10; delay = rawDelay <= 20 ? 100 : rawDelay; transparent = (gp & 1) ? b[p++] : (p++, null); disposal = (gp >> 2) & 7; p++; } else blocks(); continue; } if (marker !== 44) break;
+            var x = u16(), y = u16(), w = u16(), h = u16(), ip = b[p++], local = (ip & 128) ? palette(1 << ((ip & 7) + 1)) : null, pal = local || global, min = b[p++], indexes = lzw(blocks(), min, w * h), image = cctx.createImageData(w, h);
+            for (var i = 0; i < indexes.length; i++) { var col = pal[indexes[i]] || [0, 0, 0], q = i * 4; if (transparent !== null && indexes[i] === transparent) image.data[q + 3] = 0; else { image.data[q] = col[0]; image.data[q + 1] = col[1]; image.data[q + 2] = col[2]; image.data[q + 3] = 255; } }
+            var tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h; var tmpCtx = tmp.getContext('2d'); tmpCtx.putImageData(image, 0, 0); cctx.imageSmoothingEnabled = false; cctx.drawImage(tmp, x, y); var copy = document.createElement('canvas'); copy.width = width; copy.height = height; var copyCtx = copy.getContext('2d'); copyCtx.imageSmoothingEnabled = false; copyCtx.drawImage(canvas, 0, 0); frames.push(copy); durations.push(delay);
+            if (disposal === 2) cctx.clearRect(x, y, w, h); delay = 100; transparent = null; disposal = 0;
+        }
+        return { frames: frames, durations: durations };
+    }
+    function __hxdApplyGifFallback(cached, bytes) {
+        var fallback = __hxdDecodeGifFallback(bytes);
+        cached.decoder = null;
+        cached.frames = fallback.frames;
+        cached.frameDurations = fallback.durations;
+        cached.frameIndex = 0;
+        cached.frame = cached.frames[0] || null;
+        cached.loaded = !!cached.frame;
+        cached.failed = !cached.frame;
+        cached.nextFrameAt = performance.now() + (cached.frameDurations[0] || 100);
+        cached.decoderStarting = false;
+        try { window.dispatchEvent(new Event('hxd-avatar-image-loaded')); } catch (eLoad) {}
+    }
+    function __hxdStartAnimatedAvatarDecoder(cached, url) {
+        try {
+            if (!cached || cached.decoder || cached.decoderStarting || cached.frames) return;
+            var urlLooksLikeGif = /^data:image\/gif/i.test(String(url || '')) || /\.gif(?:[?#]|$)/i.test(String(url || ''));
+            cached.decoderStarting = true;
+            fetch(url).then(function(response) {
+                if (!response.ok) throw new Error('avatar gif request failed');
+                var contentType = String(response.headers.get('content-type') || '').toLowerCase();
+                if (!urlLooksLikeGif && contentType.indexOf('image/gif') < 0) return null;
+                return response.arrayBuffer();
+            }).then(function(bytes) {
+                if (!bytes) return;
+                cached.gifBytes = bytes;
+                if (!window.ImageDecoder) { __hxdApplyGifFallback(cached, bytes); return; }
+                var decoder;
+                try { decoder = new ImageDecoder({ data: bytes, type: 'image/gif' }); }
+                catch (decoderError) { __hxdApplyGifFallback(cached, bytes); return; }
+                cached.decoder = decoder;
+                cached.frameIndex = 0;
+                return decoder.tracks.ready.then(function() {
+                    __hxdDecodeAnimatedAvatarFrame(cached, performance.now());
+                });
+            }).catch(function() {
+                try { if (cached.gifBytes) __hxdApplyGifFallback(cached, cached.gifBytes); else cached.failed = true; }
+                catch (fallbackError) { cached.failed = true; cached.decoderStarting = false; }
+            });
+        } catch (e) {
+            cached.decoderStarting = false;
+        }
+    }
+    function __hxdDecodeAnimatedAvatarFrame(cached, now) {
+        if (!cached || !cached.decoder || cached.decodePending) return;
+        try {
+            var track = cached.decoder.tracks && cached.decoder.tracks.selected;
+            var frameCount = track && track.frameCount ? track.frameCount : 0;
+            if (frameCount < 1) { if (cached.gifBytes) __hxdApplyGifFallback(cached, cached.gifBytes); return; }
+            cached.decodePending = true;
+            var index = cached.frameIndex % frameCount;
+            cached.decoder.decode({ frameIndex: index }).then(function(result) {
+                var previous = cached.frame;
+                cached.frame = result.image;
+                cached.loaded = true;
+                cached.frameIndex = (index + 1) % frameCount;
+                var durationUs = Number(result.image.duration);
+                if (!isFinite(durationUs) || durationUs <= 0) durationUs = 100000;
+                var durationMs = durationUs / 1000;
+                if (durationMs <= 20) durationMs = 100;
+                cached.nextFrameAt = performance.now() + durationMs;
+                cached.decodePending = false;
+                try { window.dispatchEvent(new Event('hxd-avatar-image-loaded')); } catch (eLoad) {}
+                if (previous && previous !== cached.frame && previous.close) previous.close();
+            }).catch(function() {
+                cached.decodePending = false;
+                try { if (cached.gifBytes) __hxdApplyGifFallback(cached, cached.gifBytes); }
+                catch (fallbackError) { cached.failed = true; }
+            });
+        } catch (e) {
+            cached.decodePending = false;
+            try { if (cached.gifBytes) __hxdApplyGifFallback(cached, cached.gifBytes); }
+            catch (fallbackError) { cached.failed = true; }
         }
     }
     function __hxdGetLocalAvatarShade(key, fallback) {
@@ -5338,9 +5567,9 @@
     }
     function __hxdHasSettingsPopup() {
         try {
-            return Boolean(window.__hxdSettingsPopupOpen) ||
-                (window.__hxdSettingsOpeningUntil && Date.now() < window.__hxdSettingsOpeningUntil) ||
-                (window.__hxdSuppressSettingsEscUntil && Date.now() < window.__hxdSuppressSettingsEscUntil);
+            return Boolean(document.querySelector(
+                '.dialog.settings-view, #hxd-settings-preview-root, #hxd-settings-preview-frame'
+            ));
         } catch (e) {
             return false;
         }
@@ -5367,7 +5596,18 @@
             if (e.stopImmediatePropagation) e.stopImmediatePropagation();
         }, true);
     }
-    function __hxdDrawImageAvatar(ctx, img, x, y, radius, strokeColor, teamBorderColor, teamBorderStyle) {
+    function __hxdDrawImageAvatar(ctx, avatar, x, y, radius, strokeColor, teamBorderColor, teamBorderStyle) {
+        var img = avatar && avatar.frame ? avatar.frame : avatar && avatar.img ? avatar.img : avatar;
+        if (avatar && avatar.decoder && performance.now() >= avatar.nextFrameAt) {
+            __hxdDecodeAnimatedAvatarFrame(avatar, performance.now());
+            img = avatar.frame || avatar.img;
+        }
+        if (avatar && avatar.frames && performance.now() >= avatar.nextFrameAt) {
+            avatar.frameIndex = (avatar.frameIndex + 1) % avatar.frames.length;
+            avatar.frame = avatar.frames[avatar.frameIndex];
+            avatar.nextFrameAt = performance.now() + (avatar.frameDurations[avatar.frameIndex] || 100);
+            img = avatar.frame;
+        }
         var iw = img.naturalWidth || img.width;
         var ih = img.naturalHeight || img.height;
         if (!iw || !ih) return false;
@@ -5488,6 +5728,7 @@
             let d = (c - this.hd) / 1E3;
             this.hd = c;
             this.Ug.clear();
+            __hxdBeginAvatarOverlayFrame();
             this.Bs();
             V.Wi(this.c, !0);
             this.c.resetTransform();
@@ -8310,7 +8551,8 @@
             this.Bc = this.Zc = 0;
             this.Yb = !1;
             this.W = this.Z = 0;
-            this.D = "Player";
+            // Keep the nickname empty until the user chooses one in HaxBall.
+            this.D = "";
             this.gh = this.zb = 0;
             this.country = null;
             this.Td = !1;
@@ -8594,6 +8836,7 @@
             window.cancelAnimationFrame(this.Re);
             try {
                 window.__hxdRoomMenuVisible = !1
+                __hxdSetAvatarOverlayVisible(false)
             } catch (a) {}
             window.top.document.body.classList.remove("hb-playing");
             this.W.la();
@@ -8617,7 +8860,7 @@
             this.Re = window.requestAnimationFrame(M(this, this.sf));
             this.W.A();
             this.za.A();
-            this.Rc()
+            if (__hxdFpsRenderAllowed(this)) this.Rc()
         }
         Rc() {
             var a = window.performance.now();
@@ -8683,8 +8926,8 @@
                     a.stopPropagation();
                     return;
                 }
-                c ? this.W.Fa(a) : (this.l.Zk() ? this.l.ab(null) : (b = this.l,
-                b.we(!b.od)));
+                this.l.Zk() ? this.l.ab(null) : (b = this.l,
+                b.we(!b.od));
                 a.preventDefault();
                 break;
             case 48:
@@ -12839,6 +13082,7 @@
     m.j = new xc;
     window.__haxAddPlayerKey = function(a, b) {
         try {
+            if ("ToggleMenu" == b && "Escape" != a) return !0;
             let c = m.j.Jd.v();
             c.Pa(a, b);
             m.j.Jd.ha(c);
@@ -12850,6 +13094,7 @@
     ;
     window.__haxRemovePlayerKey = function(a) {
         try {
+            if ("Escape" == a) return !0;
             let b = m.j.Jd.v();
             b.sr(a);
             m.j.Jd.ha(b);
@@ -12980,7 +13225,45 @@
             } catch (opE) {}
             try {
                 let pk = ls.getItem("player_keys");
-                null != pk && m.j.Jd.ha(Aa.Th(pk))
+                // HaxBall's default ToggleMenu binding is Escape. Seed it
+                // only on a brand-new profile so an intentional removal is
+                // still respected.
+                if (null == pk) {
+                    pk = JSON.stringify({ Escape: "ToggleMenu" });
+                    ls.setItem("player_keys", pk)
+                } else if (null == ls.getItem("hxd_togglemenu_escape_defaulted")) {
+                    // Migrate existing profiles once. After this, removing
+                    // Escape remains the user's choice and will not be undone
+                    // on the next launch.
+                    try {
+                        let keyMap = Aa.Th(pk);
+                        if (null == keyMap.Escape) {
+                            keyMap.Pa("Escape", "ToggleMenu");
+                            pk = keyMap.Ce();
+                            ls.setItem("player_keys", pk)
+                        }
+                    } catch (pkMigrationError) {}
+                    ls.setItem("hxd_togglemenu_escape_defaulted", "1")
+                }
+                if (null == ls.getItem("hxd_togglemenu_escape_repaired_v2")) {
+                    // Repair profiles that were left without ToggleMenu by a
+                    // previous migration. This runs once; later manual
+                    // removal remains respected.
+                    try {
+                        let repairedKeys = Aa.Th(pk);
+                        if (null == repairedKeys.Escape) {
+                            repairedKeys.Pa("Escape", "ToggleMenu");
+                            pk = repairedKeys.Ce();
+                            ls.setItem("player_keys", pk)
+                        }
+                    } catch (pkRepairError) {}
+                    ls.setItem("hxd_togglemenu_escape_repaired_v2", "1")
+                }
+                let fixedPlayerKeys = Aa.Th(pk);
+                fixedPlayerKeys.Pa("Escape", "ToggleMenu");
+                pk = fixedPlayerKeys.Ce();
+                ls.setItem("player_keys", pk);
+                m.j.Jd.ha(fixedPlayerKeys)
             } catch (pkE) {}
             let qmIdx = c("quality_mode", 1);
             window._hxdQualityMultiplier = 1 == qmIdx ? 1 : .9;

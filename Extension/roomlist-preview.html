@@ -2183,7 +2183,7 @@
   }
 
   function getLocalPreviewUser() {
-    var nick = 'Player';
+    var nick = '';
     try {
       nick = localStorage.getItem('haxball_nick') || localStorage.getItem('ghost_nick') || localStorage.getItem('haxclient_my_nick') || nick;
     } catch (eNick) {}
@@ -2202,7 +2202,7 @@
 
   function buildProfileFromUser(user) {
     user = user || getLocalPreviewUser();
-    var nick = user.nick || user.username || 'Player';
+    var nick = user.nick || user.username || '';
     var avatarUrl = '';
     try { avatarUrl = localStorage.getItem('hxd_settings_preview_avatar') || ''; } catch (eAv) {}
     if (!avatarUrl && user.discord_avatar) avatarUrl = user.discord_avatar;
@@ -2237,7 +2237,7 @@
     loginWall.classList.add('pp-hidden');
     main.classList.remove('pp-hidden');
 
-    var nick = profile.nick || 'Player';
+    var nick = profile.nick || '';
     document.getElementById('pp-nick').textContent = nick;
 
     var tierEl = document.getElementById('pp-tier');
@@ -2370,7 +2370,7 @@
     Promise.all([loadProStatus(), loadProSettings(), loadProUser()]).then(function (res) {
       proStatusCache = res[0] || {};
       proSettingsCache = res[1] || {};
-      proUserNick = (res[2] && res[2].nick) ? res[2].nick : 'Player';
+      proUserNick = (res[2] && res[2].nick) ? res[2].nick : '';
       proDataLoaded = true;
       if (proStatusCache.is_pro || proStatusCache.is_vip) {
         proNavTabs.classList.remove('hidden');
@@ -2383,7 +2383,7 @@
     }).catch(function () {
       proStatusCache = proStatusCache || {};
       proSettingsCache = proSettingsCache || {};
-      proUserNick = proUserNick || 'Player';
+      proUserNick = proUserNick || '';
       proDataLoaded = true;
       if (proStatusCache.is_pro || proStatusCache.is_vip) {
         proNavTabs.classList.remove('hidden');
@@ -3479,7 +3479,8 @@
   document.addEventListener('click', function (e) {
     ctxMenu.classList.remove('open');
     if (countryFilterWrap && !countryFilterWrap.contains(e.target)) closeCountryMenu();
-    if (!document.getElementById('nav-shell') || !document.getElementById('nav-shell').contains(e.target)) closeSearch();
+    var navShell = document.querySelector('.nav-shell');
+    if (!navShell || !navShell.contains(e.target)) closeSearch();
   });
 
   document.addEventListener('keydown', function (e) {
