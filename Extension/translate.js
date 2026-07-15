@@ -1230,6 +1230,13 @@
         } catch (eDisplayNames) {}
         if (!displayNames) return;
 
+        var list = dialog.querySelector('[data-hook="list"]');
+        if (list) {
+            list.style.setProperty('overflow-x', 'hidden', 'important');
+            list.style.setProperty('overflow-y', 'auto', 'important');
+            list.style.setProperty('scrollbar-gutter', 'stable');
+            list.style.setProperty('box-sizing', 'border-box');
+        }
         var countries = dialog.querySelectorAll('[data-hook="list"] .elem');
         for (var i = 0; i < countries.length; i++) {
             var flag = countries[i].querySelector('.flagico');
@@ -1244,6 +1251,17 @@
                 if (nodes[n].nodeType === 3) countries[i].removeChild(nodes[n]);
             }
             countries[i].appendChild(document.createTextNode(' ' + localized));
+        }
+        if (list) {
+            var sorted = Array.prototype.slice.call(countries);
+            function sortKey(elem) {
+                return String(elem.textContent || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            }
+            sorted.sort(function (a, b) {
+                return sortKey(a).localeCompare(sortKey(b), currentLang, { sensitivity: 'base' });
+            });
+            for (var s = 0; s < sorted.length; s++) list.appendChild(sorted[s]);
+            list.scrollLeft = 0;
         }
         dialog.dataset.hxdCountriesLocalized = currentLang;
     }
