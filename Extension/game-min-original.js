@@ -3737,8 +3737,6 @@
             g("tmisc-showanimations", m.j.Um);
             g("tmisc-showchat", m.j.Uk);
             g("tmisc-culling", m.j.Wm);
-            g("tmisc-batchsegments", m.j.hxdBatchSegments);
-            g("tmisc-hideoffscreenarrows", m.j.hxdHideOffscreenArrows);
             // Alta prioridade - toggle customizado
             (function() {
                 var hp = l.get("tmisc-highpriority");
@@ -13424,8 +13422,6 @@
             q("tmisc-showanimations", m.j.Um.v());
             q("tmisc-showchat", m.j.Uk.v());
             q("tmisc-culling", m.j.Wm.v());
-            q("tmisc-batchsegments", m.j.hxdBatchSegments.v());
-            q("tmisc-hideoffscreenarrows", m.j.hxdHideOffscreenArrows.v());
             if (dlg) {
                 let fpsSel = dlg.querySelector('[data-hook="fps"]');
                 fpsSel && (fpsSel.selectedIndex = Math.max(0, [0, 30, 60, 75, 144, 240].indexOf(m.j.Rh.v())));
