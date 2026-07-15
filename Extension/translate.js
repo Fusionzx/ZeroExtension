@@ -53,6 +53,11 @@
         'Unlock': { pt: 'Desbloquear', es: 'Desbloquear' },
         'Lock': { pt: 'Bloquear', es: 'Bloquear' },
         'Change': { pt: 'Alterar', es: 'Cambiar' },
+        'Change Location': { pt: 'Alterar localização', es: 'Cambiar ubicación', en: 'Change Location' },
+        'Detected location': { pt: 'Localização detectada', es: 'Ubicación detectada', en: 'Detected location' },
+        'Location override': { pt: 'Localização substituta', es: 'Ubicación personalizada', en: 'Location override' },
+        'Alterar bandeira': { pt: 'Alterar bandeira', es: 'Cambiar bandera', en: 'Change flag' },
+        'Remover bandeira': { pt: 'Remover bandeira', es: 'Quitar bandera', en: 'Remove flag' },
         'Close': { pt: 'Fechar', es: 'Cerrar' },
         'Sound': { pt: 'Som', es: 'Sonido' },
         'Video': { pt: 'Vídeo', es: 'Video' },
@@ -1208,6 +1213,41 @@
         }
     }
 
+    function localizeLocationDialog(dialog) {
+        if (!dialog || !dialog.classList || !dialog.classList.contains('change-location-view')) return;
+        var title = dialog.querySelector('h1');
+        var change = dialog.querySelector('[data-hook="change"]');
+        var cancel = dialog.querySelector('[data-hook="cancel"]');
+        if (title) title.textContent = t('Change Location');
+        if (change) change.textContent = t('Change');
+        if (cancel) cancel.textContent = t('Cancel');
+
+        var displayNames = null;
+        try {
+            if (typeof Intl !== 'undefined' && Intl.DisplayNames) {
+                displayNames = new Intl.DisplayNames([currentLang], { type: 'region' });
+            }
+        } catch (eDisplayNames) {}
+        if (!displayNames) return;
+
+        var countries = dialog.querySelectorAll('[data-hook="list"] .elem');
+        for (var i = 0; i < countries.length; i++) {
+            var flag = countries[i].querySelector('.flagico');
+            if (!flag) continue;
+            var match = String(flag.className || '').match(/(?:^|\s)f-([a-z]{2})(?:\s|$)/i);
+            if (!match) continue;
+            var localized = null;
+            try { localized = displayNames.of(match[1].toUpperCase()); } catch (eCountry) {}
+            if (!localized || localized.toUpperCase() === match[1].toUpperCase()) continue;
+            var nodes = countries[i].childNodes;
+            for (var n = nodes.length - 1; n >= 0; n--) {
+                if (nodes[n].nodeType === 3) countries[i].removeChild(nodes[n]);
+            }
+            countries[i].appendChild(document.createTextNode(' ' + localized));
+        }
+        dialog.dataset.hxdCountriesLocalized = currentLang;
+    }
+
     function init() {
         // Traduz inicialmente
         translateAll(document);
@@ -1219,12 +1259,17 @@
             });
             Injector.onView('dialog', function(el) {
                 translateAll(el);
+                localizeLocationDialog(el);
                 // Traduz elementos específicos de settings
                 translateSettingsDialog(el);
             });
             
             // Observer adicional para garantir tradução do settings
             var settingsObserver = new MutationObserver(function() {
+                var locationDialog = document.querySelector('.dialog.change-location-view');
+                if (locationDialog && locationDialog.dataset.hxdCountriesLocalized !== currentLang) {
+                    localizeLocationDialog(locationDialog);
+                }
                 var settingsDialog = document.querySelector('.dialog.settings-view');
                 if (settingsDialog && !settingsDialog.dataset.translated) {
                     settingsDialog.dataset.translated = 'true';

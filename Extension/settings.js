@@ -176,6 +176,7 @@
             'background:var(--theme-bg-primary,#141414)!important;border:none!important;box-shadow:none!important;padding:0!important;overflow:hidden!important;' +
             'opacity:1;transition:opacity 0.16s ease-out;' +
         '}' +
+        '.dialog.settings-view:not(.hxd-settings-preview-dialog){visibility:hidden!important;pointer-events:none!important;}' +
         '.dialog.settings-view.hxd-settings-preview-dialog.hxd-settings-preview-enter,' +
         '.dialog.settings-view.hxd-settings-preview-dialog.hxd-settings-preview-closing{' +
             'opacity:0!important;pointer-events:none!important;' +
@@ -4600,8 +4601,8 @@
                     delete settingsDialog.dataset.hxdPreviewMounting;
                 }
                 if (success) stopSettingsOpenBurst();
-                if (!success && settingsDialog.isConnected && !document.getElementById('settings-sidebar-panel')) {
-                    modifySettingsDialog(document);
+                if (!success && settingsDialog.isConnected) {
+                    Injector.log('Settings preview unavailable; legacy settings fallback disabled');
                 }
             });
         };
@@ -4657,6 +4658,8 @@
         }, true);
         document.addEventListener('click', function (e) {
             if (isSettingsTrigger(e.target)) armSettingsOpenBurst();
+            var locationAction = e.target && e.target.closest ? e.target.closest('.change-location-view [data-hook="cancel"], .change-location-view [data-hook="change"]') : null;
+            if (locationAction) setTimeout(armSettingsOpenBurst, 0);
         }, true);
 
         var observeSettingsHost = function (el) {

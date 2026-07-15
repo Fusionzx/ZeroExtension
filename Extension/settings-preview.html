@@ -3941,6 +3941,11 @@
   ];
 
   var active = 'media';
+  try {
+    var returnTab = localStorage.getItem('hxd_settings_return_tab');
+    if (returnTab && TABS.some(function (tab) { return tab.id === returnTab; })) active = returnTab;
+    localStorage.removeItem('hxd_settings_return_tab');
+  } catch (eReturnTab) {}
   var tabBar = document.getElementById('tab-bar');
   var panelsRoot = document.getElementById('panels');
   var SEARCH_INDEX = [];
@@ -6021,7 +6026,6 @@
       ], 'fps limit rendimiento'),
       mediaSlider('media', t('vid_scale'), 100, 10, 100, 5, '%', 'resscale resolution'),
       mediaSelect('media', t('vid_quality'), [t('qual_perf'), t('qual_hd')], 'qualitymode calidad'),
-      toggle('media', t('vid_lowlat'), null, false, 'tvideo-lowlatency'),
       toggle('media', t('vid_teamcol'), null, true, 'tvideo-teamcol'),
       mediaSlider('media', t('vid_chat_op'), 1, 0.5, 1, 0.01, '', 'chat opacity'),
       mediaSlider('media', t('vid_chat_h'), 200, 0, 400, 10, 'px', 'chat focus height'),
@@ -6660,7 +6664,10 @@
         var bl = $('div', 'btn-line');
         bl.innerHTML = '<button class="btn" type="button">' + t('misc_override') + '</button>';
         var overrideBtn = bl.querySelector('.btn');
-        overrideBtn.onclick = function () { Bridge.clickParentHook('loc-ovr-btn'); };
+        overrideBtn.onclick = function () {
+          try { localStorage.setItem('hxd_settings_return_tab', 'misc'); } catch (eReturnTab) {}
+          Bridge.clickParentHook('loc-ovr-btn');
+        };
         reg('misc', t('misc_override'), 'loc-ovr bandeira flag location localizacao pais', overrideBtn);
         p.appendChild(bl);
       } catch (eMisc) {
