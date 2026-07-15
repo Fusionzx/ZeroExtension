@@ -6056,9 +6056,9 @@
                     return;
                 }
             }
-            if (!m.j.Km.v() && this._localPlayerBody !== a) {
+            if (!m.j.Km.v()) {
                 b = null;
-                // Usa cores padrão do time quando avatar desabilitado. Mantém avatar do próprio jogador.
+                // Usa cores padrão do time para todos quando avatares e cores estão desabilitados.
                 // Red: #E56E56 (15036502), Blue: #5689E5 (5671397)
                 if (playerTeam) {
                     if (playerTeam === u.ia) a = {V: a.V, a: a.a, S: 15036502, B: a.B};
@@ -6072,7 +6072,7 @@
             var hxdIsBallDisc = a && this.__hxdProBallDisc && a === this.__hxdProBallDisc;
             var proBallStyle =
                 null == b && hxdIsBallDisc && __hxdClientHasProAccess() ? _getProBallStyle(this.c, posX, posY, radius) : null;
-            var hxdAvatarProfile = playerId != null ? __hxdGetAvatarProfileForPlayer(playerId, playerTeam, localTeam) : null;
+            var hxdAvatarProfile = m.j.Km.v() && playerId != null ? __hxdGetAvatarProfileForPlayer(playerId, playerTeam, localTeam) : null;
             var hxdAvatarImage = hxdAvatarProfile ? __hxdGetAvatarImageForProfile(hxdAvatarProfile) : null;
             var hxdTeamBorderColor = hxdAvatarProfile ? __hxdGetTeamBorderColor(playerTeam) : null;
             var hxdTeamBorderStyle = hxdAvatarProfile ? __hxdGetTeamBorderStyle() : null;
