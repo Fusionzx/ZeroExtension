@@ -4,6 +4,7 @@
 .qwen/
 .reference/
 _metadata/
+/tools/
 
 # OS files
 Thumbs.db
