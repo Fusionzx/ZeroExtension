@@ -49,6 +49,17 @@
         }
     }
 
+    function isRoomMenuOpen() {
+        try {
+            if (window.__hxdRoomMenuVisible === true) return true;
+            var frames = document.querySelectorAll('iframe');
+            for (var i = 0; i < frames.length; i++) {
+                if (frames[i].contentWindow && frames[i].contentWindow.__hxdRoomMenuVisible === true) return true;
+            }
+        } catch (eMenu) {}
+        return false;
+    }
+
     function findNativeRoomButton(hook) {
         var sel = 'button[data-hook="' + hook + '"]';
         var scoped = document.querySelector('.room-view ' + sel);
@@ -659,6 +670,7 @@
 
         document.addEventListener('mouseover', function(e) {
             try {
+                if (!isRoomMenuOpen()) return;
                 var it = getPlayerItemFromTarget(e.target);
                 if (it && hasValidPlayerId(it)) {
                     lastHoveredPlayerItem = it;
@@ -674,6 +686,7 @@
             var c = e.code;
 
             if (!e.ctrlKey && !e.shiftKey && (c === 'KeyK' || c === 'KeyB')) {
+                if (!isRoomMenuOpen()) return;
                 if (!isRoomAdmin()) return;
                 if (!lastHoveredPlayerItem || isLocalPlayerItem(lastHoveredPlayerItem)) return;
                 e.preventDefault();
@@ -695,6 +708,7 @@
                 return;
             }
             if (c2 === 'KeyK' || c2 === 'KeyB') {
+                if (!isRoomMenuOpen()) return;
                 if (!isRoomAdmin()) return;
                 if (!lastHoveredPlayerItem || isLocalPlayerItem(lastHoveredPlayerItem)) return;
                 e.preventDefault();
