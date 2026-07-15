@@ -1215,6 +1215,13 @@
 
     function localizeLocationDialog(dialog) {
         if (!dialog || !dialog.classList || !dialog.classList.contains('change-location-view')) return;
+        var doc = dialog.ownerDocument || document;
+        if (!doc.getElementById('hxd-location-scrollbar-fix')) {
+            var scrollbarStyle = doc.createElement('style');
+            scrollbarStyle.id = 'hxd-location-scrollbar-fix';
+            scrollbarStyle.textContent = '.change-location-view [data-hook="list"] .ps__rail-x{display:none!important;}';
+            doc.head.appendChild(scrollbarStyle);
+        }
         var title = dialog.querySelector('h1');
         var change = dialog.querySelector('[data-hook="change"]');
         var cancel = dialog.querySelector('[data-hook="cancel"]');
@@ -1233,9 +1240,11 @@
         var list = dialog.querySelector('[data-hook="list"]');
         if (list) {
             list.style.setProperty('overflow-x', 'hidden', 'important');
-            list.style.setProperty('overflow-y', 'auto', 'important');
-            list.style.setProperty('scrollbar-gutter', 'stable');
-            list.style.setProperty('box-sizing', 'border-box');
+            list.style.removeProperty('overflow-y');
+            list.style.removeProperty('scrollbar-gutter');
+            list.style.removeProperty('box-sizing');
+            var horizontalRail = list.querySelector('.ps__rail-x');
+            if (horizontalRail) horizontalRail.style.setProperty('display', 'none', 'important');
         }
         var countries = dialog.querySelectorAll('[data-hook="list"] .elem');
         for (var i = 0; i < countries.length; i++) {
