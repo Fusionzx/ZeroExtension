@@ -1627,6 +1627,10 @@
                 loadBindings();
 
                 var html = '<div style="padding:16px 20px;">' +
+                    '<label style="display:flex;align-items:flex-start;gap:10px;padding:12px;margin-bottom:14px;background:var(--theme-bg-secondary, #1a1a1a);border:1px solid var(--theme-border, #232323);border-radius:7px;cursor:pointer;">' +
+                    '<input id="persist-local-avatar" type="checkbox"' + (localStorage.getItem('persist_local_avatar') === '1' ? ' checked' : '') + ' style="margin-top:2px;accent-color:#3b82f6;">' +
+                    '<span><strong style="display:block;color:var(--theme-text-primary, #fff);font-size:13px;">' + t('Manter meu avatar') + '</strong>' +
+                    '<small style="display:block;margin-top:3px;color:var(--theme-text-muted, #777);font-size:11px;line-height:1.4;">' + t('Mantém seu avatar original mesmo que a sala tente alterá-lo.') + '</small></span></label>' +
                     '<div style="margin-bottom:20px;color:var(--theme-text-secondary, #888);font-size:13px;line-height:1.5;">' + t('Defina teclas de atalho para trocar de avatar rapidamente durante o jogo.') + '</div>';
 
                 if (bindings.length > 0) {
@@ -1649,6 +1653,15 @@
                     '</button></div>';
 
                 avatarSection.innerHTML = html;
+
+                var persistAvatarInput = avatarSection.querySelector('#persist-local-avatar');
+                if (persistAvatarInput) persistAvatarInput.onchange = function () {
+                    localStorage.setItem('persist_local_avatar', persistAvatarInput.checked ? '1' : '0');
+                    try {
+                        if (typeof window.__hxdSyncAllSettingsFromStorage === 'function') window.__hxdSyncAllSettingsFromStorage();
+                        window.dispatchEvent(new Event('storage'));
+                    } catch (e) {}
+                };
 
                 var removeButtons = avatarSection.querySelectorAll('.remove-avatar-btn');
                 for (var r = 0; r < removeButtons.length; r++) {
@@ -2789,6 +2802,7 @@
             var PERF_STORAGE_KEYS_FALLBACK = [
                 'simple_lines', 'ultra_simple_lines', 'culling_enabled', 'viewport_culling',
                 'batch_stadium_segments', 'hide_offscreen_arrows',
+                'persist_local_avatar',
                 'show_avatars', 'team_colors', 'show_names', 'simple_field',
                 'low_quality_circles', 'show_animations', 'show_indicator',
                 'show_player_indicator', 'show_chat_indicator', 'show_indicators', 'high_priority',

@@ -3272,6 +3272,9 @@
       (readAvatarVisToggle(AVATAR_VIS_TEAM_KEY, false) && readAvatarVisToggle(AVATAR_VIS_RIVAL_KEY, false))
     );
     var borderOn = readAvatarVisToggle(AVATAR_TEAM_BORDER_KEY, false);
+    var persistOn = readAvatarVisToggle('persist_local_avatar', false);
+    var persistRow = buildAvatarSwitchRow(t('misc_avatar_persist'), t('misc_avatar_persist_h'), persistOn);
+    var persistInput = persistRow.querySelector('input');
     var disabledRow = buildAvatarVisibilityRow(t('misc_avatar_vis_disabled'), t('misc_avatar_vis_disabled_h'), disabledOn);
     var selfRow = buildAvatarVisibilityRow(t('misc_avatar_vis_self'), t('misc_avatar_vis_self_h'), selfOn);
     var allRow = buildAvatarVisibilityRow(t('misc_avatar_vis_all'), t('misc_avatar_vis_all_h'), allOn);
@@ -3486,9 +3489,22 @@
     });
     bindVisRow(borderRow, borderInput, AVATAR_TEAM_BORDER_KEY, null, null);
 
+    function applyPersistToggle() {
+      writeAvatarVisToggle('persist_local_avatar', persistInput.checked, { silent: true });
+      optApplyRuntime();
+    }
+    persistInput.onchange = applyPersistToggle;
+    persistRow.onclick = function (e) {
+      if (e.target.tagName === 'INPUT') return;
+      if (e.target.closest && e.target.closest('.sw')) return;
+      persistInput.checked = !persistInput.checked;
+      applyPersistToggle();
+    };
+
     syncAvatarVisibilityUi();
     syncBorderStyleControlsFromStorage(widthRange, widthValue, borderInsetInput, borderConfig);
 
+    list.appendChild(persistRow);
     list.appendChild(disabledRow);
     list.appendChild(selfRow);
     list.appendChild(allRow);
@@ -3498,6 +3514,7 @@
     block.appendChild(list);
 
     reg(regTab, t('misc_avatar_vis_disabled'), 'avatar desactivar ocultar nadie imagen', disabledRow);
+    reg(regTab, t('misc_avatar_persist'), 'avatar persistir manter original sala mudar', persistRow);
     reg(regTab, t('misc_avatar_vis_self'), 'avatar visibilidad solo privado imagen', selfRow);
     reg(regTab, t('misc_avatar_vis_all'), 'avatar visibilidad todos equipo rival imagen', allRow);
     reg(regTab, t('misc_avatar_team_border'), 'avatar diferencia equipo borde rojo azul imagen', borderRow);
@@ -4039,6 +4056,8 @@
     misc_avatar_crop_apply: { es: 'Aplicar', en: 'Apply', pt: 'Aplicar' },
     misc_avatar_vis_sec: { es: 'Visibilidad', en: 'Visibility', pt: 'Visibilidade' },
     misc_avatar_vis_d: { es: 'Elegí quién ve tu avatar con imagen en partida.', en: 'Choose who sees your image avatar in-game.', pt: 'Escolha quem vê seu avatar com imagem na partida.' },
+    misc_avatar_persist: { es: 'Mantener mi avatar', en: 'Keep my avatar', pt: 'Manter meu avatar' },
+    misc_avatar_persist_h: { es: 'Conserva tu avatar original aunque la sala intente cambiarlo.', en: 'Keeps your original avatar even if the room tries to change it.', pt: 'Mantém seu avatar original mesmo que a sala tente alterá-lo.' },
     misc_avatar_vis_disabled: { es: 'Desactivar avatar con imagen', en: 'Disable image avatar', pt: 'Desativar avatar com imagem' },
     misc_avatar_vis_disabled_h: { es: 'Nadie ve tu imagen en partida, ni vos.', en: 'Nobody sees your image in-game, including you.', pt: 'Ninguém vê sua imagem na partida, nem você.' },
     misc_avatar_vis_self: { es: 'Visible solo para vos', en: 'Visible only to you', pt: 'Visível só para você' },
@@ -4259,6 +4278,7 @@
   var PERF_SNAPSHOT_KEYS = [
     'simple_lines', 'ultra_simple_lines', 'culling_enabled', 'viewport_culling',
     'batch_stadium_segments', 'hide_offscreen_arrows',
+    'persist_local_avatar',
     'show_avatars', 'team_colors', 'show_names', 'simple_field', 'low_quality_circles',
     'show_animations', 'show_indicator', 'show_player_indicator', 'show_chat_indicator',
     'show_indicators', 'high_priority', 'canvas_boost_scale', 'fps_limit', 'resolution_scale',

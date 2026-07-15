@@ -105,6 +105,8 @@
         'Jersey local scope all': { pt: 'Red + Blue', es: 'Rojo + Azul', en: 'Red + Blue' },
         'Jersey local swap': { pt: 'Inverter Vermelho e Azul', es: 'Intercambiar Rojo y Azul', en: 'Swap Red and Blue' },
         'Jersey local swapped': { pt: 'Camisas invertidas.', es: 'Camisetas intercambiadas.', en: 'Jerseys swapped.' },
+        'Manter meu avatar': { pt: 'Manter meu avatar', es: 'Mantener mi avatar', en: 'Keep my avatar' },
+        'Mantém seu avatar original mesmo que a sala tente alterá-lo.': { pt: 'Mantém seu avatar original mesmo que a sala tente alterá-lo.', es: 'Conserva tu avatar original aunque la sala intente cambiarlo.', en: 'Keeps your original avatar even if the room tries to change it.' },
         'Jersey local use side': { pt: 'Usar', es: 'Usar', en: 'Use' },
         'Jersey local paste hint': { pt: 'Cole /colors aqui', es: 'Pegá /colors acá', en: 'Paste /colors here' },
         'Jersey local command required': { pt: 'Cole um comando que comece com /colors.', es: 'Pegá un comando que empiece con /colors.', en: 'Paste a command beginning with /colors.' },

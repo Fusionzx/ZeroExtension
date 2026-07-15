@@ -6607,7 +6607,7 @@
         A(a, b, c) {
             if (null != a.I) {
                 let d = __hxdGetMyJerseyForPlayer(a, b, c) || (m.j.Vm.v() ? b.mb[a.fa.ba] : a.fa.Um)
-                  , e = null != a.Sd ? a.Sd : a.Zb
+                  , e = m.j.hxdPersistLocalAvatar.v() && __hxdIsLocalPlayerId(a.Z) ? m.j.Ah.v() : null != a.Sd ? a.Sd : a.Zb
                   , f = m.j.Km.v() && null != e;
                 if (!Db.so(this.mb, d) || !f && a.Nb != this.Ch || f && this.Zf != e)
                     Db.Io(this.mb, d),
@@ -7246,6 +7246,7 @@
             this.Ad = d("extrapolation", 0);
             this.Mi = c("resolution_scale", 1);
             this.Km = b("show_avatars", !0);
+            this.hxdPersistLocalAvatar = b("persist_local_avatar", !1);
             this.Lm = b("show_names", !0);
             this.Qm = b("image_smoothing", !0);
             this.Rm = b("show_player_indicator", !0);
@@ -13296,6 +13297,7 @@
             m.j.Yi.ha(d("sound_volume", 1));
             m.j.Vm.ha(b("team_colors", !0));
             m.j.Km.ha(b("show_avatars", !0));
+            m.j.hxdPersistLocalAvatar.ha(b("persist_local_avatar", !1));
             m.j.Lm.ha(b("show_names", !0));
             m.j.Rm.ha(b("show_player_indicator", !0) || b("show_indicator", !0));
             m.j.Sm.ha(b("simple_lines", !1));
