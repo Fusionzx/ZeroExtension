@@ -3728,11 +3728,8 @@
             g("tvideo-showavatars", m.j.Km);
             g("tmisc-shownames", m.j.Lm);
             g("tmisc-showavatars", m.j.Km);
-            g("tmisc-lowqualitycircles", m.j.Ym);
             g("tmisc-showindicator", m.j.Rm);
             g("tmisc-indicator-name", m.j.Om);
-            g("tmisc-simplelines", m.j.Sm);
-            g("tmisc-ultrasimplelines", m.j.Xm);
             g("tmisc-simplefield", m.j.Tm);
             g("tmisc-showanimations", m.j.Um);
             g("tmisc-showchat", m.j.Uk);
@@ -5761,14 +5758,18 @@
                 this.c.translate(this.na.width / 2, (this.na.height + b - k) / 2);
                 this.c.scale(h, h);
                 this.c.translate(-this.Ya.x, -this.Ya.y);
+                this.hxdCullingActive = !1;
                 if (m.j.Wm.v()) {
+                    var hxdSceneCost = (c.T && c.T.X ? c.T.X.length : 0) + e.qb.length + e.H.length + 4 * a.K.length;
+                    this.hxdCullingActive = 160 <= hxdSceneCost
+                }
+                if (this.hxdCullingActive) {
                     this.cullHalfW = (this.na.width / h) / 2 + 50;
                     this.cullHalfH = (this.na.height / h) / 2 + 50;
                     this.cullCamX = this.Ya.x;
                     this.cullCamY = this.Ya.y;
                 }
-                var lw = m.j.Sm.v() ? 1 : 3;
-                this.c.lineWidth = lw;
+                this.c.lineWidth = 3;
                 this.Br(c.T);
                 this.Ar(c.T);
                 h = e.H;
@@ -5779,7 +5780,7 @@
                 this.wr(a, f);
                 null != g && (this._hxdIndName = f && f.D ? f.D : "") && this.yr(g.a);
                 this._localPlayerBody = g;
-                this.c.lineWidth = m.j.Sm.v() ? 1 : 2;
+                this.c.lineWidth = 2;
                 this.__hxdProBallDisc = c && c.va && c.va.H ? c.va.H[0] : null;
                 var hxdLocalTeam = f ? f.fa : null;
                 f = 0;
@@ -5803,7 +5804,7 @@
                         this.km(g, null)
                     }
                 this.__hxdProBallDisc = null;
-                this.c.lineWidth = m.j.Sm.v() ? 1 : 3;
+                this.c.lineWidth = 3;
                 this.c.resetTransform();
                 this.c.translate(this.na.width / 2, b + (this.na.height - b - k) / 2);
                 this.xr(c);
@@ -6008,7 +6009,7 @@
                 this.c.translate(this.na.width / 2, (this.na.height + b - k) / 2);
                 this.c.scale(h, h);
                 this.c.translate(-this.Ya.x, -this.Ya.y);
-                this.c.lineWidth = m.j.Sm.v() ? 1 : 3;
+                this.c.lineWidth = 3;
                 this.Br(a);
                 this.c = origCtx;
                 this._lastCamX = this.Ya.x;
@@ -6026,7 +6027,7 @@
             this.c.translate(this.na.width / 2, (this.na.height + b - k) / 2);
             this.c.scale(h, h);
             this.c.translate(-this.Ya.x, -this.Ya.y);
-            this.c.lineWidth = m.j.Sm.v() ? 1 : 3;
+            this.c.lineWidth = 3;
         }
         wr(a, b) {
             let c = m.j.Uk.v()
@@ -6045,7 +6046,7 @@
         }
         km(a, b, playerTeam, playerId, localTeam) {
             // Culling: não desenha objetos fora da viewport
-            if (m.j.Wm.v()) {
+            if (this.hxdCullingActive) {
                 var dx = a.a.x;
                 var dy = a.a.y;
                 var margin = a.V + 20;
@@ -6123,29 +6124,11 @@
             }
         }
         Ar(a) {
-            if (null == a)
-                return;
-            a = a.X;
-            if (!m.j.hxdBatchSegments.v()) {
-                for (var b = 0; b < a.length; )
-                    this.zr(a[b++]);
-                return
+            if (null != a) {
+                var b = 0;
+                for (a = a.X; b < a.length; )
+                    this.zr(a[b++])
             }
-            var c = !1, d = null;
-            for (b = 0; b < a.length; ) {
-                var e = a[b++];
-                if (!this._hxdSegmentVisible(e))
-                    continue;
-                if (!c || d !== e.S) {
-                    c && this.c.stroke();
-                    this.c.beginPath();
-                    d = e.S;
-                    this.c.strokeStyle = V.nc(d);
-                    c = !0
-                }
-                this._hxdAppendSegmentPath(e)
-            }
-            c && this.c.stroke()
         }
         vr(a, b) {
             if (!(0 > a.S)) {
@@ -6153,7 +6136,7 @@
                 var d = b[a.he];
                 if (null == c || null == d) return;
                 // Culling para joints
-                if (m.j.Wm.v()) {
+                if (this.hxdCullingActive) {
                     var minX = Math.min(c.a.x, d.a.x);
                     var maxX = Math.max(c.a.x, d.a.x);
                     var minY = Math.min(c.a.y, d.a.y);
@@ -6185,14 +6168,14 @@
         _hxdSegmentVisible(a) {
             if (!a.bb)
                 return !1;
-            if (!m.j.Wm.v())
+            if (!this.hxdCullingActive)
                 return !0;
             var b = a.$.a, c = a.ea.a;
             return !(Math.max(b.x, c.x) < this.cullCamX - this.cullHalfW || Math.min(b.x, c.x) > this.cullCamX + this.cullHalfW || Math.max(b.y, c.y) < this.cullCamY - this.cullHalfH || Math.min(b.y, c.y) > this.cullCamY + this.cullHalfH)
         }
         _hxdAppendSegmentPath(a) {
             var b = a.$.a, c = a.ea.a;
-            if (m.j.Xm.v() || 0 != 0 * a.vb)
+            if (0 != 0 * a.vb)
                 this.c.moveTo(b.x, b.y), this.c.lineTo(c.x, c.y);
             else {
                 a = a.fe;
@@ -7251,14 +7234,10 @@
             this.Qm = b("image_smoothing", !0);
             this.Rm = b("show_player_indicator", !0);
             this.Om = b("player_indicator_name", !1);
-            this.Sm = b("simple_lines", !1);
-            this.Xm = b("ultra_simple_lines", !1);  // Nova opção: curvas viram linhas retas
             this.Tm = b("simple_field", !1);
             this.Um = b("show_animations", !0);
             this.Wm = b("viewport_culling", !1);
-            this.hxdBatchSegments = b("batch_stadium_segments", !1);
             this.hxdHideOffscreenArrows = b("hide_offscreen_arrows", !1);
-            this.Ym = b("low_quality_circles", !1);  // Alta qualidade por padrão (arc); ativar = sprite cache (mais rápido)
             this.kk = d("chat_height", 160);
             this.Hh = d("chat_focus_height", 140);
             this.Ih = c("chat_opacity", .8);
@@ -13300,17 +13279,19 @@
             m.j.hxdPersistLocalAvatar.ha(b("persist_local_avatar", !1));
             m.j.Lm.ha(b("show_names", !0));
             m.j.Rm.ha(b("show_player_indicator", !0) || b("show_indicator", !0));
-            m.j.Sm.ha(b("simple_lines", !1));
-            m.j.Xm.ha(b("ultra_simple_lines", !1));
             m.j.Tm.ha(b("simple_field", !1));
             m.j.Um.ha(b("show_animations", !0));
             m.j.Wm.ha(b("viewport_culling", !1) || b("culling_enabled", !1));
-            m.j.hxdBatchSegments.ha(b("batch_stadium_segments", !1));
             m.j.hxdHideOffscreenArrows.ha(b("hide_offscreen_arrows", !1));
-            m.j.Ym.ha(b("low_quality_circles", !1));
             m.j.Uk.ha(b("show_indicators", !0) || b("show_chat_indicator", !0));
             m.j.li.ha(b("low_latency_canvas", !1));
             m.j.Qm.ha(b("image_smoothing", !0));
+            try {
+                ls.removeItem("batch_stadium_segments");
+                ls.removeItem("simple_lines");
+                ls.removeItem("ultra_simple_lines");
+                ls.removeItem("low_quality_circles")
+            } catch (retiredPerfOptionsError) {}
             let fpsLimitValue = c("fps_limit", 0);
             if (0 < fpsLimitValue && 6 > fpsLimitValue) {
                 fpsLimitValue = [0, 30, 60, 75, 144, 240][fpsLimitValue] || 0;
@@ -13415,11 +13396,8 @@
             q("tvideo-lowlatency", m.j.li.v());
             q("tmisc-showavatars", m.j.Km.v());
             q("tmisc-shownames", m.j.Lm.v());
-            q("tmisc-lowqualitycircles", m.j.Ym.v());
             q("tmisc-showindicator", m.j.Rm.v());
             q("tmisc-indicator-name", m.j.Om.v());
-            q("tmisc-simplelines", m.j.Sm.v());
-            q("tmisc-ultrasimplelines", m.j.Xm.v());
             q("tmisc-simplefield", m.j.Tm.v());
             q("tmisc-showanimations", m.j.Um.v());
             q("tmisc-showchat", m.j.Uk.v());

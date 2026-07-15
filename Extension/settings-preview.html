@@ -4130,23 +4130,15 @@
     perf_cat_input: { es: 'Input', en: 'Input', pt: 'Input' },
     perf_cat_input_d: { es: 'Delay y tolerancia de sincronización del input en partida.', en: 'In-game input sync delay and tolerance.', pt: 'Delay e tolerância de sincronização do input na partida.' },
     perf_cat_opt: { es: 'Optimización', en: 'Optimization', pt: 'Otimização' },
-    perf_cat_opt_d: { es: 'Reducí el delay y ganá respuesta en partida.', en: 'Cut delay and get snappier in-game response.', pt: 'Reduza o delay e ganhe resposta na partida.' },
+    perf_cat_opt_d: { es: 'Reduce trabajo gráfico por cuadro.', en: 'Reduces graphics work per frame.', pt: 'Reduz o trabalho gráfico por quadro.' },
     opt_lowlat: { es: 'Canvas de baja latencia', en: 'Low latency canvas', pt: 'Canvas de baixa latência' },
     opt_lowlat_h: { es: 'Renderizado desincronizado: menos delay entre tu input y la pantalla.', en: 'Desynchronized rendering: less delay between input and screen.', pt: 'Renderização dessincronizada: menos delay entre input e tela.' },
-    opt_inputboost: { es: 'Input Boost', en: 'Input Boost', pt: 'Input Boost' },
-    opt_inputboost_h: { es: 'Listeners passive y scheduling de input. Reiniciá el juego para aplicar.', en: 'Passive listeners and input scheduling. Restart the game to apply.', pt: 'Listeners passive e scheduling de input. Reinicie o jogo para aplicar.' },
     opt_mindelay: { es: 'Delay de input al mínimo', en: 'Minimum input delay', pt: 'Delay de input no mínimo' },
     opt_mindelay_h: { es: 'Fuerza 0 de tolerancia: el input más directo posible.', en: 'Forces 0 tolerance: the most direct input possible.', pt: 'Força 0 de tolerância: o input mais direto possível.' },
     opt_nosmooth: { es: 'Sin suavizado de imagen', en: 'No image smoothing', pt: 'Sem suavização de imagem' },
-    opt_nosmooth_h: { es: 'Menos trabajo de GPU por frame: más FPS y respuesta.', en: 'Less GPU work per frame: more FPS and responsiveness.', pt: 'Menos trabalho de GPU por frame: mais FPS e resposta.' },
-    perf_lines: { es: 'Líneas simplificadas', en: 'Simplified lines', pt: 'Linhas simplificadas' },
-    perf_lines_h: { es: '3px → 1px. Más limpio y más rápido.', en: '3px → 1px. Cleaner and faster.', pt: '3px → 1px. Mais limpo e rápido.' },
-    perf_curves: { es: 'Curvas → rectas', en: 'Curves → straight', pt: 'Curvas → retas' },
-    perf_curves_h: { es: 'Rectas en vez de Bezier. Subí FPS en mapas pesados.', en: 'Straight lines instead of Bezier. Boost FPS on heavy maps.', pt: 'Retas em vez de Bezier. Mais FPS em mapas pesados.' },
-    perf_culling: { es: 'Culling de viewport', en: 'Viewport culling', pt: 'Culling de viewport' },
-    perf_culling_h: { es: 'No dibuja lo que está fuera de pantalla.', en: 'Skips off-screen drawing.', pt: 'Não desenha fora da tela.' },
-    perf_batchsegments: { es: 'Agrupar segmentos del estadio', en: 'Batch stadium segments', pt: 'Agrupar segmentos do estádio' },
-    perf_batchsegments_h: { es: 'Une trazos consecutivos del mismo color para reducir llamadas de dibujo.', en: 'Combines consecutive same-colour strokes to reduce draw calls.', pt: 'Une traços consecutivos da mesma cor para reduzir chamadas de desenho.' },
+    opt_nosmooth_h: { es: 'Evita el filtrado de texturas y reduce trabajo de GPU.', en: 'Skips texture filtering and reduces GPU work.', pt: 'Evita filtragem de texturas e reduz trabalho da GPU.' },
+    perf_culling: { es: 'Culling automático', en: 'Automatic culling', pt: 'Culling automático' },
+    perf_culling_h: { es: 'Se activa solo en mapas pesados y omite lo que queda fuera de pantalla.', en: 'Activates only on heavy maps and skips off-screen drawing.', pt: 'Ativa somente em mapas pesados e não desenha o que está fora da tela.' },
     perf_hideoffscreen: { es: 'Ocultar flechas fuera de pantalla', en: 'Hide off-screen arrows', pt: 'Ocultar setas fora da tela' },
     perf_hideoffscreen_h: { es: 'Evita dibujar indicadores direccionales que no están visibles.', en: 'Skips directional indicators that are not visible.', pt: 'Evita desenhar indicadores direcionais que não estão visíveis.' },
     perf_simplefield: { es: 'Campo simplificado', en: 'Simplified field', pt: 'Campo simplificado' },
@@ -4161,12 +4153,6 @@
     perf_indicator_h: { es: 'Sacá el círculo de posición.', en: 'Remove the position circle.', pt: 'Remove o círculo de posição.' },
     perf_chatind: { es: 'Ocultar indicador de chat', en: 'Hide chat indicator', pt: 'Ocultar indicador de chat' },
     perf_chatind_h: { es: 'Sin bocadillo sobre la cabeza.', en: 'No speech bubble overhead.', pt: 'Sem balão sobre a cabeça.' },
-    perf_lowcircles: { es: 'Círculos de baja calidad', en: 'Low quality circles', pt: 'Círculos de baixa qualidade' },
-    perf_lowcircles_h: { es: 'Prerender pixelado — más FPS.', en: 'Pixelated prerender — more FPS.', pt: 'Prerender pixelado — mais FPS.' },
-    perf_priority: { es: 'Alta prioridad', en: 'High priority', pt: 'Alta prioridade' },
-    perf_priority_h: { es: 'Más recursos para el juego. Puede afectar otros programas.', en: 'More resources for the game. May affect other apps.', pt: 'Mais recursos pro jogo. Pode afetar outros programas.' },
-    perf_background_frames: { es: 'Mantener FPS en segundo plano', en: 'Keep FPS in background', pt: 'Manter FPS em segundo plano' },
-    perf_background_frames_h: { es: 'Sigue usando un timer de frames cuando cambiás de ventana.', en: 'Keeps a frame timer running after you switch windows.', pt: 'Mantém um timer de frames quando você troca de janela.' },
     perf_export: { es: 'Exportar preset HXZ0', en: 'Export HXZ0 preset', pt: 'Exportar preset HXZ0' },
     perf_import: { es: 'Importar preset', en: 'Import preset', pt: 'Importar preset' },
     perf_import_desc: { es: 'Pegá el código exportado. Se aplica al instante sin salir de la sala.', en: 'Paste the exported code. Applies instantly without leaving the room.', pt: 'Cole o código exportado. Aplica na hora sem sair da sala.' },
@@ -4271,10 +4257,10 @@
   };
 
   var PERF_SNAPSHOT_KEYS = [
-    'simple_lines', 'ultra_simple_lines', 'culling_enabled', 'viewport_culling',
-    'batch_stadium_segments', 'hide_offscreen_arrows',
+    'culling_enabled', 'viewport_culling',
+    'hide_offscreen_arrows',
     'persist_local_avatar',
-    'show_avatars', 'team_colors', 'show_names', 'simple_field', 'low_quality_circles',
+    'show_avatars', 'team_colors', 'show_names', 'simple_field',
     'show_animations', 'show_indicator', 'show_player_indicator', 'show_chat_indicator',
     'show_indicators', 'high_priority', 'canvas_boost_scale', 'fps_limit', 'resolution_scale',
     'viewmode', 'view_mode', 'quality_mode', 'input_tolerance', 'hxd_input_tolerance_unlock',
@@ -5875,46 +5861,37 @@
     return reg(tab, label, (hint || '') + ' optimizacion delay rendimiento performance', row);
   }
 
+  function perfHookToggle(tab, label, hint, hook) {
+    return perfOptToggle(tab, label, hint,
+      function () {
+        var value = Bridge.readHook(hook);
+        if (value === null) return false;
+        return value;
+      },
+      function (on) {
+        Bridge.setHook(hook, on);
+      });
+  }
+
   function appendPerfToggles(p) {
     p.appendChild(listGroup(t('perf_cat_map'), t('perf_cat_map_d'), [
-      toggle('perf', t('perf_lines'), t('perf_lines_h'), true, 'tmisc-simplelines'),
-      toggle('perf', t('perf_curves'), t('perf_curves_h'), true, 'tmisc-ultrasimplelines'),
-      toggle('perf', t('perf_culling'), t('perf_culling_h'), true, 'tmisc-culling'),
-      perfOptToggle('perf', t('perf_batchsegments'), t('perf_batchsegments_h'),
-        function () { return optLsGet('batch_stadium_segments') === '1'; },
-        function (on) { optLsSet('batch_stadium_segments', on ? '1' : '0'); optApplyRuntime(); }),
-      toggle('perf', t('perf_simplefield'), t('perf_simplefield_h'), false, 'tmisc-simplefield'),
-      toggle('perf', t('perf_lowcircles'), t('perf_lowcircles_h'), false, 'tmisc-lowqualitycircles')
+      perfHookToggle('perf', t('perf_culling'), t('perf_culling_h'), 'tmisc-culling'),
+      perfHookToggle('perf', t('perf_simplefield'), t('perf_simplefield_h'), 'tmisc-simplefield')
     ]));
     p.appendChild(listGroup(t('perf_cat_hud'), t('perf_cat_hud_d'), [
-      toggle('perf', t('perf_avatars'), t('perf_avatars_h'), false, 'tmisc-showavatars'),
-      toggle('perf', t('perf_names'), t('perf_names_h'), false, 'tmisc-shownames'),
-      toggle('perf', t('perf_anims'), t('perf_anims_h'), false, 'tmisc-showanimations'),
-      toggle('perf', t('perf_indicator'), t('perf_indicator_h'), false, 'tmisc-showindicator'),
-      toggle('perf', t('perf_chatind'), t('perf_chatind_h'), false, 'tmisc-showchat')
-      ,perfOptToggle('perf', t('perf_hideoffscreen'), t('perf_hideoffscreen_h'),
+      perfHookToggle('perf', t('perf_avatars'), t('perf_avatars_h'), 'tmisc-showavatars'),
+      perfHookToggle('perf', t('perf_names'), t('perf_names_h'), 'tmisc-shownames'),
+      perfHookToggle('perf', t('perf_anims'), t('perf_anims_h'), 'tmisc-showanimations'),
+      perfHookToggle('perf', t('perf_indicator'), t('perf_indicator_h'), 'tmisc-showindicator'),
+      perfHookToggle('perf', t('perf_chatind'), t('perf_chatind_h'), 'tmisc-showchat'),
+      perfOptToggle('perf', t('perf_hideoffscreen'), t('perf_hideoffscreen_h'),
         function () { return optLsGet('hide_offscreen_arrows') === '1'; },
         function (on) { optLsSet('hide_offscreen_arrows', on ? '1' : '0'); optApplyRuntime(); })
     ]));
     p.appendChild(listGroup(t('perf_cat_opt'), t('perf_cat_opt_d'), [
-      perfOptToggle('perf', t('opt_lowlat'), t('opt_lowlat_h'),
-        function () { return optLsGet('low_latency_canvas') === '1'; },
-        function (on) { optLsSet('low_latency_canvas', on ? '1' : '0'); optApplyRuntime(); }),
-      perfOptToggle('perf', t('opt_inputboost'), t('opt_inputboost_h'),
-        function () { return optLsGet('input_boost_enabled') === 'true'; },
-        function (on) { optLsSet('input_boost_enabled', on ? 'true' : 'false'); }),
-      perfOptToggle('perf', t('opt_mindelay'), t('opt_mindelay_h'),
-        function () { return Bridge.readInputTolerance() === 0; },
-        function (on) { Bridge.setInputTolerance(on ? 0 : 1); }),
       perfOptToggle('perf', t('opt_nosmooth'), t('opt_nosmooth_h'),
         function () { return optLsGet('image_smoothing') === '0'; },
         function (on) { optLsSet('image_smoothing', on ? '0' : '1'); optApplyRuntime(); })
-    ]));
-    p.appendChild(listGroup(t('perf_cat_system'), t('perf_cat_system_d'), [
-      perfOptToggle('perf', t('perf_background_frames'), t('perf_background_frames_h'),
-        function () { return optLsGet('hxd_background_frames') !== 'false'; },
-        function (on) { optLsSet('hxd_background_frames', on ? 'true' : 'false'); }),
-      toggle('perf', t('perf_priority'), t('perf_priority_h'), false, 'tmisc-highpriority priority', true)
     ]));
   }
 
@@ -6016,6 +5993,7 @@
       ], 'fps limit rendimiento'),
       mediaSlider('media', t('vid_scale'), 100, 10, 100, 5, '%', 'resscale resolution'),
       mediaSelect('media', t('vid_quality'), [t('qual_perf'), t('qual_hd')], 'qualitymode calidad'),
+      toggle('media', t('vid_lowlat'), t('opt_lowlat_h'), false, 'tvideo-lowlatency'),
       toggle('media', t('vid_teamcol'), null, true, 'tvideo-teamcol'),
       mediaSlider('media', t('vid_chat_op'), 1, 0.5, 1, 0.01, '', 'chat opacity'),
       mediaSlider('media', t('vid_chat_h'), 200, 0, 400, 10, 'px', 'chat focus height'),

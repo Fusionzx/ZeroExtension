@@ -1361,7 +1361,6 @@
             'tmisc-showchat': 'Mostrar indicador de chat',
             'tmisc-highpriority': 'Alta prioridade',
             'tmisc-culling': 'Culling de viewport',
-            'tmisc-batchsegments': 'Agrupar segmentos do estádio',
             'tmisc-hideoffscreenarrows': 'Ocultar setas fora da tela',
             'hideui-chat': 'Ocultar Chat',
             'hideui-scoreboard': 'Ocultar Placar/Timer',

@@ -16,18 +16,14 @@
      * Mantener alineado con la pestaña Rendimiento y presets.
      */
     var SNAPSHOT_KEYS = [
-        'simple_lines',
-        'ultra_simple_lines',
         'culling_enabled',
         'viewport_culling',
-        'batch_stadium_segments',
         'hide_offscreen_arrows',
         'show_avatars',
         'persist_local_avatar',
         'team_colors',
         'show_names',
         'simple_field',
-        'low_quality_circles',
         'show_animations',
         'show_indicator',
         'show_player_indicator',
@@ -85,18 +81,14 @@
     ];
 
     var RUNTIME_DEFAULTS = {
-        simple_lines: '0',
-        ultra_simple_lines: '0',
         culling_enabled: '0',
         viewport_culling: '0',
-        batch_stadium_segments: '0',
         hide_offscreen_arrows: '0',
         show_avatars: '1',
         persist_local_avatar: '0',
         team_colors: '1',
         show_names: '1',
         simple_field: '0',
-        low_quality_circles: '0',
         show_animations: '1',
         show_indicator: '1',
         show_player_indicator: '1',

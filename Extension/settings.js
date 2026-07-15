@@ -2538,25 +2538,9 @@
             // Descrições das opções
             var PERF_OPTIONS = [
                 {
-                    hook: 'tmisc-simplelines',
-                    title: t('Linhas simplificadas'),
-                    desc: t('Reduz a espessura das linhas do campo de 3px para 1px. Menos pixels para desenhar.')
-                },
-                {
-                    hook: 'tmisc-ultrasimplelines',
-                    title: t('Curvas viram retas'),
-                    desc: t('Converte todas as linhas curvas em retas. Desenhar retas é muito mais rápido que curvas.')
-                },
-                {
                     hook: 'tmisc-culling',
-                    title: t('Culling de viewport'),
-                    desc: t('Não desenha objetos fora da tela. Em mapas grandes, evita renderizar o que você não vê.')
-                },
-                {
-                    hook: 'tmisc-batchsegments',
-                    storageKey: 'batch_stadium_segments',
-                    title: t('Agrupar segmentos do estádio'),
-                    desc: t('Une traços consecutivos da mesma cor e reduz chamadas de desenho.')
+                    title: t('Culling automático'),
+                    desc: t('Ativa apenas em mapas pesados e não desenha objetos fora da tela.')
                 },
                 {
                     hook: 'tmisc-showavatars',
@@ -2572,21 +2556,6 @@
                     hook: 'tmisc-simplefield',
                     title: t('Campo simplificado'),
                     desc: t('Usa cores sólidas no campo ao invés de gradientes. Renderização mais simples.')
-                },
-                {
-                    hook: 'tmisc-lowqualitycircles',
-                    title: t('Círculos de baixa qualidade'),
-                    desc: t('Pré-renderiza os círculos. Mais rápido mas visual pixelado.')
-                },
-                {
-                    hook: 'tvideo-lowlatency',
-                    title: t('Perf opt low latency title'),
-                    desc: t('Perf opt low latency desc')
-                },
-                {
-                    hook: 'tvideo-teamcol',
-                    title: t('Perf opt team colors title'),
-                    desc: t('Perf opt team colors desc')
                 },
                 {
                     hook: 'tmisc-showanimations',
@@ -2608,12 +2577,6 @@
                     storageKey: 'hide_offscreen_arrows',
                     title: t('Ocultar setas fora da tela'),
                     desc: t('Evita desenhar indicadores direcionais que não estão visíveis.')
-                },
-                {
-                    hook: 'tmisc-highpriority',
-                    title: t('Alta prioridade'),
-                    desc: t('Dá mais recursos do sistema para o jogo. Pode travar outros programas. Use com cuidado!'),
-                    warning: true
                 }
             ];
 
@@ -2622,25 +2585,13 @@
                     key: 'field',
                     title: t('Campo y render'),
                     desc: t('Controla líneas, curvas y elementos base del mapa.'),
-                    hooks: ['tmisc-simplelines', 'tmisc-ultrasimplelines', 'tmisc-culling', 'tmisc-batchsegments', 'tmisc-simplefield']
+                    hooks: ['tmisc-culling', 'tmisc-simplefield']
                 },
                 {
                     key: 'players',
                     title: t('Jugadores y HUD'),
                     desc: t('Reduce nombres, avatares, indicadores y animaciones visibles.'),
                     hooks: ['tmisc-showavatars', 'tmisc-shownames', 'tmisc-showanimations', 'tmisc-showindicator', 'tmisc-showchat', 'tmisc-hideoffscreenarrows']
-                },
-                {
-                    key: 'quality',
-                    title: t('Calidad visual'),
-                    desc: t('Ajustes que simplifican el dibujo y alivian la carga gráfica.'),
-                    hooks: ['tmisc-lowqualitycircles', 'tvideo-lowlatency', 'tvideo-teamcol']
-                },
-                {
-                    key: 'system',
-                    title: t('Sistema'),
-                    desc: t('Opciones sensibles que impactan más fuerte en el rendimiento.'),
-                    hooks: ['tmisc-highpriority']
                 }
             ];
 
@@ -2806,11 +2757,10 @@
 
             // Export/import: módulo global `hxd-performance.js` (manifest + runtime); fallback si no cargó.
             var PERF_STORAGE_KEYS_FALLBACK = [
-                'simple_lines', 'ultra_simple_lines', 'culling_enabled', 'viewport_culling',
-                'batch_stadium_segments', 'hide_offscreen_arrows',
+                'culling_enabled', 'viewport_culling', 'hide_offscreen_arrows',
                 'persist_local_avatar',
                 'show_avatars', 'team_colors', 'show_names', 'simple_field',
-                'low_quality_circles', 'show_animations', 'show_indicator',
+                'show_animations', 'show_indicator',
                 'show_player_indicator', 'show_chat_indicator', 'show_indicators', 'high_priority',
                 'canvas_boost_scale',
                 'fps_limit', 'resolution_scale', 'viewmode', 'view_mode',
