@@ -3737,6 +3737,8 @@
             g("tmisc-showanimations", m.j.Um);
             g("tmisc-showchat", m.j.Uk);
             g("tmisc-culling", m.j.Wm);
+            g("tmisc-batchsegments", m.j.hxdBatchSegments);
+            g("tmisc-hideoffscreenarrows", m.j.hxdHideOffscreenArrows);
             // Alta prioridade - toggle customizado
             (function() {
                 var hp = l.get("tmisc-highpriority");
@@ -5746,6 +5748,7 @@
                 h = this.na.width / l);
                 l = (this.na.height - b - k) / h;
                 this.ys(c, g, n, l, d);
+                var hxdJerseyFrameContext = __hxdBuildMyJerseyFrameContext(a);
                 for (var r = 0, t = a.K; r < t.length; ) {
                     let z = t[r];
                     ++r;
@@ -5754,7 +5757,7 @@
                     let K = this.nd.get(z.Z);
                     null == K && (K = new Db,
                     this.nd.set(z.Z, K));
-                    K.A(z, a);
+                    K.A(z, a, hxdJerseyFrameContext);
                     this.Ug.set(z.I, K)
                 }
                 this.c.translate(this.na.width / 2, (this.na.height + b - k) / 2);
@@ -5774,7 +5777,7 @@
                 r = 0;
                 for (t = e.qb; r < t.length; )
                     this.vr(t[r++], h);
-                this.ur(a, n, l);
+                m.j.hxdHideOffscreenArrows.v() || this.ur(a, n, l);
                 this.wr(a, f);
                 null != g && (this._hxdIndName = f && f.D ? f.D : "") && this.yr(g.a);
                 this._localPlayerBody = g;
@@ -6122,11 +6125,29 @@
             }
         }
         Ar(a) {
-            if (null != a) {
-                var b = 0;
-                for (a = a.X; b < a.length; )
-                    this.zr(a[b++])
+            if (null == a)
+                return;
+            a = a.X;
+            if (!m.j.hxdBatchSegments.v()) {
+                for (var b = 0; b < a.length; )
+                    this.zr(a[b++]);
+                return
             }
+            var c = !1, d = null;
+            for (b = 0; b < a.length; ) {
+                var e = a[b++];
+                if (!this._hxdSegmentVisible(e))
+                    continue;
+                if (!c || d !== e.S) {
+                    c && this.c.stroke();
+                    this.c.beginPath();
+                    d = e.S;
+                    this.c.strokeStyle = V.nc(d);
+                    c = !0
+                }
+                this._hxdAppendSegmentPath(e)
+            }
+            c && this.c.stroke()
         }
         vr(a, b) {
             if (!(0 > a.S)) {
@@ -6156,37 +6177,29 @@
             }
         }
         zr(a) {
-            if (a.bb) {
-                // Culling para segmentos
-                if (m.j.Wm.v()) {
-                    var b = a.$.a;
-                    var c = a.ea.a;
-                    var minX = Math.min(b.x, c.x);
-                    var maxX = Math.max(b.x, c.x);
-                    var minY = Math.min(b.y, c.y);
-                    var maxY = Math.max(b.y, c.y);
-                    if (maxX < this.cullCamX - this.cullHalfW || 
-                        minX > this.cullCamX + this.cullHalfW || 
-                        maxY < this.cullCamY - this.cullHalfH || 
-                        minY > this.cullCamY + this.cullHalfH) {
-                        return;
-                    }
-                }
-                this.c.beginPath();
-                this.c.strokeStyle = V.nc(a.S);
-                var b = a.$.a
-                  , c = a.ea.a;
-                // Ultra simple: todas as linhas viram retas (sem arc)
-                if (m.j.Xm.v() || 0 != 0 * a.vb)
-                    this.c.moveTo(b.x, b.y),
-                    this.c.lineTo(c.x, c.y);
-                else {
-                    a = a.fe;
-                    let d = b.x - a.x;
-                    b = b.y - a.y;
-                    this.c.arc(a.x, a.y, Math.sqrt(d * d + b * b), Math.atan2(b, d), Math.atan2(c.y - a.y, c.x - a.x))
-                }
-                this.c.stroke()
+            if (!this._hxdSegmentVisible(a))
+                return;
+            this.c.beginPath();
+            this.c.strokeStyle = V.nc(a.S);
+            this._hxdAppendSegmentPath(a);
+            this.c.stroke()
+        }
+        _hxdSegmentVisible(a) {
+            if (!a.bb)
+                return !1;
+            if (!m.j.Wm.v())
+                return !0;
+            var b = a.$.a, c = a.ea.a;
+            return !(Math.max(b.x, c.x) < this.cullCamX - this.cullHalfW || Math.min(b.x, c.x) > this.cullCamX + this.cullHalfW || Math.max(b.y, c.y) < this.cullCamY - this.cullHalfH || Math.min(b.y, c.y) > this.cullCamY + this.cullHalfH)
+        }
+        _hxdAppendSegmentPath(a) {
+            var b = a.$.a, c = a.ea.a;
+            if (m.j.Xm.v() || 0 != 0 * a.vb)
+                this.c.moveTo(b.x, b.y), this.c.lineTo(c.x, c.y);
+            else {
+                a = a.fe;
+                let d = b.x - a.x, e = b.y - a.y;
+                this.c.arc(a.x, a.y, Math.sqrt(d * d + e * e), Math.atan2(e, d), Math.atan2(c.y - a.y, c.x - a.x))
             }
         }
         ur(a, b, c) {
@@ -6471,6 +6484,7 @@
             parsed.push(color)
         }
         return {
+            enabled: !1 !== value.enabled,
             angle: angle,
             text: text,
             stripes: parsed
@@ -6487,7 +6501,7 @@
         try {
             var stored = raw ? JSON.parse(raw) : null;
             stored && "object" == typeof stored && (config.enabled = !1 !== stored.enabled,
-            config.scope = "team" == stored.scope ? "team" : "self",
+            config.scope = "all" == stored.scope ? "all" : "team" == stored.scope ? "team" : "self",
             config.red = __hxdNormalizeMyJerseyStyle(stored.red),
             config.blue = __hxdNormalizeMyJerseyStyle(stored.blue))
         } catch (eParse) {}
@@ -6498,7 +6512,7 @@
     function __hxdSaveMyJerseyConfig(config) {
         var clean = __hxdDefaultMyJerseyConfig();
         clean.enabled = !1 !== config.enabled;
-        clean.scope = "team" == config.scope ? "team" : "self";
+        clean.scope = "all" == config.scope ? "all" : "team" == config.scope ? "team" : "self";
         clean.red = __hxdNormalizeMyJerseyStyle(config.red);
         clean.blue = __hxdNormalizeMyJerseyStyle(config.blue);
         var raw = JSON.stringify(clean);
@@ -6517,96 +6531,46 @@
                 return players[i];
         return null
     }
-    function __hxdGetMyJerseyForPlayer(player, roomState) {
+    function __hxdBuildMyJerseyFrameContext(roomState) {
+        var config = __hxdLoadMyJerseyConfig()
+          , localPlayer = "team" == config.scope ? __hxdFindLocalPlayer(roomState && roomState.K) : null;
+        return {
+            config: config,
+            localTeam: localPlayer ? localPlayer.fa : null
+        }
+    }
+    function __hxdGetMyJerseyForPlayer(player, roomState, frameContext) {
         if (!player || !player.fa)
             return null;
-        var config = __hxdLoadMyJerseyConfig();
+        var config = frameContext && frameContext.config || __hxdLoadMyJerseyConfig();
         if (!config.enabled)
             return null;
         var side = player.fa === u.ia ? "red" : player.fa === u.Da ? "blue" : null;
-        if (null == side || null == config[side])
+        if (null == side || null == config[side] || !config[side].enabled)
             return null;
-        if ("team" == config.scope) {
-            var localPlayer = __hxdFindLocalPlayer(roomState && roomState.K);
-            if (!localPlayer || localPlayer.fa !== player.fa || localPlayer.fa === u.Oa)
+        if ("all" == config.scope) {
+        } else if ("team" == config.scope) {
+            var localTeam = frameContext ? frameContext.localTeam : (__hxdFindLocalPlayer(roomState && roomState.K) || {}).fa;
+            if (!localTeam || localTeam !== player.fa || localTeam === u.Oa)
                 return null
         } else if (!__hxdIsLocalPlayerId(player.Z))
             return null;
-        var style = config[side]
-          , result = new ta;
+        var style = config[side];
+        if (style.__hxdRender)
+            return style.__hxdRender;
+        var result = new ta;
         result.sd = 256 * style.angle / 360 | 0;
         result.pd = R.parseInt("0x" + style.text);
         result.hb = [];
         for (var i = 0; i < style.stripes.length; i++)
             result.hb.push(R.parseInt("0x" + style.stripes[i]));
+        try {
+            Object.defineProperty(style, "__hxdRender", {
+                value: result,
+                enumerable: !1
+            })
+        } catch (eCache) {}
         return result
-    }
-    function __hxdSetMyJerseyFromCommand(args) {
-        var config = __hxdLoadMyJerseyConfig()
-          , index = 1
-          , first = String(args[index] || "").toLowerCase();
-        if ("off" == first) {
-            config.enabled = !1;
-            __hxdSaveMyJerseyConfig(config);
-            return "Camisetame desactivada"
-        }
-        if ("on" == first) {
-            if (null == config.red && null == config.blue)
-                throw v.C("Configura una camiseta antes de activarla");
-            config.enabled = !0;
-            __hxdSaveMyJerseyConfig(config);
-            return "Camisetame activada (" + ("team" == config.scope ? "todo tu equipo" : "solo vos") + ")"
-        }
-        if ("scope" == first) {
-            index++;
-            first = String(args[index] || "").toLowerCase()
-        }
-        if (-1 < ["team", "time", "equipo", "todos"].indexOf(first))
-            config.scope = "team",
-            index++;
-        else if (-1 < ["self", "solo", "me", "eu", "vos"].indexOf(first))
-            config.scope = "self",
-            index++;
-        if (index >= args.length) {
-            __hxdSaveMyJerseyConfig(config);
-            return "Camisetame: " + ("team" == config.scope ? "todo tu equipo" : "solo vos")
-        }
-        var side = String(args[index++] || "").toLowerCase();
-        if ("red" != side && "blue" != side)
-            throw v.C('Usa "red" o "blue"');
-        if ("clear" == String(args[index] || "").toLowerCase()) {
-            config[side] = null;
-            config.enabled = null != config.red || null != config.blue;
-            __hxdSaveMyJerseyConfig(config);
-            return "Camisetame " + side + " restaurada"
-        }
-        if (index + 2 >= args.length)
-            throw v.C("Uso: /camisetame [solo|team] red|blue <angulo> <textoHex> <rayas...>");
-        var angle = R.parseInt(args[index++])
-          , text = __hxdNormalizeJerseyHex(args[index++])
-          , stripes = [];
-        if (null == angle || 0 > angle || 360 < angle)
-            throw v.C("El angulo debe estar entre 0 y 360");
-        if (null == text)
-            throw v.C("El color del texto debe tener 6 digitos hexadecimales");
-        for (; index < args.length && 3 > stripes.length; ) {
-            var stripe = __hxdNormalizeJerseyHex(args[index++]);
-            if (null == stripe)
-                throw v.C("Cada raya debe tener 6 digitos hexadecimales");
-            stripes.push(stripe)
-        }
-        if (1 > stripes.length)
-            throw v.C("Agrega al menos un color de camiseta");
-        if (index < args.length)
-            throw v.C("Se permiten hasta 3 colores de camiseta");
-        config[side] = {
-            angle: angle,
-            text: text,
-            stripes: stripes
-        };
-        config.enabled = !0;
-        config = __hxdSaveMyJerseyConfig(config);
-        return "Camisetame " + side + " aplicada para " + ("team" == config.scope ? "todo tu equipo" : "solo vos")
     }
     class Db {
         constructor() {
@@ -6642,14 +6606,14 @@
         Yo(a, b, c) {
             a.drawImage(this.Ul.canvas, 0, 0, 160, 34, b - 40, c - 34, 80, 17)
         }
-        A(a, b) {
+        A(a, b, c) {
             if (null != a.I) {
-                let c = __hxdGetMyJerseyForPlayer(a, b) || (m.j.Vm.v() ? b.mb[a.fa.ba] : a.fa.Um)
-                  , d = null != a.Sd ? a.Sd : a.Zb
-                  , e = m.j.Km.v() && null != d;
-                if (!Db.so(this.mb, c) || !e && a.Nb != this.Ch || e && this.Zf != d)
-                    Db.Io(this.mb, c),
-                    e ? (this.Zf = d,
+                let d = __hxdGetMyJerseyForPlayer(a, b, c) || (m.j.Vm.v() ? b.mb[a.fa.ba] : a.fa.Um)
+                  , e = null != a.Sd ? a.Sd : a.Zb
+                  , f = m.j.Km.v() && null != e;
+                if (!Db.so(this.mb, d) || !f && a.Nb != this.Ch || f && this.Zf != e)
+                    Db.Io(this.mb, d),
+                    f ? (this.Zf = e,
                     this.Ch = -1) : (this.Zf = "" + a.Nb,
                     this.Ch = a.Nb),
                     this.qr(this.Zf)
@@ -7293,6 +7257,8 @@
             this.Tm = b("simple_field", !1);
             this.Um = b("show_animations", !0);
             this.Wm = b("viewport_culling", !1);
+            this.hxdBatchSegments = b("batch_stadium_segments", !1);
+            this.hxdHideOffscreenArrows = b("hide_offscreen_arrows", !1);
             this.Ym = b("low_quality_circles", !1);  // Alta qualidade por padrão (arc); ativar = sprite cache (mais rápido)
             this.kk = d("chat_height", 160);
             this.Hh = d("chat_focus_height", 140);
@@ -7550,14 +7516,6 @@
                 try {
                     d = bc.Mq(a),
                     this.za.ta(d)
-                } catch (g) {
-                    a = v.Mb(g).Fb(),
-                    "string" == typeof a && this.da(a)
-                }
-                break;
-            case "camisetame":
-                try {
-                    this.da(__hxdSetMyJerseyFromCommand(a))
                 } catch (g) {
                     a = v.Mb(g).Fb(),
                     "string" == typeof a && this.da(a)
@@ -13347,6 +13305,8 @@
             m.j.Tm.ha(b("simple_field", !1));
             m.j.Um.ha(b("show_animations", !0));
             m.j.Wm.ha(b("viewport_culling", !1) || b("culling_enabled", !1));
+            m.j.hxdBatchSegments.ha(b("batch_stadium_segments", !1));
+            m.j.hxdHideOffscreenArrows.ha(b("hide_offscreen_arrows", !1));
             m.j.Ym.ha(b("low_quality_circles", !1));
             m.j.Uk.ha(b("show_indicators", !0) || b("show_chat_indicator", !0));
             m.j.li.ha(b("low_latency_canvas", !1));
@@ -13464,6 +13424,8 @@
             q("tmisc-showanimations", m.j.Um.v());
             q("tmisc-showchat", m.j.Uk.v());
             q("tmisc-culling", m.j.Wm.v());
+            q("tmisc-batchsegments", m.j.hxdBatchSegments.v());
+            q("tmisc-hideoffscreenarrows", m.j.hxdHideOffscreenArrows.v());
             if (dlg) {
                 let fpsSel = dlg.querySelector('[data-hook="fps"]');
                 fpsSel && (fpsSel.selectedIndex = Math.max(0, [0, 30, 60, 75, 144, 240].indexOf(m.j.Rh.v())));

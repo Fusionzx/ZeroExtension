@@ -611,6 +611,386 @@
 
         }
 
+        function createLocalJerseyPanel(doc) {
+            var STORAGE_KEY = 'hxd_camisetame_v1';
+            var defaults = {
+                red: { enabled: true, angle: 60, text: 'FFFFFF', stripes: ['E56E56'] },
+                blue: { enabled: true, angle: 60, text: 'FFFFFF', stripes: ['5689E5'] }
+            };
+            var config = loadConfig();
+            var cardRefs = {};
+
+            function cloneStyle(side) {
+                var src = defaults[side];
+                return {
+                    enabled: src.enabled,
+                    angle: src.angle,
+                    text: src.text,
+                    stripes: src.stripes.slice()
+                };
+            }
+
+            function normalizeHex(value) {
+                var hex = String(value == null ? '' : value).trim().replace(/^#/, '').toUpperCase();
+                return /^[0-9A-F]{6}$/.test(hex) ? hex : '';
+            }
+
+            function normalizeStyle(value, side) {
+                if (!value || typeof value !== 'object') return null;
+                var angle = parseInt(value.angle, 10);
+                var text = normalizeHex(value.text);
+                var inputStripes = Array.isArray(value.stripes) ? value.stripes.slice(0, 3) : [];
+                var stripes = [];
+                for (var i = 0; i < inputStripes.length; i++) {
+                    var color = normalizeHex(inputStripes[i]);
+                    if (color) stripes.push(color);
+                }
+                if (!Number.isFinite(angle) || angle < 0 || angle > 360 || !text || !stripes.length) {
+                    return null;
+                }
+                return {
+                    enabled: value.enabled !== false,
+                    angle: angle,
+                    text: text,
+                    stripes: stripes
+                };
+            }
+
+            function loadConfig() {
+                var next = { enabled: false, scope: 'self', red: null, blue: null };
+                try {
+                    var raw = localStorage.getItem(STORAGE_KEY);
+                    var stored = raw ? JSON.parse(raw) : null;
+                    if (stored && typeof stored === 'object') {
+                        next.enabled = stored.enabled !== false;
+                        next.scope = stored.scope === 'all' ? 'all' : stored.scope === 'team' ? 'team' : 'self';
+                        next.red = normalizeStyle(stored.red, 'red');
+                        next.blue = normalizeStyle(stored.blue, 'blue');
+                    }
+                } catch (e) {}
+                return next;
+            }
+
+            function saveConfig() {
+                var clean = {
+                    enabled: !!config.enabled,
+                    scope: config.scope === 'all' ? 'all' : config.scope === 'team' ? 'team' : 'self',
+                    red: normalizeStyle(config.red, 'red'),
+                    blue: normalizeStyle(config.blue, 'blue')
+                };
+                config = clean;
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
+                    window.dispatchEvent(new CustomEvent('hxd-local-jersey-changed', { detail: clean }));
+                } catch (e) {}
+            }
+
+            function parseColorsCommand(value) {
+                var tokens = String(value || '').trim().split(/\s+/).filter(Boolean);
+                if (!tokens.length || String(tokens[0]).toLowerCase() !== '/colors') {
+                    return { error: t('Jersey local command required') };
+                }
+                var side = String(tokens[1] || '').toLowerCase();
+                if (side !== 'red' && side !== 'blue') {
+                    return { error: t('Jersey local side invalid') };
+                }
+                if (String(tokens[2] || '').toLowerCase() === 'clear') {
+                    return { side: side, clear: true };
+                }
+                if (tokens.length < 5 || tokens.length > 7) {
+                    return { error: t('Jersey local command format') };
+                }
+                var angle = parseInt(tokens[2], 10);
+                var text = normalizeHex(tokens[3]);
+                if (!Number.isFinite(angle) || angle < 0 || angle > 360) {
+                    return { error: t('Jersey local angle invalid') };
+                }
+                if (!text) return { error: t('Jersey local hex invalid') };
+                var stripes = [];
+                for (var i = 4; i < tokens.length; i++) {
+                    var stripe = normalizeHex(tokens[i]);
+                    if (!stripe) return { error: t('Jersey local hex invalid') };
+                    stripes.push(stripe);
+                }
+                return {
+                    side: side,
+                    clear: false,
+                    style: { enabled: true, angle: angle, text: text, stripes: stripes }
+                };
+            }
+
+            function buildColorsCommand(side, style) {
+                style = style || defaults[side];
+                return ['/colors', side, String(style.angle), style.text].concat(style.stripes).join(' ');
+            }
+
+            function previewSvg(side, style) {
+                style = style || defaults[side];
+                var colors = style.stripes.length ? style.stripes : defaults[side].stripes;
+                var clipId = 'hxd-local-shirt-' + side;
+                var stripeWidth = 96 / colors.length;
+                var stripes = '';
+                for (var i = 0; i < colors.length; i++) {
+                    stripes += '<rect x="' + (-4 + stripeWidth * i) + '" y="-4" width="' + (stripeWidth + 1) + '" height="104" fill="#' + colors[i] + '"/>';
+                }
+                return '<svg width="116" height="116" viewBox="0 0 96 96" aria-hidden="true">' +
+                    '<defs><clipPath id="' + clipId + '"><circle cx="48" cy="48" r="39"/></clipPath></defs>' +
+                    '<g clip-path="url(#' + clipId + ')"><g transform="rotate(' + style.angle + ' 48 48)">' + stripes + '</g></g>' +
+                    '<circle cx="48" cy="48" r="39" fill="none" stroke="#050505" stroke-width="5"/>' +
+                    '<text x="48" y="58" text-anchor="middle" font-size="29" font-weight="700" fill="#' + style.text + '" font-family="Arial,sans-serif">' + (side === 'red' ? 'R' : 'B') + '</text>' +
+                    '</svg>';
+            }
+
+            function setStatus(message, ok) {
+                status.textContent = message || '';
+                status.style.color = ok ? '#86efac' : '#fca5a5';
+            }
+
+            function styleForEditing(side) {
+                return config[side] || cloneStyle(side);
+            }
+
+            function renderCard(side) {
+                var refs = cardRefs[side];
+                if (!refs) return;
+                var stored = config[side];
+                var style = styleForEditing(side);
+                refs.enabled.checked = !!(stored && stored.enabled !== false);
+                refs.preview.innerHTML = previewSvg(side, style);
+                refs.preview.style.opacity = refs.enabled.checked && config.enabled ? '1' : '0.48';
+                refs.command.value = buildColorsCommand(side, style);
+                refs.angle.value = String(style.angle);
+                refs.text.value = '#' + style.text;
+                refs.count.value = String(style.stripes.length);
+                for (var i = 0; i < refs.colors.length; i++) {
+                    var fallback = defaults[side].stripes[Math.min(i, defaults[side].stripes.length - 1)] || defaults[side].stripes[0];
+                    refs.colors[i].value = '#' + (style.stripes[i] || fallback);
+                    refs.colors[i].parentNode.style.display = i < style.stripes.length ? 'flex' : 'none';
+                }
+            }
+
+            function renderAll() {
+                globalEnabled.checked = !!config.enabled;
+                scope.value = config.scope;
+                renderCard('red');
+                renderCard('blue');
+            }
+
+            function saveStyleFromControls(side) {
+                var refs = cardRefs[side];
+                var angle = Math.max(0, Math.min(360, parseInt(refs.angle.value, 10) || 0));
+                var stripeCount = Math.max(1, Math.min(3, parseInt(refs.count.value, 10) || 1));
+                var stripes = [];
+                for (var i = 0; i < stripeCount; i++) stripes.push(normalizeHex(refs.colors[i].value));
+                config[side] = {
+                    enabled: true,
+                    angle: angle,
+                    text: normalizeHex(refs.text.value) || 'FFFFFF',
+                    stripes: stripes
+                };
+                config.enabled = true;
+                saveConfig();
+                renderAll();
+                setStatus(t('Jersey local saved'), true);
+            }
+
+            function applyCommand(value) {
+                var parsed = parseColorsCommand(value);
+                if (parsed.error) {
+                    setStatus(parsed.error, false);
+                    return false;
+                }
+                config[parsed.side] = parsed.clear ? null : parsed.style;
+                if (!parsed.clear) config.enabled = true;
+                saveConfig();
+                renderAll();
+                setStatus(parsed.clear ? t('Jersey local reset') : t('Jersey local command accepted'), true);
+                return true;
+            }
+
+            function createTeamCard(side) {
+                var card = doc.createElement('div');
+                card.style.cssText = 'padding:12px;border:1px solid var(--theme-border);border-radius:10px;background:var(--theme-bg-secondary);';
+
+                var head = doc.createElement('div');
+                head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;';
+                var title = doc.createElement('div');
+                title.style.cssText = 'font-size:13px;font-weight:700;color:' + (side === 'red' ? '#ef6a5b' : '#5b8def') + ';';
+                title.textContent = side === 'red' ? t('Jersey equipo rojo') : t('Jersey equipo azul');
+                var enabledLabel = doc.createElement('label');
+                enabledLabel.style.cssText = 'display:flex;align-items:center;gap:6px;color:var(--theme-text-secondary);font-size:11px;cursor:pointer;';
+                var enabled = doc.createElement('input');
+                enabled.type = 'checkbox';
+                enabled.style.cssText = 'width:16px;height:16px;accent-color:#3b82f6;';
+                enabledLabel.appendChild(enabled);
+                enabledLabel.appendChild(doc.createTextNode(t('Jersey local use side')));
+                head.appendChild(title);
+                head.appendChild(enabledLabel);
+
+                var preview = doc.createElement('div');
+                preview.style.cssText = 'height:126px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:repeating-linear-gradient(135deg,rgba(255,255,255,.035) 0 16px,rgba(255,255,255,.015) 16px 32px);transition:opacity .15s;';
+
+                var fields = doc.createElement('div');
+                fields.style.cssText = 'display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:9px;';
+                function labeledField(labelText, input) {
+                    var label = doc.createElement('label');
+                    label.style.cssText = 'display:flex;flex-direction:column;gap:4px;color:var(--theme-text-muted);font-size:10px;min-width:0;';
+                    label.appendChild(doc.createTextNode(labelText));
+                    label.appendChild(input);
+                    return label;
+                }
+                var angle = doc.createElement('input');
+                angle.type = 'number';
+                angle.min = '0';
+                angle.max = '360';
+                angle.style.cssText = 'width:100%;height:30px;box-sizing:border-box;border:1px solid var(--theme-border);border-radius:6px;background:var(--theme-bg-primary);color:var(--theme-text-primary);padding:4px 7px;';
+                var textColor = doc.createElement('input');
+                textColor.type = 'color';
+                textColor.style.cssText = 'width:100%;height:30px;border:1px solid var(--theme-border);border-radius:6px;background:var(--theme-bg-primary);padding:2px;';
+                var count = doc.createElement('select');
+                count.innerHTML = '<option value="1">1</option><option value="2">2</option><option value="3">3</option>';
+                count.style.cssText = 'width:100%;height:30px;border:1px solid var(--theme-border);border-radius:6px;background:var(--theme-bg-primary);color:var(--theme-text-primary);padding:4px 7px;';
+                fields.appendChild(labeledField(t('Jersey ángulo corto'), angle));
+                fields.appendChild(labeledField(t('Jersey color texto'), textColor));
+                fields.appendChild(labeledField(t('Jersey cantidad colores'), count));
+
+                var colors = [];
+                var colorRow = doc.createElement('div');
+                colorRow.style.cssText = 'display:flex;gap:7px;margin-top:7px;';
+                for (var i = 0; i < 3; i++) {
+                    var colorWrap = doc.createElement('label');
+                    colorWrap.style.cssText = 'flex:1;display:flex;align-items:center;gap:5px;color:var(--theme-text-muted);font-size:10px;';
+                    var color = doc.createElement('input');
+                    color.type = 'color';
+                    color.style.cssText = 'width:100%;height:30px;border:1px solid var(--theme-border);border-radius:6px;background:var(--theme-bg-primary);padding:2px;';
+                    colorWrap.appendChild(color);
+                    colorRow.appendChild(colorWrap);
+                    colors.push(color);
+                }
+
+                var commandLabel = doc.createElement('div');
+                commandLabel.style.cssText = 'font-size:10px;color:var(--theme-text-muted);margin:9px 0 4px;';
+                commandLabel.textContent = t('Jersey local paste hint');
+                var command = doc.createElement('input');
+                command.type = 'text';
+                command.spellcheck = false;
+                command.style.cssText = 'width:100%;box-sizing:border-box;border:1px solid var(--theme-border);border-radius:6px;background:var(--theme-bg-primary);color:var(--theme-text-primary);font:11px ui-monospace,Consolas,monospace;padding:8px;';
+
+                var actions = doc.createElement('div');
+                actions.style.cssText = 'display:flex;gap:7px;margin-top:7px;';
+                var apply = doc.createElement('button');
+                apply.type = 'button';
+                apply.textContent = t('Aplicar');
+                apply.style.cssText = 'flex:1;padding:7px;border:1px solid var(--theme-border);border-radius:6px;background:var(--theme-bg-tertiary);color:var(--theme-text-primary);cursor:pointer;font-size:11px;font-weight:600;';
+                var reset = doc.createElement('button');
+                reset.type = 'button';
+                reset.textContent = t('Restaurar');
+                reset.style.cssText = 'padding:7px 10px;border:1px solid var(--theme-border);border-radius:6px;background:transparent;color:var(--theme-text-secondary);cursor:pointer;font-size:11px;';
+                actions.appendChild(apply);
+                actions.appendChild(reset);
+
+                card.appendChild(head);
+                card.appendChild(preview);
+                card.appendChild(fields);
+                card.appendChild(colorRow);
+                card.appendChild(commandLabel);
+                card.appendChild(command);
+                card.appendChild(actions);
+
+                cardRefs[side] = { enabled: enabled, preview: preview, angle: angle, text: textColor, count: count, colors: colors, command: command };
+
+                enabled.onchange = function() {
+                    var style = config[side] || cloneStyle(side);
+                    style.enabled = enabled.checked;
+                    config[side] = style;
+                    saveConfig();
+                    renderAll();
+                };
+                angle.onchange = function() { saveStyleFromControls(side); };
+                textColor.oninput = function() { saveStyleFromControls(side); };
+                count.onchange = function() { saveStyleFromControls(side); };
+                for (var ci = 0; ci < colors.length; ci++) colors[ci].oninput = function() { saveStyleFromControls(side); };
+                apply.onclick = function() { applyCommand(command.value); };
+                command.onchange = function() { applyCommand(command.value); };
+                command.addEventListener('paste', function() {
+                    setTimeout(function() { applyCommand(command.value); }, 0);
+                });
+                reset.onclick = function() {
+                    config[side] = null;
+                    saveConfig();
+                    renderAll();
+                    setStatus(t('Jersey local reset'), true);
+                };
+                return card;
+            }
+
+            var root = doc.createElement('div');
+            root.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
+            var intro = doc.createElement('div');
+            intro.style.cssText = 'font-size:11px;line-height:1.45;color:var(--theme-text-muted);';
+            intro.textContent = t('Jersey local intro');
+
+            var globalCard = doc.createElement('div');
+            globalCard.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) minmax(155px,.7fr) 36px;gap:10px;padding:11px 12px;border:1px solid var(--theme-border);border-radius:10px;background:var(--theme-bg-secondary);';
+            var globalLabel = doc.createElement('label');
+            globalLabel.style.cssText = 'display:flex;align-items:center;gap:8px;color:var(--theme-text-primary);font-size:12px;font-weight:600;cursor:pointer;';
+            var globalEnabled = doc.createElement('input');
+            globalEnabled.type = 'checkbox';
+            globalEnabled.style.cssText = 'width:17px;height:17px;accent-color:#3b82f6;';
+            globalLabel.appendChild(globalEnabled);
+            globalLabel.appendChild(doc.createTextNode(t('Jersey local enabled')));
+            var scope = doc.createElement('select');
+            scope.style.cssText = 'width:100%;height:32px;border:1px solid var(--theme-border);border-radius:6px;background:var(--theme-bg-primary);color:var(--theme-text-primary);padding:4px 7px;font-size:11px;';
+            scope.innerHTML = '<option value="self">' + t('Jersey local scope self') + '</option><option value="team">' + t('Jersey local scope team') + '</option><option value="all">' + t('Jersey local scope all') + '</option>';
+            globalCard.appendChild(globalLabel);
+            globalCard.appendChild(scope);
+            var swap = doc.createElement('button');
+            swap.type = 'button';
+            swap.title = t('Jersey local swap');
+            swap.setAttribute('aria-label', t('Jersey local swap'));
+            swap.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h11l-3-3"/><path d="M17 17H6l3 3"/></svg>';
+            swap.style.cssText = 'width:36px;height:32px;display:flex;align-items:center;justify-content:center;border:1px solid var(--theme-border);border-radius:6px;background:var(--theme-bg-primary);color:var(--theme-text-primary);cursor:pointer;';
+            globalCard.appendChild(swap);
+
+            var grid = doc.createElement('div');
+            grid.style.cssText = 'display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;';
+            grid.appendChild(createTeamCard('red'));
+            grid.appendChild(createTeamCard('blue'));
+
+            var status = doc.createElement('div');
+            status.style.cssText = 'min-height:16px;font-size:10px;line-height:1.4;color:var(--theme-text-muted);';
+
+            globalEnabled.onchange = function() {
+                config.enabled = globalEnabled.checked;
+                saveConfig();
+                renderAll();
+            };
+            scope.onchange = function() {
+                config.scope = scope.value === 'all' ? 'all' : scope.value === 'team' ? 'team' : 'self';
+                saveConfig();
+                renderAll();
+            };
+            swap.onclick = function() {
+                var previousRed = config.red;
+                config.red = config.blue;
+                config.blue = previousRed;
+                saveConfig();
+                renderAll();
+                setStatus(t('Jersey local swapped'), true);
+            };
+
+            root.appendChild(intro);
+            root.appendChild(globalCard);
+            root.appendChild(grid);
+            root.appendChild(status);
+            root.__hxdRefreshJerseys = function() {
+                config = loadConfig();
+                renderAll();
+            };
+            renderAll();
+            return root;
+        }
+
         // Cria a aba de temas customizada
         function createThemeTab(doc, tabs) {
             if (tabs.querySelector('button[data-hook="themebtn"]')) return;
@@ -675,10 +1055,11 @@
             var panelPresets = doc.createElement('div');
             var panelWallpaper = doc.createElement('div');
             var panelCustom = doc.createElement('div');
+            var panelJerseys = doc.createElement('div');
             var activeSeg = 'presets';
             var segBtns = {};
             function refreshSegUi() {
-                var keys = ['presets', 'wallpaper', 'custom'];
+                var keys = ['presets', 'wallpaper', 'custom', 'jerseys'];
                 for (var sgi = 0; sgi < keys.length; sgi++) {
                     var skey = keys[sgi];
                     var btn = segBtns[skey];
@@ -690,6 +1071,10 @@
                 panelPresets.style.display = activeSeg === 'presets' ? 'block' : 'none';
                 panelWallpaper.style.display = activeSeg === 'wallpaper' ? 'block' : 'none';
                 panelCustom.style.display = activeSeg === 'custom' ? 'block' : 'none';
+                panelJerseys.style.display = activeSeg === 'jerseys' ? 'block' : 'none';
+                if (activeSeg === 'jerseys' && panelJerseys.__hxdJerseyRoot && panelJerseys.__hxdJerseyRoot.__hxdRefreshJerseys) {
+                    panelJerseys.__hxdJerseyRoot.__hxdRefreshJerseys();
+                }
             }
             function makeSegBtn(segKey, segLabel) {
                 var sb = doc.createElement('button');
@@ -708,6 +1093,7 @@
             segWrap.appendChild(makeSegBtn('presets', t('Theme seg themes')));
             segWrap.appendChild(makeSegBtn('wallpaper', t('Theme seg wallpaper')));
             segWrap.appendChild(makeSegBtn('custom', t('Theme seg colors')));
+            segWrap.appendChild(makeSegBtn('jerseys', t('Theme seg jerseys')));
             refreshSegUi();
 
             var themeOptions = doc.createElement('div');
@@ -1132,6 +1518,8 @@
             panelCustom.appendChild(previewShell);
             panelCustom.appendChild(grid);
             panelCustom.appendChild(actionRow);
+            panelJerseys.__hxdJerseyRoot = createLocalJerseyPanel(doc);
+            panelJerseys.appendChild(panelJerseys.__hxdJerseyRoot);
 
             container.appendChild(glassCard);
             container.appendChild(guideLine);
@@ -1139,6 +1527,7 @@
             container.appendChild(panelPresets);
             container.appendChild(panelWallpaper);
             container.appendChild(panelCustom);
+            container.appendChild(panelJerseys);
             themeSection.appendChild(container);
             syncCustomEditorFields();
             syncWallpaperPanel();
@@ -2145,6 +2534,12 @@
                     desc: t('Não desenha objetos fora da tela. Em mapas grandes, evita renderizar o que você não vê.')
                 },
                 {
+                    hook: 'tmisc-batchsegments',
+                    storageKey: 'batch_stadium_segments',
+                    title: t('Agrupar segmentos do estádio'),
+                    desc: t('Une traços consecutivos da mesma cor e reduz chamadas de desenho.')
+                },
+                {
                     hook: 'tmisc-showavatars',
                     title: t('Desativar avatares e cores'),
                     desc: t('Remove avatares personalizados e usa cores padrão dos times. Menos texturas.')
@@ -2190,6 +2585,12 @@
                     desc: t('O balão que aparece quando alguém fala. Remove essa renderização extra.')
                 },
                 {
+                    hook: 'tmisc-hideoffscreenarrows',
+                    storageKey: 'hide_offscreen_arrows',
+                    title: t('Ocultar setas fora da tela'),
+                    desc: t('Evita desenhar indicadores direcionais que não estão visíveis.')
+                },
+                {
                     hook: 'tmisc-highpriority',
                     title: t('Alta prioridade'),
                     desc: t('Dá mais recursos do sistema para o jogo. Pode travar outros programas. Use com cuidado!'),
@@ -2202,13 +2603,13 @@
                     key: 'field',
                     title: t('Campo y render'),
                     desc: t('Controla líneas, curvas y elementos base del mapa.'),
-                    hooks: ['tmisc-simplelines', 'tmisc-ultrasimplelines', 'tmisc-culling', 'tmisc-simplefield']
+                    hooks: ['tmisc-simplelines', 'tmisc-ultrasimplelines', 'tmisc-culling', 'tmisc-batchsegments', 'tmisc-simplefield']
                 },
                 {
                     key: 'players',
                     title: t('Jugadores y HUD'),
                     desc: t('Reduce nombres, avatares, indicadores y animaciones visibles.'),
-                    hooks: ['tmisc-showavatars', 'tmisc-shownames', 'tmisc-showanimations', 'tmisc-showindicator', 'tmisc-showchat']
+                    hooks: ['tmisc-showavatars', 'tmisc-shownames', 'tmisc-showanimations', 'tmisc-showindicator', 'tmisc-showchat', 'tmisc-hideoffscreenarrows']
                 },
                 {
                     key: 'quality',
@@ -2288,15 +2689,25 @@
                 row.appendChild(textDiv);
 
                 // Click handler - encontra e clica no toggle original
-                (function(hookName) {
+                (function(hookName, storageKey) {
                     row.onclick = function() {
+                        if (storageKey) {
+                            var enabled = localStorage.getItem(storageKey) === '1';
+                            localStorage.setItem(storageKey, enabled ? '0' : '1');
+                            try {
+                                if (typeof window.__hxdSyncAllSettingsFromStorage === 'function') window.__hxdSyncAllSettingsFromStorage();
+                                window.dispatchEvent(new Event('storage'));
+                            } catch (e) {}
+                            updatePerfCheckboxes();
+                            return;
+                        }
                         var originalToggle = findPerfToggleEl(hookName);
                         if (originalToggle) {
                             originalToggle.click();
                             setTimeout(updatePerfCheckboxes, 100);
                         }
                     };
-                })(opt.hook);
+                })(opt.hook, opt.storageKey);
 
                 return row;
             }
@@ -2377,6 +2788,7 @@
             // Export/import: módulo global `hxd-performance.js` (manifest + runtime); fallback si no cargó.
             var PERF_STORAGE_KEYS_FALLBACK = [
                 'simple_lines', 'ultra_simple_lines', 'culling_enabled', 'viewport_culling',
+                'batch_stadium_segments', 'hide_offscreen_arrows',
                 'show_avatars', 'team_colors', 'show_names', 'simple_field',
                 'low_quality_circles', 'show_animations', 'show_indicator',
                 'show_player_indicator', 'show_chat_indicator', 'show_indicators', 'high_priority',
@@ -2551,13 +2963,20 @@
                     var perfRow = perfSection.querySelector('[data-perf-hook="' + opt.hook + '"]');
                     if (!perfRow) return;
 
-                    var originalToggle = findPerfToggleEl(opt.hook);
-                    if (!originalToggle) return;
-
                     var perfCheckbox = perfRow.querySelector('.perf-checkbox');
                     if (!perfCheckbox) return;
                     var svg = perfCheckbox.querySelector('svg');
                     if (!svg) return;
+
+                    if (opt.storageKey) {
+                        var storedActive = localStorage.getItem(opt.storageKey) === '1';
+                        perfCheckbox.style.background = storedActive ? '#22c55e' : 'transparent';
+                        perfCheckbox.style.borderColor = storedActive ? '#22c55e' : 'var(--theme-border-light)';
+                        svg.style.opacity = storedActive ? '1' : '0';
+                        return;
+                    }
+                    var originalToggle = findPerfToggleEl(opt.hook);
+                    if (!originalToggle) return;
 
                     // Verifica se o toggle está ativo - busca qualquer <i> dentro do toggle
                     var icons = originalToggle.getElementsByTagName('i');

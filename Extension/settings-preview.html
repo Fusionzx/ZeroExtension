@@ -1678,6 +1678,155 @@
     .seg-panel { display: none; }
     .seg-panel.on { display: block; }
 
+    .local-jersey-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(180px, .65fr) 38px;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px;
+      border: 1px solid var(--theme-border);
+      border-radius: 10px;
+      background: var(--theme-bg-secondary);
+    }
+
+    .local-jersey-enable {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--theme-text-primary);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .local-jersey-enable input,
+    .local-jersey-side-toggle input { accent-color: var(--theme-text-primary); }
+
+    .local-jersey-head select,
+    .local-jersey-card input[type="text"],
+    .local-jersey-card input[type="number"],
+    .local-jersey-card select {
+      width: 100%;
+      height: 34px;
+      box-sizing: border-box;
+      border: 1px solid var(--theme-border);
+      border-radius: 7px;
+      background: var(--theme-bg-primary);
+      color: var(--theme-text-primary);
+      padding: 5px 8px;
+      font: inherit;
+      font-size: 11px;
+    }
+
+    .local-jersey-swap {
+      width: 38px;
+      height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--theme-border);
+      border-radius: 7px;
+      background: var(--theme-bg-primary);
+      color: var(--theme-text-primary);
+      cursor: pointer;
+    }
+    .local-jersey-swap:hover { background: var(--theme-bg-tertiary); }
+
+    .local-jersey-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .local-jersey-card {
+      min-width: 0;
+      padding: 13px;
+      border: 1px solid var(--theme-border);
+      border-radius: 10px;
+      background: var(--theme-bg-secondary);
+    }
+
+    .local-jersey-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .local-jersey-title { font-size: 14px; font-weight: 800; }
+    .local-jersey-card[data-side="red"] .local-jersey-title { color: #ef6a5b; }
+    .local-jersey-card[data-side="blue"] .local-jersey-title { color: #5b8def; }
+
+    .local-jersey-side-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--theme-text-secondary);
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .local-jersey-preview {
+      height: 150px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--theme-border);
+      border-radius: 9px;
+      background: repeating-linear-gradient(135deg, rgba(255,255,255,.035) 0 18px, rgba(255,255,255,.012) 18px 36px);
+      transition: opacity .15s;
+    }
+
+    .local-jersey-fields {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .local-jersey-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+      color: var(--theme-text-muted);
+      font-size: 10px;
+    }
+
+    .local-jersey-field input[type="color"] {
+      width: 100%;
+      height: 34px;
+      box-sizing: border-box;
+      border: 1px solid var(--theme-border);
+      border-radius: 7px;
+      background: var(--theme-bg-primary);
+      padding: 3px;
+      cursor: pointer;
+    }
+
+    .local-jersey-colors { display: flex; gap: 8px; margin-top: 8px; }
+    .local-jersey-colors .local-jersey-field { flex: 1; }
+
+    .local-jersey-command-label {
+      margin: 10px 0 5px;
+      color: var(--theme-text-muted);
+      font-size: 10px;
+    }
+
+    .local-jersey-command {
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace !important;
+    }
+
+    .local-jersey-actions { display: flex; gap: 8px; margin-top: 8px; }
+    .local-jersey-actions .btn { flex: 1; }
+    .local-jersey-status { min-height: 18px; margin-top: 8px; font-size: 11px; }
+
+    @media (max-width: 760px) {
+      .local-jersey-head, .local-jersey-grid { grid-template-columns: 1fr; }
+    }
+
     .list-row .hint--warn {
       color: #f59e0b;
     }
@@ -3922,6 +4071,31 @@
     seg_themes: { es: 'Temas', en: 'Themes', pt: 'Temas' },
     seg_wall: { es: 'Wallpaper', en: 'Wallpaper', pt: 'Wallpaper' },
     seg_colors: { es: 'Colores', en: 'Colors', pt: 'Cores' },
+    jersey_local_sec: { es: 'Camisetas locales', en: 'Local jerseys', pt: 'Camisas locais' },
+    jersey_local_desc: { es: 'Cambiá las camisetas solo en tu pantalla, sin admin. Pegá un /colors completo o editá cada valor.', en: 'Change jerseys only on your screen, without admin. Paste a full /colors command or edit each value.', pt: 'Mude as camisas somente na sua tela, sem admin. Cole um /colors completo ou edite cada valor.' },
+    jersey_local_enabled: { es: 'Activar camisetas locales', en: 'Enable local jerseys', pt: 'Ativar camisas locais' },
+    jersey_scope_self: { es: 'Solo yo', en: 'Only me', pt: 'Só eu' },
+    jersey_scope_team: { es: 'Mi equipo', en: 'My team', pt: 'Meu time' },
+    jersey_scope_all: { es: 'Rojo + Azul', en: 'Red + Blue', pt: 'Red + Blue' },
+    jersey_swap: { es: 'Intercambiar Rojo y Azul', en: 'Swap Red and Blue', pt: 'Inverter Vermelho e Azul' },
+    jersey_swap_ok: { es: 'Camisetas intercambiadas.', en: 'Jerseys swapped.', pt: 'Camisas invertidas.' },
+    jersey_use_side: { es: 'Usar', en: 'Use', pt: 'Usar' },
+    jersey_red: { es: 'Rojo', en: 'Red', pt: 'Vermelho' },
+    jersey_blue: { es: 'Azul', en: 'Blue', pt: 'Azul' },
+    jersey_angle: { es: 'Ángulo', en: 'Angle', pt: 'Ângulo' },
+    jersey_text_color: { es: 'Texto', en: 'Text', pt: 'Texto' },
+    jersey_stripes: { es: 'Colores', en: 'Colours', pt: 'Cores' },
+    jersey_paste: { es: 'Pegá /colors acá', en: 'Paste /colors here', pt: 'Cole /colors aqui' },
+    jersey_apply: { es: 'Aplicar', en: 'Apply', pt: 'Aplicar' },
+    jersey_reset: { es: 'Restaurar', en: 'Reset', pt: 'Restaurar' },
+    jersey_saved: { es: 'Camiseta guardada y aplicada localmente.', en: 'Jersey saved and applied locally.', pt: 'Camisa salva e aplicada localmente.' },
+    jersey_reset_ok: { es: 'Configuración del equipo eliminada.', en: 'Team configuration removed.', pt: 'Configuração do time removida.' },
+    jersey_command_ok: { es: 'Comando aceptado y aplicado localmente.', en: 'Command accepted and applied locally.', pt: 'Comando aceito e aplicado localmente.' },
+    jersey_command_start: { es: 'El comando debe empezar con /colors.', en: 'The command must begin with /colors.', pt: 'O comando deve começar com /colors.' },
+    jersey_command_side: { es: 'Usá red o blue en el comando.', en: 'Use red or blue in the command.', pt: 'Use red ou blue no comando.' },
+    jersey_command_format: { es: 'Formato: /colors red|blue ángulo textoHex color1 [color2] [color3].', en: 'Format: /colors red|blue angle textHex colour1 [colour2] [colour3].', pt: 'Formato: /colors red|blue ângulo textoHex cor1 [cor2] [cor3].' },
+    jersey_command_angle: { es: 'El ángulo debe estar entre 0 y 360.', en: 'The angle must be between 0 and 360.', pt: 'O ângulo deve ficar entre 0 e 360.' },
+    jersey_command_hex: { es: 'Usá colores hexadecimales de 6 dígitos.', en: 'Use six-digit hexadecimal colours.', pt: 'Use cores hexadecimais com 6 dígitos.' },
     edit: { es: 'Editar', en: 'Edit', pt: 'Editar' },
     add: { es: 'Agregar', en: 'Add', pt: 'Adicionar' },
     save: { es: 'Guardar', en: 'Save', pt: 'Salvar' },
@@ -3957,6 +4131,10 @@
     perf_curves_h: { es: 'Rectas en vez de Bezier. Subí FPS en mapas pesados.', en: 'Straight lines instead of Bezier. Boost FPS on heavy maps.', pt: 'Retas em vez de Bezier. Mais FPS em mapas pesados.' },
     perf_culling: { es: 'Culling de viewport', en: 'Viewport culling', pt: 'Culling de viewport' },
     perf_culling_h: { es: 'No dibuja lo que está fuera de pantalla.', en: 'Skips off-screen drawing.', pt: 'Não desenha fora da tela.' },
+    perf_batchsegments: { es: 'Agrupar segmentos del estadio', en: 'Batch stadium segments', pt: 'Agrupar segmentos do estádio' },
+    perf_batchsegments_h: { es: 'Une trazos consecutivos del mismo color para reducir llamadas de dibujo.', en: 'Combines consecutive same-colour strokes to reduce draw calls.', pt: 'Une traços consecutivos da mesma cor para reduzir chamadas de desenho.' },
+    perf_hideoffscreen: { es: 'Ocultar flechas fuera de pantalla', en: 'Hide off-screen arrows', pt: 'Ocultar setas fora da tela' },
+    perf_hideoffscreen_h: { es: 'Evita dibujar indicadores direccionales que no están visibles.', en: 'Skips directional indicators that are not visible.', pt: 'Evita desenhar indicadores direcionais que não estão visíveis.' },
     perf_simplefield: { es: 'Campo simplificado', en: 'Simplified field', pt: 'Campo simplificado' },
     perf_simplefield_h: { es: 'Colores planos, sin gradientes.', en: 'Flat colors, no gradients.', pt: 'Cores planas, sem gradientes.' },
     perf_avatars: { es: 'Ocultar avatares y colores', en: 'Hide avatars & colors', pt: 'Ocultar avatares e cores' },
@@ -4080,6 +4258,7 @@
 
   var PERF_SNAPSHOT_KEYS = [
     'simple_lines', 'ultra_simple_lines', 'culling_enabled', 'viewport_culling',
+    'batch_stadium_segments', 'hide_offscreen_arrows',
     'show_avatars', 'team_colors', 'show_names', 'simple_field', 'low_quality_circles',
     'show_animations', 'show_indicator', 'show_player_indicator', 'show_chat_indicator',
     'show_indicators', 'high_priority', 'canvas_boost_scale', 'fps_limit', 'resolution_scale',
@@ -5686,6 +5865,9 @@
       toggle('perf', t('perf_lines'), t('perf_lines_h'), true, 'tmisc-simplelines'),
       toggle('perf', t('perf_curves'), t('perf_curves_h'), true, 'tmisc-ultrasimplelines'),
       toggle('perf', t('perf_culling'), t('perf_culling_h'), true, 'tmisc-culling'),
+      perfOptToggle('perf', t('perf_batchsegments'), t('perf_batchsegments_h'),
+        function () { return optLsGet('batch_stadium_segments') === '1'; },
+        function (on) { optLsSet('batch_stadium_segments', on ? '1' : '0'); optApplyRuntime(); }),
       toggle('perf', t('perf_simplefield'), t('perf_simplefield_h'), false, 'tmisc-simplefield'),
       toggle('perf', t('perf_lowcircles'), t('perf_lowcircles_h'), false, 'tmisc-lowqualitycircles')
     ]));
@@ -5695,6 +5877,9 @@
       toggle('perf', t('perf_anims'), t('perf_anims_h'), false, 'tmisc-showanimations'),
       toggle('perf', t('perf_indicator'), t('perf_indicator_h'), false, 'tmisc-showindicator'),
       toggle('perf', t('perf_chatind'), t('perf_chatind_h'), false, 'tmisc-showchat')
+      ,perfOptToggle('perf', t('perf_hideoffscreen'), t('perf_hideoffscreen_h'),
+        function () { return optLsGet('hide_offscreen_arrows') === '1'; },
+        function (on) { optLsSet('hide_offscreen_arrows', on ? '1' : '0'); optApplyRuntime(); })
     ]));
     p.appendChild(listGroup(t('perf_cat_opt'), t('perf_cat_opt_d'), [
       perfOptToggle('perf', t('opt_lowlat'), t('opt_lowlat_h'),
@@ -6034,6 +6219,330 @@
     showToast(t('perf_import_fail'), 'err');
   }
 
+  var LOCAL_JERSEY_KEY = 'hxd_camisetame_v1';
+  var LOCAL_JERSEY_DEFAULTS = {
+    red: { enabled: true, angle: 60, text: 'FFFFFF', stripes: ['E56E56'] },
+    blue: { enabled: true, angle: 60, text: 'FFFFFF', stripes: ['5689E5'] }
+  };
+
+  function jerseyHex(value) {
+    var hex = String(value == null ? '' : value).trim().replace(/^#/, '').toUpperCase();
+    return /^[0-9A-F]{6}$/.test(hex) ? hex : '';
+  }
+
+  function jerseyCloneDefault(side) {
+    var src = LOCAL_JERSEY_DEFAULTS[side];
+    return { enabled: true, angle: src.angle, text: src.text, stripes: src.stripes.slice() };
+  }
+
+  function jerseyNormalizeStyle(value) {
+    if (!value || typeof value !== 'object') return null;
+    var angle = parseInt(value.angle, 10);
+    var text = jerseyHex(value.text);
+    var stripes = [];
+    var source = Array.isArray(value.stripes) ? value.stripes.slice(0, 3) : [];
+    source.forEach(function (item) {
+      var color = jerseyHex(item);
+      if (color) stripes.push(color);
+    });
+    if (!Number.isFinite(angle) || angle < 0 || angle > 360 || !text || !stripes.length) return null;
+    return { enabled: value.enabled !== false, angle: angle, text: text, stripes: stripes };
+  }
+
+  function loadLocalJerseys() {
+    var cfg = { enabled: false, scope: 'self', red: null, blue: null };
+    try {
+      var raw = storageWin().localStorage.getItem(LOCAL_JERSEY_KEY);
+      var stored = raw ? JSON.parse(raw) : null;
+      if (stored && typeof stored === 'object') {
+        cfg.enabled = stored.enabled !== false;
+        cfg.scope = stored.scope === 'all' ? 'all' : stored.scope === 'team' ? 'team' : 'self';
+        cfg.red = jerseyNormalizeStyle(stored.red);
+        cfg.blue = jerseyNormalizeStyle(stored.blue);
+      }
+    } catch (e) {}
+    return cfg;
+  }
+
+  function saveLocalJerseys(cfg) {
+    var clean = {
+      enabled: !!cfg.enabled,
+      scope: cfg.scope === 'all' ? 'all' : cfg.scope === 'team' ? 'team' : 'self',
+      red: jerseyNormalizeStyle(cfg.red),
+      blue: jerseyNormalizeStyle(cfg.blue)
+    };
+    try {
+      storageWin().localStorage.setItem(LOCAL_JERSEY_KEY, JSON.stringify(clean));
+      var pw = Bridge.parentWin();
+      if (pw) pw.dispatchEvent(new CustomEvent('hxd-local-jersey-changed', { detail: clean }));
+    } catch (e) {}
+    return clean;
+  }
+
+  function parseLocalColorsCommand(value) {
+    var tokens = String(value || '').trim().split(/\s+/).filter(Boolean);
+    if (!tokens.length || String(tokens[0]).toLowerCase() !== '/colors') return { error: t('jersey_command_start') };
+    var side = String(tokens[1] || '').toLowerCase();
+    if (side !== 'red' && side !== 'blue') return { error: t('jersey_command_side') };
+    if (String(tokens[2] || '').toLowerCase() === 'clear') return { side: side, clear: true };
+    if (tokens.length < 5 || tokens.length > 7) return { error: t('jersey_command_format') };
+    var angle = parseInt(tokens[2], 10);
+    if (!Number.isFinite(angle) || angle < 0 || angle > 360) return { error: t('jersey_command_angle') };
+    var text = jerseyHex(tokens[3]);
+    if (!text) return { error: t('jersey_command_hex') };
+    var stripes = [];
+    for (var i = 4; i < tokens.length; i++) {
+      var stripe = jerseyHex(tokens[i]);
+      if (!stripe) return { error: t('jersey_command_hex') };
+      stripes.push(stripe);
+    }
+    return { side: side, clear: false, style: { enabled: true, angle: angle, text: text, stripes: stripes } };
+  }
+
+  function localColorsCommand(side, style) {
+    style = style || LOCAL_JERSEY_DEFAULTS[side];
+    return ['/colors', side, String(style.angle), style.text].concat(style.stripes).join(' ');
+  }
+
+  function localJerseyPreview(side, style) {
+    style = style || LOCAL_JERSEY_DEFAULTS[side];
+    var colors = style.stripes.length ? style.stripes : LOCAL_JERSEY_DEFAULTS[side].stripes;
+    var clip = 'local-jersey-clip-' + side;
+    var stripeWidth = 108 / colors.length;
+    var bands = '';
+    for (var i = 0; i < colors.length; i++) {
+      bands += '<rect x="' + (-6 + stripeWidth * i) + '" y="-6" width="' + (stripeWidth + 1) + '" height="120" fill="#' + colors[i] + '"/>';
+    }
+    return '<svg width="132" height="132" viewBox="0 0 108 108" aria-hidden="true">' +
+      '<defs><clipPath id="' + clip + '"><circle cx="54" cy="54" r="44"/></clipPath></defs>' +
+      '<g clip-path="url(#' + clip + ')"><g transform="rotate(' + style.angle + ' 54 54)">' + bands + '</g></g>' +
+      '<circle cx="54" cy="54" r="44" fill="none" stroke="#050505" stroke-width="5"/>' +
+      '<text x="54" y="65" text-anchor="middle" font-size="32" font-weight="700" fill="#' + style.text + '" font-family="Arial,sans-serif">' + (side === 'red' ? 'R' : 'B') + '</text>' +
+      '</svg>';
+  }
+
+  function buildLocalJerseyPanel() {
+    var cfg = loadLocalJerseys();
+    var refs = {};
+    var wrap = $('div', 'list-block');
+    wrap.id = 'local-jersey-panel';
+    wrap.appendChild($('div', 'section-title section-title--split', t('jersey_local_sec')));
+    wrap.appendChild($('p', 'group-lead', t('jersey_local_desc')));
+
+    var head = $('div', 'local-jersey-head');
+    var enableLabel = $('label', 'local-jersey-enable');
+    var globalEnabled = document.createElement('input');
+    globalEnabled.type = 'checkbox';
+    enableLabel.appendChild(globalEnabled);
+    enableLabel.appendChild(document.createTextNode(t('jersey_local_enabled')));
+    var scope = document.createElement('select');
+    [
+      ['self', t('jersey_scope_self')],
+      ['team', t('jersey_scope_team')],
+      ['all', t('jersey_scope_all')]
+    ].forEach(function (entry) {
+      var option = document.createElement('option');
+      option.value = entry[0];
+      option.textContent = entry[1];
+      scope.appendChild(option);
+    });
+    head.appendChild(enableLabel);
+    head.appendChild(scope);
+    var swap = $('button', 'local-jersey-swap', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h11l-3-3"/><path d="M17 17H6l3 3"/></svg>');
+    swap.type = 'button';
+    swap.title = t('jersey_swap');
+    swap.setAttribute('aria-label', t('jersey_swap'));
+    head.appendChild(swap);
+
+    var grid = $('div', 'local-jersey-grid');
+    var status = $('div', 'local-jersey-status');
+
+    function setStatus(message, ok) {
+      status.textContent = message || '';
+      status.style.color = ok ? '#86efac' : '#fca5a5';
+    }
+
+    function editingStyle(side) {
+      return cfg[side] || jerseyCloneDefault(side);
+    }
+
+    function renderSide(side) {
+      var ref = refs[side];
+      if (!ref) return;
+      var stored = cfg[side];
+      var style = editingStyle(side);
+      ref.enabled.checked = !!(stored && stored.enabled !== false);
+      ref.preview.innerHTML = localJerseyPreview(side, style);
+      ref.preview.style.opacity = cfg.enabled && ref.enabled.checked ? '1' : '.46';
+      ref.angle.value = String(style.angle);
+      ref.text.value = '#' + style.text;
+      ref.count.value = String(style.stripes.length);
+      ref.command.value = localColorsCommand(side, style);
+      for (var i = 0; i < ref.colors.length; i++) {
+        var fallback = LOCAL_JERSEY_DEFAULTS[side].stripes[0];
+        ref.colors[i].value = '#' + (style.stripes[i] || fallback);
+        ref.colors[i].parentNode.style.display = i < style.stripes.length ? 'flex' : 'none';
+      }
+    }
+
+    function render() {
+      globalEnabled.checked = !!cfg.enabled;
+      scope.value = cfg.scope;
+      renderSide('red');
+      renderSide('blue');
+    }
+
+    function saveControls(side) {
+      var ref = refs[side];
+      var count = Math.max(1, Math.min(3, parseInt(ref.count.value, 10) || 1));
+      var stripes = [];
+      for (var i = 0; i < count; i++) stripes.push(jerseyHex(ref.colors[i].value));
+      cfg[side] = {
+        enabled: true,
+        angle: Math.max(0, Math.min(360, parseInt(ref.angle.value, 10) || 0)),
+        text: jerseyHex(ref.text.value) || 'FFFFFF',
+        stripes: stripes
+      };
+      cfg.enabled = true;
+      cfg = saveLocalJerseys(cfg);
+      render();
+      setStatus(t('jersey_saved'), true);
+    }
+
+    function applyCommand(value) {
+      var parsed = parseLocalColorsCommand(value);
+      if (parsed.error) {
+        setStatus(parsed.error, false);
+        return false;
+      }
+      cfg[parsed.side] = parsed.clear ? null : parsed.style;
+      if (!parsed.clear) cfg.enabled = true;
+      cfg = saveLocalJerseys(cfg);
+      render();
+      setStatus(parsed.clear ? t('jersey_reset_ok') : t('jersey_command_ok'), true);
+      return true;
+    }
+
+    function makeField(label, input) {
+      var field = $('label', 'local-jersey-field');
+      field.appendChild(document.createTextNode(label));
+      field.appendChild(input);
+      return field;
+    }
+
+    function createCard(side) {
+      var card = $('div', 'local-jersey-card');
+      card.setAttribute('data-side', side);
+      var cardHead = $('div', 'local-jersey-card-head');
+      cardHead.appendChild($('div', 'local-jersey-title', side === 'red' ? t('jersey_red') : t('jersey_blue')));
+      var sideToggle = $('label', 'local-jersey-side-toggle');
+      var enabled = document.createElement('input');
+      enabled.type = 'checkbox';
+      sideToggle.appendChild(enabled);
+      sideToggle.appendChild(document.createTextNode(t('jersey_use_side')));
+      cardHead.appendChild(sideToggle);
+
+      var preview = $('div', 'local-jersey-preview');
+      var fields = $('div', 'local-jersey-fields');
+      var angle = document.createElement('input');
+      angle.type = 'number';
+      angle.min = '0';
+      angle.max = '360';
+      var textColor = document.createElement('input');
+      textColor.type = 'color';
+      var count = document.createElement('select');
+      ['1', '2', '3'].forEach(function (value) {
+        var option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        count.appendChild(option);
+      });
+      fields.appendChild(makeField(t('jersey_angle'), angle));
+      fields.appendChild(makeField(t('jersey_text_color'), textColor));
+      fields.appendChild(makeField(t('jersey_stripes'), count));
+
+      var colorsRow = $('div', 'local-jersey-colors');
+      var colors = [];
+      for (var i = 0; i < 3; i++) {
+        var color = document.createElement('input');
+        color.type = 'color';
+        colors.push(color);
+        colorsRow.appendChild(makeField(t('jersey_stripes') + ' ' + (i + 1), color));
+      }
+
+      var commandLabel = $('div', 'local-jersey-command-label', t('jersey_paste'));
+      var command = document.createElement('input');
+      command.type = 'text';
+      command.spellcheck = false;
+      command.className = 'local-jersey-command';
+      var actions = $('div', 'local-jersey-actions');
+      var apply = $('button', 'btn dark', t('jersey_apply'));
+      apply.type = 'button';
+      var reset = $('button', 'btn', t('jersey_reset'));
+      reset.type = 'button';
+      actions.appendChild(apply);
+      actions.appendChild(reset);
+
+      card.appendChild(cardHead);
+      card.appendChild(preview);
+      card.appendChild(fields);
+      card.appendChild(colorsRow);
+      card.appendChild(commandLabel);
+      card.appendChild(command);
+      card.appendChild(actions);
+      refs[side] = { enabled: enabled, preview: preview, angle: angle, text: textColor, count: count, colors: colors, command: command };
+
+      enabled.onchange = function () {
+        var style = cfg[side] || jerseyCloneDefault(side);
+        style.enabled = enabled.checked;
+        cfg[side] = style;
+        cfg = saveLocalJerseys(cfg);
+        render();
+      };
+      angle.onchange = function () { saveControls(side); };
+      textColor.oninput = function () { saveControls(side); };
+      count.onchange = function () { saveControls(side); };
+      colors.forEach(function (color) { color.oninput = function () { saveControls(side); }; });
+      apply.onclick = function () { applyCommand(command.value); };
+      command.onchange = function () { applyCommand(command.value); };
+      command.addEventListener('paste', function () { setTimeout(function () { applyCommand(command.value); }, 0); });
+      reset.onclick = function () {
+        cfg[side] = null;
+        cfg = saveLocalJerseys(cfg);
+        render();
+        setStatus(t('jersey_reset_ok'), true);
+      };
+      return card;
+    }
+
+    grid.appendChild(createCard('red'));
+    grid.appendChild(createCard('blue'));
+    globalEnabled.onchange = function () {
+      cfg.enabled = globalEnabled.checked;
+      cfg = saveLocalJerseys(cfg);
+      render();
+    };
+    scope.onchange = function () {
+      cfg.scope = scope.value === 'all' ? 'all' : scope.value === 'team' ? 'team' : 'self';
+      cfg = saveLocalJerseys(cfg);
+      render();
+    };
+    swap.onclick = function () {
+      var previousRed = cfg.red;
+      cfg.red = cfg.blue;
+      cfg.blue = previousRed;
+      cfg = saveLocalJerseys(cfg);
+      render();
+      setStatus(t('jersey_swap_ok'), true);
+    };
+
+    wrap.appendChild(head);
+    wrap.appendChild(grid);
+    wrap.appendChild(status);
+    render();
+    return wrap;
+  }
+
   var BUILDERS = {
     media: function (p) {
       p.appendChild(list(null, [
@@ -6092,6 +6601,9 @@
       p.appendChild(list(null, rows));
     },
     look: function (p) {
+      var localJerseyPanel = buildLocalJerseyPanel();
+      p.appendChild(localJerseyPanel);
+      reg('look', t('jersey_local_sec'), 'camiseta camisa jersey colors red blue local', localJerseyPanel);
       var themesBlock = $('div', 'list-block');
       themesBlock.appendChild($('div', 'section-title', t('look_themes_sec')));
       lookThemesMount = $('div', 'look-themes-wrap');
