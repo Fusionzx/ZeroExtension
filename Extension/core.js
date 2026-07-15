@@ -8,6 +8,119 @@ if (typeof console !== 'undefined') {
     console.info = __hxdNoop;
 }
 
+(function keepHaxballUiAtNativeSize() {
+    var isTopFrame = window.self === window.top;
+    var lastFactor = 1;
+
+    function installStyle() {
+        if (!document.head || document.getElementById('hxd-browser-zoom-compensation')) return false;
+        var style = document.createElement('style');
+        style.id = 'hxd-browser-zoom-compensation';
+        if (isTopFrame) {
+            style.textContent =
+                'html[data-hxd-zero-zoom="1"] {' +
+                    'overflow:hidden !important;' +
+                '}' +
+                'html[data-hxd-zero-zoom="1"] #custom-titlebar,' +
+                'html[data-hxd-zero-zoom="1"] #custom-header,' +
+                'html[data-hxd-zero-zoom="1"] #custom-header-spacer {' +
+                    'zoom:var(--hxd-page-zoom-inverse,1) !important;' +
+                    'width:var(--hxd-page-zoom-vw,100vw) !important;' +
+                    'min-width:0 !important;' +
+                    'right:auto !important;' +
+                '}' +
+                'html[data-hxd-zero-zoom="1"] #show-header-btn {' +
+                    'zoom:var(--hxd-page-zoom-inverse,1) !important;' +
+                '}';
+        } else {
+            style.textContent =
+                'html[data-hxd-zero-zoom="1"] {' +
+                    'overflow:hidden !important;' +
+                '}' +
+                'html[data-hxd-zero-zoom="1"] body > div > .game-view,' +
+                'html[data-hxd-zero-zoom="1"] body > div > .roomlist-view,' +
+                'html[data-hxd-zero-zoom="1"] body > div > .choose-nickname-view,' +
+                'html[data-hxd-zero-zoom="1"] body > div > .connecting-view,' +
+                'html[data-hxd-zero-zoom="1"] body > div > .create-room-view,' +
+                'html[data-hxd-zero-zoom="1"] body > div > .room-password-view,' +
+                'html[data-hxd-zero-zoom="1"] body > div > .disconnected-view {' +
+                    'zoom:var(--hxd-page-zoom-inverse,1) !important;' +
+                    'width:var(--hxd-page-zoom-vw,100vw) !important;' +
+                    'height:var(--hxd-page-zoom-vh,100vh) !important;' +
+                    'min-width:0 !important;' +
+                    'min-height:0 !important;' +
+                '}';
+        }
+        document.head.appendChild(style);
+        return true;
+    }
+
+    function zeroZoomEnabled() {
+        try {
+            return localStorage.getItem('hax_zero_zoom') !== '0';
+        } catch (e) {
+            return true;
+        }
+    }
+
+    function applyZoomFactor(value) {
+        var factor = Number(value);
+        if (!isFinite(factor) || factor <= 0) factor = 1;
+        lastFactor = factor;
+        var enabled = zeroZoomEnabled();
+        var root = document.documentElement;
+        if (!root) return;
+        root.style.setProperty('--hxd-page-zoom', String(factor));
+        root.style.setProperty('--hxd-page-zoom-inverse', String(1 / factor));
+        root.style.setProperty('--hxd-page-zoom-percent', String(factor * 100) + '%');
+        root.style.setProperty('--hxd-page-zoom-inverse-percent', String(100 / factor) + '%');
+        root.style.setProperty('--hxd-page-zoom-vw', String(factor * 100) + 'vw');
+        root.style.setProperty('--hxd-page-zoom-vh', String(factor * 100) + 'vh');
+        root.setAttribute('data-hxd-page-zoom-factor', String(factor));
+        root.setAttribute('data-hxd-zero-zoom', enabled ? '1' : '0');
+        try {
+            window.dispatchEvent(new CustomEvent('hxd-browser-zoom-applied', {
+                detail: { factor: factor, enabled: enabled }
+            }));
+        } catch (eEvent) {}
+    }
+
+    function requestZoomFactor() {
+        try {
+            if (!chrome || !chrome.runtime || !chrome.runtime.sendMessage) return;
+            chrome.runtime.sendMessage({ action: 'getPageZoom' }, function (response) {
+                if (!chrome.runtime.lastError && response && response.success) {
+                    applyZoomFactor(response.zoomFactor);
+                }
+            });
+        } catch (eRequest) {}
+    }
+
+    if (!installStyle()) {
+        var observer = new MutationObserver(function () {
+            if (installStyle()) observer.disconnect();
+        });
+        observer.observe(document.documentElement || document, { childList: true, subtree: true });
+    }
+
+    try {
+        chrome.runtime.onMessage.addListener(function (request) {
+            if (!request || request.action !== 'hxdPageZoomChanged') return false;
+            applyZoomFactor(request.zoomFactor);
+            return false;
+        });
+    } catch (eListen) {}
+
+    window.addEventListener('storage', function (event) {
+        if (event && event.key === 'hax_zero_zoom') applyZoomFactor(lastFactor);
+    });
+    window.addEventListener('hxd-zero-zoom-setting-changed', function () {
+        applyZoomFactor(lastFactor);
+    });
+
+    requestZoomFactor();
+})();
+
 var Injector = {
     waitForHead: function() {
         return new Promise(function(resolve) {

@@ -6441,6 +6441,173 @@
             }
         }
     }
+    var __hxdMyJerseyStorageKey = "hxd_camisetame_v1";
+    var __hxdMyJerseyCacheRaw = null;
+    var __hxdMyJerseyCache = null;
+    function __hxdDefaultMyJerseyConfig() {
+        return {
+            enabled: !1,
+            scope: "self",
+            red: null,
+            blue: null
+        }
+    }
+    function __hxdNormalizeJerseyHex(value) {
+        value = String(value == null ? "" : value).replace(/^#/, "").toUpperCase();
+        return /^[0-9A-F]{6}$/.test(value) ? value : null
+    }
+    function __hxdNormalizeMyJerseyStyle(value) {
+        if (!value || "object" != typeof value)
+            return null;
+        var angle = R.parseInt(value.angle)
+          , text = __hxdNormalizeJerseyHex(value.text)
+          , stripes = Array.isArray(value.stripes) ? value.stripes.slice(0, 3) : [];
+        if (null == angle || 0 > angle || 360 < angle || null == text || 1 > stripes.length)
+            return null;
+        for (var parsed = [], i = 0; i < stripes.length; i++) {
+            var color = __hxdNormalizeJerseyHex(stripes[i]);
+            if (null == color)
+                return null;
+            parsed.push(color)
+        }
+        return {
+            angle: angle,
+            text: text,
+            stripes: parsed
+        }
+    }
+    function __hxdLoadMyJerseyConfig() {
+        var raw = null;
+        try {
+            raw = window.localStorage.getItem(__hxdMyJerseyStorageKey)
+        } catch (e) {}
+        if (raw === __hxdMyJerseyCacheRaw && null != __hxdMyJerseyCache)
+            return __hxdMyJerseyCache;
+        var config = __hxdDefaultMyJerseyConfig();
+        try {
+            var stored = raw ? JSON.parse(raw) : null;
+            stored && "object" == typeof stored && (config.enabled = !1 !== stored.enabled,
+            config.scope = "team" == stored.scope ? "team" : "self",
+            config.red = __hxdNormalizeMyJerseyStyle(stored.red),
+            config.blue = __hxdNormalizeMyJerseyStyle(stored.blue))
+        } catch (eParse) {}
+        __hxdMyJerseyCacheRaw = raw;
+        __hxdMyJerseyCache = config;
+        return config
+    }
+    function __hxdSaveMyJerseyConfig(config) {
+        var clean = __hxdDefaultMyJerseyConfig();
+        clean.enabled = !1 !== config.enabled;
+        clean.scope = "team" == config.scope ? "team" : "self";
+        clean.red = __hxdNormalizeMyJerseyStyle(config.red);
+        clean.blue = __hxdNormalizeMyJerseyStyle(config.blue);
+        var raw = JSON.stringify(clean);
+        try {
+            window.localStorage.setItem(__hxdMyJerseyStorageKey, raw)
+        } catch (e) {}
+        __hxdMyJerseyCacheRaw = raw;
+        __hxdMyJerseyCache = clean;
+        return clean
+    }
+    function __hxdFindLocalPlayer(players) {
+        if (!Array.isArray(players))
+            return null;
+        for (var i = 0; i < players.length; i++)
+            if (__hxdIsLocalPlayerId(players[i] && players[i].Z))
+                return players[i];
+        return null
+    }
+    function __hxdGetMyJerseyForPlayer(player, roomState) {
+        if (!player || !player.fa)
+            return null;
+        var config = __hxdLoadMyJerseyConfig();
+        if (!config.enabled)
+            return null;
+        var side = player.fa === u.ia ? "red" : player.fa === u.Da ? "blue" : null;
+        if (null == side || null == config[side])
+            return null;
+        if ("team" == config.scope) {
+            var localPlayer = __hxdFindLocalPlayer(roomState && roomState.K);
+            if (!localPlayer || localPlayer.fa !== player.fa || localPlayer.fa === u.Oa)
+                return null
+        } else if (!__hxdIsLocalPlayerId(player.Z))
+            return null;
+        var style = config[side]
+          , result = new ta;
+        result.sd = 256 * style.angle / 360 | 0;
+        result.pd = R.parseInt("0x" + style.text);
+        result.hb = [];
+        for (var i = 0; i < style.stripes.length; i++)
+            result.hb.push(R.parseInt("0x" + style.stripes[i]));
+        return result
+    }
+    function __hxdSetMyJerseyFromCommand(args) {
+        var config = __hxdLoadMyJerseyConfig()
+          , index = 1
+          , first = String(args[index] || "").toLowerCase();
+        if ("off" == first) {
+            config.enabled = !1;
+            __hxdSaveMyJerseyConfig(config);
+            return "Camisetame desactivada"
+        }
+        if ("on" == first) {
+            if (null == config.red && null == config.blue)
+                throw v.C("Configura una camiseta antes de activarla");
+            config.enabled = !0;
+            __hxdSaveMyJerseyConfig(config);
+            return "Camisetame activada (" + ("team" == config.scope ? "todo tu equipo" : "solo vos") + ")"
+        }
+        if ("scope" == first) {
+            index++;
+            first = String(args[index] || "").toLowerCase()
+        }
+        if (-1 < ["team", "time", "equipo", "todos"].indexOf(first))
+            config.scope = "team",
+            index++;
+        else if (-1 < ["self", "solo", "me", "eu", "vos"].indexOf(first))
+            config.scope = "self",
+            index++;
+        if (index >= args.length) {
+            __hxdSaveMyJerseyConfig(config);
+            return "Camisetame: " + ("team" == config.scope ? "todo tu equipo" : "solo vos")
+        }
+        var side = String(args[index++] || "").toLowerCase();
+        if ("red" != side && "blue" != side)
+            throw v.C('Usa "red" o "blue"');
+        if ("clear" == String(args[index] || "").toLowerCase()) {
+            config[side] = null;
+            config.enabled = null != config.red || null != config.blue;
+            __hxdSaveMyJerseyConfig(config);
+            return "Camisetame " + side + " restaurada"
+        }
+        if (index + 2 >= args.length)
+            throw v.C("Uso: /camisetame [solo|team] red|blue <angulo> <textoHex> <rayas...>");
+        var angle = R.parseInt(args[index++])
+          , text = __hxdNormalizeJerseyHex(args[index++])
+          , stripes = [];
+        if (null == angle || 0 > angle || 360 < angle)
+            throw v.C("El angulo debe estar entre 0 y 360");
+        if (null == text)
+            throw v.C("El color del texto debe tener 6 digitos hexadecimales");
+        for (; index < args.length && 3 > stripes.length; ) {
+            var stripe = __hxdNormalizeJerseyHex(args[index++]);
+            if (null == stripe)
+                throw v.C("Cada raya debe tener 6 digitos hexadecimales");
+            stripes.push(stripe)
+        }
+        if (1 > stripes.length)
+            throw v.C("Agrega al menos un color de camiseta");
+        if (index < args.length)
+            throw v.C("Se permiten hasta 3 colores de camiseta");
+        config[side] = {
+            angle: angle,
+            text: text,
+            stripes: stripes
+        };
+        config.enabled = !0;
+        config = __hxdSaveMyJerseyConfig(config);
+        return "Camisetame " + side + " aplicada para " + ("team" == config.scope ? "todo tu equipo" : "solo vos")
+    }
     class Db {
         constructor() {
             this.mg = !1;
@@ -6477,7 +6644,7 @@
         }
         A(a, b) {
             if (null != a.I) {
-                let c = m.j.Vm.v() ? b.mb[a.fa.ba] : a.fa.Um
+                let c = __hxdGetMyJerseyForPlayer(a, b) || (m.j.Vm.v() ? b.mb[a.fa.ba] : a.fa.Um)
                   , d = null != a.Sd ? a.Sd : a.Zb
                   , e = m.j.Km.v() && null != d;
                 if (!Db.so(this.mb, c) || !e && a.Nb != this.Ch || e && this.Zf != d)
@@ -7383,6 +7550,14 @@
                 try {
                     d = bc.Mq(a),
                     this.za.ta(d)
+                } catch (g) {
+                    a = v.Mb(g).Fb(),
+                    "string" == typeof a && this.da(a)
+                }
+                break;
+            case "camisetame":
+                try {
+                    this.da(__hxdSetMyJerseyFromCommand(a))
                 } catch (g) {
                     a = v.Mb(g).Fb(),
                     "string" == typeof a && this.da(a)

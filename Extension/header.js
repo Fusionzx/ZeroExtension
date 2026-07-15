@@ -980,6 +980,12 @@
 
         function updateLayout(navbarVisible) {
             var topPx = navbarVisible ? contentTopPx : titlebarPx;
+            try {
+                if (document.documentElement.getAttribute('data-hxd-zero-zoom') === '1') {
+                    var browserZoom = parseFloat(document.documentElement.getAttribute('data-hxd-page-zoom-factor') || '1');
+                    if (isFinite(browserZoom) && browserZoom > 0) topPx /= browserZoom;
+                }
+            } catch (eZoomLayout) {}
             var top = topPx + 'px';
             var height = 'calc(100vh - ' + topPx + 'px)';
             var padding = topPx + 'px';
@@ -1008,6 +1014,10 @@
                 }
             }
         }
+
+        window.addEventListener('hxd-browser-zoom-applied', function() {
+            updateLayout(header.style.display !== 'none');
+        });
 
         function hideHeader() {
             header.style.display = 'none';

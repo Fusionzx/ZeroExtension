@@ -3235,6 +3235,11 @@
                         en = localStorage.getItem('hax_zero_zoom') !== '0';
                     } catch (e2) {}
                     hxdNotifyZeroZoomToMain(en);
+                    try {
+                        window.dispatchEvent(new CustomEvent('hxd-zero-zoom-setting-changed', {
+                            detail: { enabled: en }
+                        }));
+                    } catch (eDispatchZoom) {}
                 }
             );
             zoomRow.setAttribute('data-hook', 'hax-row-zero-zoom');
