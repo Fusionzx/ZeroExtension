@@ -313,8 +313,13 @@
             iframe.id = 'hxd-settings-preview-frame';
             iframe.setAttribute('title', t('Configuración'));
             iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms');
+            iframe.setAttribute('tabindex', '-1');
             iframe.onload = function () {
                 pushSettingsPreviewContext(doc, true);
+                try {
+                    iframe.focus();
+                    if (iframe.contentWindow) iframe.contentWindow.focus();
+                } catch (eFocusPreview) {}
                 setTimeout(function () { pushSettingsPreviewContext(doc, true); }, 80);
                 setTimeout(function () { pushSettingsPreviewContext(doc, true); }, 250);
             };
@@ -4560,6 +4565,11 @@
                     settingsCloseTimer = setTimeout(function () {
                         settingsCloseTimer = null;
                         if (!document.querySelector('.dialog.settings-view')) {
+                            var locationRoundTrip = !!document.querySelector('.dialog.change-location-view');
+                            try {
+                                locationRoundTrip = locationRoundTrip || localStorage.getItem('hxd_settings_return_tab') === 'misc';
+                            } catch (eLocationRoundTrip) {}
+                            if (locationRoundTrip) return;
                             setSettingsPopupOpen(document, false);
                             settingsWasOpen = false;
                             clearSettingsOpenedFromRoomlist(document);

@@ -2887,16 +2887,6 @@
     } catch (eNotifyAv) {}
   }
 
-  document.addEventListener('keydown', function (e) {
-    if (!e || (e.key !== 'Escape' && e.keyCode !== 27)) return;
-    e.preventDefault();
-    e.stopPropagation();
-    try {
-      var pw = Bridge.parentWin();
-      if (pw) pw.dispatchEvent(new pw.CustomEvent('hxd-close-settings-request'));
-    } catch (eCloseSettings) {}
-  }, true);
-
   function getAvatarLocalServerOrigin() {
     try {
       var pd = Bridge.parentDoc();
