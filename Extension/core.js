@@ -39,6 +39,7 @@ if (typeof console !== 'undefined') {
                 '}' +
                 'html[data-hxd-zero-zoom="1"] body > div > .game-view,' +
                 'html[data-hxd-zero-zoom="1"] body > div > .roomlist-view,' +
+                'html[data-hxd-zero-zoom="1"] body > div > .view-wrapper,' +
                 'html[data-hxd-zero-zoom="1"] body > div > .choose-nickname-view,' +
                 'html[data-hxd-zero-zoom="1"] body > div > .connecting-view,' +
                 'html[data-hxd-zero-zoom="1"] body > div > .create-room-view,' +
@@ -50,13 +51,11 @@ if (typeof console !== 'undefined') {
                     'min-width:0 !important;' +
                     'min-height:0 !important;' +
                 '}' +
-                'html[data-hxd-zero-zoom="1"] .dialog.settings-view {' +
-                    'zoom:var(--hxd-page-zoom-inverse,1) !important;' +
-                '}' +
-                'html[data-hxd-zero-zoom="1"] .dialog.settings-view #hxd-settings-preview-frame {' +
-                    'width:calc(var(--hxd-page-zoom-squared,1) * 100%) !important;' +
-                    'height:calc(var(--hxd-page-zoom-squared,1) * 100%) !important;' +
-                    'zoom:var(--hxd-page-zoom-squared,1) !important;' +
+                'html[data-hxd-zero-zoom="1"] #hxd-settings-preview-frame {' +
+                    'width:var(--hxd-page-zoom-percent,100%) !important;' +
+                    'height:var(--hxd-page-zoom-percent,100%) !important;' +
+                    'transform:scale(var(--hxd-page-zoom-inverse,1)) !important;' +
+                    'transform-origin:0 0 !important;' +
                 '}';
         }
         document.head.appendChild(style);
@@ -84,7 +83,6 @@ if (typeof console !== 'undefined') {
         root.style.setProperty('--hxd-page-zoom-inverse-percent', String(100 / factor) + '%');
         root.style.setProperty('--hxd-page-zoom-vw', String(factor * 100) + 'vw');
         root.style.setProperty('--hxd-page-zoom-vh', String(factor * 100) + 'vh');
-        root.style.setProperty('--hxd-page-zoom-squared', String(factor * factor));
         root.setAttribute('data-hxd-page-zoom-factor', String(factor));
         root.setAttribute('data-hxd-zero-zoom', enabled ? '1' : '0');
         try {
@@ -222,8 +220,16 @@ var Injector = {
     /** Mismo shell que settings-preview y roomlist-preview (ancho/alto del diálogo). */
     getPreviewShellSize: function(win) {
         win = win || window;
-        var vh = win.innerHeight || 800;
-        var vw = win.innerWidth || 1200;
+        var factor = 1;
+        try {
+            var root = win.document && win.document.documentElement;
+            if (root && root.getAttribute('data-hxd-zero-zoom') === '1') {
+                factor = parseFloat(root.getAttribute('data-hxd-page-zoom-factor') || '1');
+                if (!isFinite(factor) || factor <= 0) factor = 1;
+            }
+        } catch (eZoom) {}
+        var vh = (win.innerHeight || 800) * factor;
+        var vw = (win.innerWidth || 1200) * factor;
         return {
             width: Math.min(1100, Math.max(720, vw - 48)),
             height: Math.min(820, Math.max(520, Math.floor(vh * 0.92)))
