@@ -31,10 +31,17 @@
             for (var ni = 0; ni < nodes.length; ni++) {
                 var n = nodes[ni];
                 if (!n || n.nodeType !== 1) continue;
-                if (n.tagName === 'IFRAME') {
-                    // Remove se for ad iframe (src contendo ad domain)
-                    if (n.src && /cpmstar|doubleclick|googlesyndication/i.test(n.src)) {
-                        n.remove();
+                var candidates = [];
+                if (n.matches && n.matches('iframe, img, a')) candidates.push(n);
+                if (n.querySelectorAll) {
+                    var nested = n.querySelectorAll('iframe, img, a');
+                    for (var ci = 0; ci < nested.length; ci++) candidates.push(nested[ci]);
+                }
+                for (var ai = 0; ai < candidates.length; ai++) {
+                    var candidate = candidates[ai];
+                    var adUrl = String(candidate.src || candidate.href || '');
+                    if (/cpmstar|doubleclick|googlesyndication|googleadservices|moatads/i.test(adUrl)) {
+                        candidate.remove();
                     }
                 }
             }

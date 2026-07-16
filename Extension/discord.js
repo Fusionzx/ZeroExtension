@@ -12,14 +12,30 @@
         return String(value || '').replace(/\u200B/g, '').trim();
     }
 
+    function isDefaultPlayerName(value) {
+        return cleanName(value).toLowerCase() === 'player';
+    }
+
+    function clearDefaultPlayerName() {
+        try {
+            var keys = ['haxball_nick', 'player_name', 'haxclient_my_nick'];
+            for (var i = 0; i < keys.length; i++) {
+                if (isDefaultPlayerName(localStorage.getItem(keys[i]))) {
+                    localStorage.removeItem(keys[i]);
+                }
+            }
+        } catch (e) {}
+    }
+
     function getStoredGameNick() {
         try {
-            return cleanName(
+            var nick = cleanName(
                 localStorage.getItem('haxball_nick') ||
                 localStorage.getItem('player_name') ||
                 localStorage.getItem('haxclient_my_nick') ||
                 ''
             );
+            return isDefaultPlayerName(nick) ? '' : nick;
         } catch (e) {
             return '';
         }
@@ -68,7 +84,7 @@
 
     function storeNick(nick) {
         nick = cleanName(nick);
-        if (!nick) return;
+        if (!nick || isDefaultPlayerName(nick)) return;
         try {
             localStorage.setItem('haxball_nick', nick);
             localStorage.setItem('player_name', nick);
@@ -86,6 +102,13 @@
         if (!nickInput || !okBtn) return;
 
         dialog.dataset.hxdLocalNickBound = '1';
+        if (isDefaultPlayerName(nickInput.value)) {
+            try {
+                nickInput.value = '';
+                nickInput.dispatchEvent(new Event('input', { bubbles: true }));
+                nickInput.dispatchEvent(new Event('change', { bubbles: true }));
+            } catch (eClear) {}
+        }
         var savedNick = getStoredGameNick();
         if (savedNick && !cleanName(nickInput.value)) {
             try {
@@ -139,6 +162,7 @@
     function init() {
         if (isLoaded) return;
         isLoaded = true;
+        clearDefaultPlayerName();
         publishLocalUser();
         userStatusReady = true;
         if (document.body) watchNickDialog();

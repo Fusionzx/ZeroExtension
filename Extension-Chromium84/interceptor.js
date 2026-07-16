@@ -25,6 +25,26 @@
             { urls: ['*://*.haxball.com/*game-min.js*', '*://haxball.com/*game-min.js*'] },
             ['blocking']
         );
+
+        chrome.webRequest.onBeforeRequest.addListener(
+            function () {
+                return { cancel: true };
+            },
+            {
+                urls: [
+                    '*://*.cpmstar.com/*',
+                    '*://*.doubleclick.net/*',
+                    '*://*.googlesyndication.com/*',
+                    '*://*.googleadservices.com/*',
+                    '*://adservice.google.com/*',
+                    '*://*.moatads.com/*',
+                    '*://*.pubmatic.com/*',
+                    '*://*.rubiconproject.com/*',
+                    '*://*.openx.net/*'
+                ]
+            },
+            ['blocking']
+        );
     }
 
     function sendSafe(sendResponse, payload) {
