@@ -1,0 +1,1501 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HaxBall Zero — Welcome Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --theme-bg-primary: #141414;
+      --theme-bg-secondary: #1a1a1a;
+      --theme-bg-tertiary: #272727;
+      --theme-bg-hover: #333;
+      --theme-bg-selected: #222;
+      --theme-border: #232323;
+      --theme-border-light: #333;
+      --theme-text-primary: #fff;
+      --theme-text-secondary: #888;
+      --theme-text-muted: #666;
+      --theme-scrollbar-track: #1a1a1a;
+      --theme-scrollbar-thumb: #555;
+      --theme-scrollbar-thumb-hover: #666;
+      --online: #22c55e;
+      --fav: #f59e0b;
+      --pin: #3b82f6;
+      --shadow-nav: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
+      --shadow-soft: 0 20px 60px rgba(0, 0, 0, 0.35);
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: Inter, system-ui, sans-serif;
+      background: var(--theme-bg-primary);
+      color: var(--theme-text-primary);
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    .scene {
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--theme-bg-primary);
+      background-image:
+        radial-gradient(ellipse 80% 60% at 50% 100%, color-mix(in srgb, var(--theme-border-light) 35%, transparent), transparent 55%),
+        radial-gradient(ellipse 50% 40% at 80% 20%, color-mix(in srgb, var(--theme-text-muted) 18%, transparent), transparent 50%),
+        linear-gradient(180deg, var(--theme-bg-tertiary) 0%, var(--theme-bg-primary) 55%, var(--theme-bg-primary) 100%);
+    }
+
+    html[data-app-bg-image="1"] .scene {
+      background-color: var(--theme-bg-primary);
+      background-image: var(--theme-app-background-image, none);
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    .page {
+      height: 100%;
+      max-height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 24px 36px;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    /* ─── Navbar ─── */
+    .nav-shell {
+      width: min(1040px, 100%);
+      position: relative;
+      flex-shrink: 0;
+      margin-bottom: 20px;
+    }
+
+    .navbar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 14px;
+      background: var(--theme-bg-secondary);
+      border: 1px solid var(--theme-border);
+      border-radius: 14px;
+      box-shadow: var(--shadow-nav);
+    }
+
+    .nav-left, .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .nav-center {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      min-width: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .nav-center::-webkit-scrollbar { display: none; }
+
+    .nav-circle {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid var(--theme-border);
+      background: var(--theme-bg-tertiary);
+      color: var(--theme-text-primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.12s;
+      outline: none;
+      flex-shrink: 0;
+    }
+
+    .nav-circle:hover {
+      background: var(--theme-bg-hover);
+      border-color: var(--theme-border-light);
+    }
+
+    .nav-circle:active { transform: scale(0.96); }
+    .nav-circle svg { width: 18px; height: 18px; display: block; }
+
+    .nav-circle.logo {
+      cursor: default;
+      background: linear-gradient(135deg, #7cc4ff, #3b82f6);
+      border-color: transparent;
+      color: #07111f;
+    }
+
+    .nav-circle.logo:hover { background: linear-gradient(135deg, #7cc4ff, #3b82f6); }
+    .nav-circle.logo svg { width: 22px; height: 22px; }
+
+    .tab-bar {
+      display: inline-flex;
+      background: var(--theme-bg-primary);
+      border: 1px solid var(--theme-border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .tab {
+      padding: 11px 18px;
+      border: none;
+      background: transparent;
+      color: var(--theme-text-primary);
+      font: inherit;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.12s ease, color 0.12s ease;
+    }
+
+    .tab:hover:not(.active) { background: var(--theme-bg-hover); }
+
+    .tab.active {
+      background: var(--theme-text-primary);
+      color: var(--theme-bg-primary);
+    }
+
+    .tab.tab--pro.active {
+      background: linear-gradient(135deg, #ffd76a, #ffb347);
+      color: #1a1200;
+    }
+
+    .nav-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0 12px;
+      height: 40px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      color: #07111f;
+      background: linear-gradient(135deg, #7cc4ff, #3b82f6);
+      flex-shrink: 0;
+    }
+
+    /* ─── Content card ─── */
+    .content-card {
+      width: min(1040px, 100%);
+      flex: 1;
+      min-height: 0;
+      background: var(--theme-bg-secondary);
+      border: 1px solid var(--theme-border);
+      border-radius: 16px;
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .content-inner {
+      flex: 1;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 32px 36px 28px;
+      scrollbar-gutter: stable;
+      scrollbar-width: thin;
+      scrollbar-color: var(--theme-scrollbar-thumb) transparent;
+    }
+
+    .content-inner::-webkit-scrollbar { width: 7px; }
+    .content-inner::-webkit-scrollbar-track { background: transparent; margin: 10px 0; }
+    .content-inner::-webkit-scrollbar-thumb {
+      background: var(--theme-scrollbar-thumb);
+      border-radius: 99px;
+      border: 2px solid var(--theme-bg-secondary);
+    }
+    .content-inner::-webkit-scrollbar-thumb:hover { background: var(--theme-scrollbar-thumb-hover); }
+
+    .panel { display: none; }
+    .panel.active { display: block; animation: panelIn 0.22s ease; }
+
+    @keyframes panelIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    .panel h2 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--theme-text-primary);
+      margin-bottom: 6px;
+    }
+
+    .panel h2 .v {
+      background: linear-gradient(135deg, #7cc4ff, #3b82f6);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .panel .lead {
+      font-size: 14px;
+      color: var(--theme-text-secondary);
+      line-height: 1.5;
+      margin-bottom: 24px;
+      max-width: 560px;
+    }
+
+    .list-block + .list-block { margin-top: 22px; }
+
+    .lang-bar-wrap {
+      border: 1px solid var(--theme-border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--theme-bg-primary);
+      padding: 12px;
+    }
+
+    .lang-bar {
+      width: 100%;
+      display: flex;
+    }
+
+    .lang-bar .tab {
+      flex: 1;
+      justify-content: center;
+      padding: 11px 12px;
+    }
+
+    .lang-bar .tab.active {
+      background: var(--theme-text-primary);
+      color: var(--theme-bg-primary);
+    }
+
+    /* ─── Sections / lists ─── */
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--theme-text-muted);
+      margin: 0 0 12px;
+    }
+
+    .list {
+      border: 1px solid var(--theme-border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--theme-bg-primary);
+    }
+
+    .change-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 15px 16px;
+      border-bottom: 1px solid var(--theme-border);
+    }
+
+    .change-row:last-child { border-bottom: none; }
+
+    button.change-row--link {
+      width: 100%;
+      border: none;
+      background: transparent;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+
+    button.change-row--link:hover { background: var(--theme-bg-hover); }
+
+    .change-icon.is-discord {
+      background: color-mix(in srgb, #5865F2 22%, var(--theme-bg-tertiary));
+      border-color: color-mix(in srgb, #5865F2 50%, transparent);
+      color: #aeb4ff;
+    }
+
+    .change-icon {
+      flex-shrink: 0;
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--theme-bg-tertiary);
+      border: 1px solid var(--theme-border-light);
+      color: var(--theme-text-primary);
+    }
+
+    .change-icon svg { width: 19px; height: 19px; display: block; }
+
+    .change-icon.is-blue {
+      background: color-mix(in srgb, var(--pin) 16%, var(--theme-bg-tertiary));
+      border-color: color-mix(in srgb, var(--pin) 45%, transparent);
+      color: #9cc7ff;
+    }
+
+    .change-icon.is-red {
+      background: color-mix(in srgb, #ef4444 16%, var(--theme-bg-tertiary));
+      border-color: color-mix(in srgb, #ef4444 45%, transparent);
+      color: #ff9a9a;
+    }
+
+    .change-icon.is-green {
+      background: color-mix(in srgb, var(--online) 16%, var(--theme-bg-tertiary));
+      border-color: color-mix(in srgb, var(--online) 45%, transparent);
+      color: #86e6a8;
+    }
+
+    .change-icon.is-gold {
+      background: linear-gradient(135deg, color-mix(in srgb, #ffd76a 26%, var(--theme-bg-tertiary)), color-mix(in srgb, #ffb347 18%, var(--theme-bg-tertiary)));
+      border-color: color-mix(in srgb, #ffb347 50%, transparent);
+      color: #ffd98a;
+    }
+
+    .change-text { min-width: 0; flex: 1; }
+
+    .change-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--theme-text-primary);
+      margin-bottom: 3px;
+    }
+
+    .change-desc {
+      font-size: 12.5px;
+      color: var(--theme-text-secondary);
+      line-height: 1.5;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      vertical-align: middle;
+    }
+
+    .tag--new { color: #07210f; background: linear-gradient(135deg, #6ee7a0, #22c55e); }
+    .tag--pro { color: #1a1200; background: linear-gradient(135deg, #ffd76a, #ffb347); }
+    .tag--improved { color: #07111f; background: linear-gradient(135deg, #7cc4ff, #3b82f6); }
+
+    .pro-tag {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #1a1200;
+      background: linear-gradient(135deg, #ffd76a, #ffb347);
+      vertical-align: middle;
+    }
+
+    /* Discord + actions */
+    .btn-line {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .btn {
+      padding: 11px 20px;
+      border-radius: 8px;
+      border: 1px solid var(--theme-border);
+      background: var(--theme-bg-tertiary);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--theme-text-primary);
+      transition: background 0.12s, border-color 0.12s, transform 0.1s;
+      outline: none;
+    }
+
+    .btn:hover { background: var(--theme-bg-hover); }
+    .btn:active { transform: scale(0.98); }
+
+    .btn.discord { background: #5865F2; border-color: #5865F2; color: #fff; }
+    .btn.discord:hover { background: #4752C4; }
+
+    .btn.dark {
+      background: var(--theme-text-primary);
+      color: var(--theme-bg-primary);
+      border-color: var(--theme-text-primary);
+    }
+
+    .btn.dark:hover { background: color-mix(in srgb, var(--theme-text-primary) 88%, var(--theme-bg-primary)); }
+
+    /* ─── Footer ─── */
+    .card-footer {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 32px 18px;
+      border-top: 1px solid var(--theme-border);
+      background: var(--theme-bg-secondary);
+    }
+
+    .dots {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .dot-step {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--theme-border-light);
+      transition: background 0.18s, width 0.18s;
+    }
+
+    .dot-step.active { width: 20px; border-radius: 99px; background: var(--theme-text-primary); }
+
+    .footer-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+
+    .card-footer button.nav-btn {
+      border: 1px solid var(--theme-border);
+      background: var(--theme-bg-tertiary);
+      color: var(--theme-text-primary);
+      border-radius: 8px;
+      padding: 9px 16px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+
+    .card-footer button.nav-btn:hover { background: var(--theme-bg-hover); }
+
+    .card-footer button.nav-btn.primary {
+      background: var(--theme-text-primary);
+      color: var(--theme-bg-primary);
+      border-color: var(--theme-text-primary);
+    }
+
+    .card-footer button.nav-btn.primary:hover { opacity: 0.92; }
+
+    .card-footer button.nav-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .card-footer button.nav-btn.secondary {
+      background: transparent;
+      color: var(--theme-text-secondary);
+    }
+
+    .card-footer button.nav-btn.secondary:hover {
+      background: var(--theme-bg-hover);
+      color: var(--theme-text-primary);
+    }
+
+    .footer-actions .nav-btn[hidden] { display: none; }
+
+    .dev-credits {
+      padding: 14px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--theme-border);
+      background: var(--theme-bg-primary);
+    }
+
+    .dev-credits-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--theme-text-muted);
+      margin-bottom: 8px;
+    }
+
+    .dev-credits-links {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px 10px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .dev-credits-links a {
+      color: #7cc4ff;
+      text-decoration: none;
+      transition: color 0.12s;
+    }
+
+    .dev-credits-links a:hover { color: #fff; text-decoration: underline; }
+
+    .dev-credits-links .sep { color: var(--theme-text-muted); font-weight: 500; }
+
+    .choice-prompt {
+      margin-top: 20px;
+      padding: 16px 18px;
+      border-radius: 10px;
+      border: 1px solid var(--theme-border);
+      background: var(--theme-bg-primary);
+    }
+
+    .choice-prompt p {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--theme-text-primary);
+      line-height: 1.45;
+    }
+
+    .dev-badge {
+      position: fixed;
+      bottom: 10px;
+      right: 12px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: var(--theme-bg-secondary);
+      border: 1px solid var(--theme-border);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--theme-text-muted);
+      pointer-events: none;
+      z-index: 120;
+    }
+
+    .dev-badge[hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <div class="scene">
+    <div class="page">
+      <div class="nav-shell">
+        <header class="navbar">
+          <div class="nav-left">
+            <div class="nav-circle logo" title="HaxBall Zero" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 3v18M3 12h18"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="nav-center">
+            <nav class="tab-bar" id="step-tabs" role="tablist"></nav>
+          </div>
+
+          <div class="nav-right">
+            <span class="nav-badge" data-i18n="version">v2.0</span>
+          </div>
+        </header>
+      </div>
+
+      <main class="content-card">
+        <div class="content-inner" id="panels">
+          <!-- Paso 1: Bienvenida -->
+          <section class="panel" data-step="0">
+            <h2><span data-i18n="welcomePre">Bienvenido a HaxBall Zero</span> <span class="v" data-i18n="versionBig">2.0</span></h2>
+            <p class="lead" data-i18n="introLead">Renovamos todo de cero. En unos pasos te mostramos lo más importante para que arranques con todo.</p>
+            <div class="list-block">
+              <div class="section-title" data-i18n="secStart">Para empezar</div>
+              <div class="list">
+                <div class="change-row">
+                  <div class="change-icon is-blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M20 6 9 17l-5-5"/>
+                    </svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title"><span data-i18n="start1t">Una experiencia renovada</span><span class="tag tag--new" data-i18n="badge">Novedades</span></div>
+                    <div class="change-desc" data-i18n="start1d">Nuevo diseño, interfaz más clara y todo más rápido para que jugar sea más cómodo.</div>
+                  </div>
+                </div>
+                <div class="change-row">
+                  <div class="change-icon is-green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <circle cx="12" cy="12" r="9"/>
+                      <path d="M12 8v4"/>
+                      <path d="M12 16h.01"/>
+                    </svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title" data-i18n="start2t">Tour rápido</div>
+                    <div class="change-desc" data-i18n="start2d">Te guiamos por lo esencial: novedades, funciones Pro y cómo empezar a jugar.</div>
+                  </div>
+                </div>
+                <div class="change-row">
+                  <div class="change-icon is-gold">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7-6.3-4.6L5.7 21l2.3-7-6-4.6h7.6z"/>
+                    </svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title" data-i18n="start3t">Hecho para vos</div>
+                    <div class="change-desc" data-i18n="start3d">Elegí tu idioma y seguí el tutorial a tu ritmo. Podés volver atrás cuando quieras.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="list-block">
+              <div class="section-title" data-i18n="langTitle">Elegí tu idioma</div>
+              <div class="lang-bar-wrap">
+                <div class="tab-bar lang-bar" id="lang-bar" role="radiogroup" aria-label="Idioma">
+                  <button type="button" class="tab lang-tab" data-lang="es" role="radio" aria-checked="true">Español</button>
+                  <button type="button" class="tab lang-tab" data-lang="en" role="radio" aria-checked="false">English</button>
+                  <button type="button" class="tab lang-tab" data-lang="pt" role="radio" aria-checked="false">Português</button>
+                </div>
+              </div>
+            </div>
+            <div class="list-block">
+              <div class="section-title" data-i18n="devSec">Desarrollo</div>
+              <div class="dev-credits">
+                <div class="dev-credits-label" data-i18n="devBy">Dev by @wxferro / @Puyiss</div>
+                <div class="dev-credits-links">
+                  <a href="https://github.com/wxferro" target="_blank" rel="noopener noreferrer">github.com/wxferro</a>
+                  <span class="sep">|</span>
+                  <a href="https://github.com/Puyiss" target="_blank" rel="noopener noreferrer">github.com/Puyiss</a>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Paso 2: Resumen general -->
+          <section class="panel" data-step="1">
+            <h2 data-i18n="overviewTitle">¿Qué hay de nuevo?</h2>
+            <p class="lead" data-i18n="overviewLead">Te presentamos HaxBall Zero 2.0: una introducción rápida a todo lo que cambió antes de profundizar.</p>
+            <div class="list-block">
+              <div class="section-title" data-i18n="overviewSec">Lo principal</div>
+              <div class="list">
+                <div class="change-row">
+                  <div class="change-icon is-blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="11" width="18" height="4" rx="1"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title" data-i18n="overview1t">Roomlist renovada</div>
+                    <div class="change-desc" data-i18n="overview1d">Nueva lista de salas con Todos, Pro y Favoritos, búsqueda, perfil y más.</div>
+                  </div>
+                </div>
+                <div class="change-row">
+                  <div class="change-icon is-green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title" data-i18n="overview2t">Configuración reorganizada</div>
+                    <div class="change-desc" data-i18n="overview2d">Media, Input, Perf, Multi, Chat, Look y Misc — todo más claro y ordenado.</div>
+                  </div>
+                </div>
+                <div class="change-row">
+                  <div class="change-icon is-red">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="7" y="12" width="4" height="4" rx="1"/><rect x="13" y="12" width="4" height="4" rx="1"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title" data-i18n="overview3t">Marcador, avatar y más</div>
+                    <div class="change-desc" data-i18n="overview3d">Nuevo marcador, avatar con imagen, temas, wallpaper y exportar config.</div>
+                  </div>
+                </div>
+                <div class="change-row">
+                  <div class="change-icon is-gold">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title" data-i18n="overview4t">Más estable</div>
+                    <div class="change-desc" data-i18n="overview4d">Corregimos bugs, crasheos y otros problemas reportados por la comunidad.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Paso 3: Roomlist — oferta -->
+          <section class="panel" data-step="2" data-offer="room">
+            <h2 data-i18n="roomTitle">Lista de salas</h2>
+            <p class="lead" data-i18n="roomIntroLead">Rediseñamos la roomlist por completo: encontrar salas, guardar favoritas y acceder a tu perfil es mucho más fácil.</p>
+            <div class="list-block">
+              <div class="section-title" data-i18n="roomIntroSec">En pocas palabras</div>
+              <div class="list">
+                <div class="change-row">
+                  <div class="change-icon is-blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="11" width="18" height="4" rx="1"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title" data-i18n="roomIntro1t">Todos · Pro · Favoritos</div>
+                    <div class="change-desc" data-i18n="roomIntro1d">Tres pestañas para navegar salas, ajustes Pro y tus favoritas.</div>
+                  </div>
+                </div>
+                <div class="change-row">
+                  <div class="change-icon is-green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title" data-i18n="roomIntro2t">Tu perfil</div>
+                    <div class="change-desc" data-i18n="roomIntro2d">Tocá tu avatar para ver horas jugadas, fecha de creación y racha de días.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="choice-prompt">
+              <p data-i18n="roomChoice">¿Querés conocer un poco más sobre la roomlist?</p>
+            </div>
+          </section>
+
+          <!-- Paso 4: Roomlist — detalle (opcional) -->
+          <section class="panel" data-step="3">
+            <h2 data-i18n="roomTitle">Lista de salas</h2>
+            <p class="lead" data-i18n="roomLead">Rediseñamos y actualizamos toda la roomlist para que encontrar y gestionar salas sea más rápido.</p>
+            <div class="list-block">
+              <div class="section-title" data-i18n="roomSecTabs">Pestañas</div>
+              <div class="list">
+                <div class="change-row">
+                  <div class="change-icon is-blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="11" width="18" height="4" rx="1"/><rect x="3" y="18" width="12" height="3" rx="1"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title"><span data-i18n="room1t">Todos</span><span class="tag tag--improved" data-i18n="tagImproved">Mejorado</span></div>
+                    <div class="change-desc" data-i18n="room1d">Todas las salas en un solo lugar. A la izquierda tenés búsqueda. Click derecho en una sala para añadir a favoritos o fijarla.</div>
+                  </div>
+                </div>
+                <div class="change-row">
+                  <div class="change-icon is-gold">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7-6.3-4.6L5.7 21l2.3-7-6-4.6h7.6z"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title"><span data-i18n="room2t">Pro</span><span class="tag tag--pro" data-i18n="tagPro">Pro</span></div>
+                    <div class="change-desc" data-i18n="room2d">Toda la configuración Pro: modificar tu perfil, colores, banner y sonidos personalizados.</div>
+                  </div>
+                </div>
+                <div class="change-row">
+                  <div class="change-icon is-red">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title" data-i18n="room3t">Favoritos</div>
+                    <div class="change-desc" data-i18n="room3d">Accedé rápido a tus salas favoritas desde su propia pestaña.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="list-block">
+              <div class="section-title" data-i18n="roomSecProfile">Tu perfil</div>
+              <div class="list">
+                <div class="change-row">
+                  <div class="change-icon is-green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title" data-i18n="room4t">Avatar y perfil</div>
+                    <div class="change-desc" data-i18n="room4d">Tocá tu avatar para abrir TU PERFIL: horas jugadas, fecha de creación y racha de días consecutivos.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Paso 5: Config — oferta -->
+          <section class="panel" data-step="4" data-offer="config">
+            <h2 data-i18n="cfgTitle">Configuración</h2>
+            <p class="lead" data-i18n="cfgIntroLead">Reorganizamos toda la configuración en secciones claras para que encuentres todo más rápido.</p>
+            <div class="list-block">
+              <div class="section-title" data-i18n="cfgIntroSec">Secciones</div>
+              <div class="list">
+                <div class="change-row">
+                  <div class="change-icon is-blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4z"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title" data-i18n="cfgIntro1t">Media · Input · Perf</div>
+                    <div class="change-desc" data-i18n="cfgIntro1d">Audio, video, resolución, controles, atajos y optimización con export de config.</div>
+                  </div>
+                </div>
+                <div class="change-row">
+                  <div class="change-icon is-green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title" data-i18n="cfgIntro2t">Multi · Chat · Look · Misc</div>
+                    <div class="change-desc" data-i18n="cfgIntro2d">Cuentas múltiples, atajos de chat, temas, wallpaper, marcador y avatar.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="choice-prompt">
+              <p data-i18n="cfgChoice">¿Querés conocer un poco más sobre la configuración?</p>
+            </div>
+          </section>
+
+          <!-- Paso 6: Config — detalle (opcional) -->
+          <section class="panel" data-step="5">
+            <h2 data-i18n="cfgDetailTitle">Configuración en detalle</h2>
+            <p class="lead" data-i18n="cfgLead">Rediseñamos toda la configuración dejándola más organizada. Vamos por partes.</p>
+            <div class="list-block">
+              <div class="section-title">MEDIA</div>
+              <div class="list">
+                <div class="change-row">
+                  <div class="change-icon is-blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title"><span data-i18n="media1t">Audio</span><span class="tag tag--new" data-i18n="tagNew">Nuevo</span></div>
+                    <div class="change-desc" data-i18n="media1d">Unimos lo que antes estaba separado. Activá o desactivá cada sonido del juego por separado.</div>
+                  </div>
+                </div>
+                <div class="change-row">
+                  <div class="change-icon is-green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 20h8"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title" data-i18n="media2t">Video</div>
+                    <div class="change-desc" data-i18n="media2d">Limitá FPS, escala de resolución del canvas y más opciones para ir ajustando según tu rendimiento en HaxZero.</div>
+                  </div>
+                </div>
+                <div class="change-row">
+                  <div class="change-icon is-red">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h16"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title" data-i18n="media3t">Resolución</div>
+                    <div class="change-desc" data-i18n="media3d">Cambiá la resolución a la que vas a ver la partida, integrada en esta misma sección.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="list-block">
+              <div class="section-title">INPUT</div>
+              <div class="list">
+                <div class="change-row">
+                  <div class="change-icon is-blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title" data-i18n="input1t">Cámara y zoom</div>
+                    <div class="change-desc" data-i18n="input1d">Modelos de cámara, zoom y todos los controles de input centralizados.</div>
+                  </div>
+                </div>
+                <div class="change-row">
+                  <div class="change-icon is-green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h.01M11 15h2M15 15h.01"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title"><span data-i18n="input2t">Atajos de partida</span><span class="tag tag--improved" data-i18n="tagImproved2">Mejorado</span></div>
+                    <div class="change-desc" data-i18n="input2d">Arreglamos los problemas con los atajos de restart match, start match y stop match.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="list-block">
+              <div class="section-title">PERF</div>
+              <div class="list">
+                <div class="change-row">
+                  <div class="change-icon is-green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title" data-i18n="perf1t">Opciones de rendimiento</div>
+                    <div class="change-desc" data-i18n="perf1d">Activá o desactivá cada opción de optimización para sacarle el máximo a tu equipo.</div>
+                  </div>
+                </div>
+                <div class="change-row">
+                  <div class="change-icon is-blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v12M8 11l4 4 4-4M5 21h14"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title"><span data-i18n="perf2t">Exportar configuración</span><span class="tag tag--new" data-i18n="tagNew2">Nuevo</span></div>
+                    <div class="change-desc" data-i18n="perf2d">Exportá tu config y pasala a tus amigos. Aplica MEDIA y PERF — la replican en su HaxZero.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="list-block">
+              <div class="section-title">MULTI</div>
+              <div class="list">
+                <div class="change-row">
+                  <div class="change-icon is-gold">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title"><span data-i18n="multi1t">5 slots Pro · 2 slots free</span><span class="tag tag--pro" data-i18n="tagPro2">Pro</span></div>
+                    <div class="change-desc" data-i18n="multi1d">Los Pro tienen 5 slots y los usuarios normales 2. Agregá tu idkey para configurar cada cuenta.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="list-block">
+              <div class="section-title">CHAT</div>
+              <div class="list">
+                <div class="change-row">
+                  <div class="change-icon is-blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H7l-4 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title"><span data-i18n="chat1t">Atajos personalizados</span><span class="tag tag--improved" data-i18n="tagImproved2">Mejorado</span></div>
+                    <div class="change-desc" data-i18n="chat1d">Agregá tus propios atajos de chat. Por defecto incluimos /e número, que optimiza el comando /extrapolation número.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="list-block">
+              <div class="section-title">LOOK</div>
+              <div class="list">
+                <div class="change-row">
+                  <div class="change-icon is-blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title"><span data-i18n="look1t">Temas</span><span class="tag tag--improved" data-i18n="tagImproved">Mejorado</span></div>
+                    <div class="change-desc" data-i18n="look1d">Elegí un tema predefinido o creá tu propio tema personalizado.</div>
+                  </div>
+                </div>
+                <div class="change-row">
+                  <div class="change-icon is-green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title" data-i18n="look2t">Wallpaper</div>
+                    <div class="change-desc" data-i18n="look2d">Más abajo en la sección podés elegir tu wallpaper de fondo a elección.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="list-block">
+              <div class="section-title">MISC</div>
+              <div class="list">
+                <div class="change-row">
+                  <div class="change-icon is-red">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="4" rx="1"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title"><span data-i18n="misc1t">Marcador nuevo o clásico</span><span class="tag tag--new" data-i18n="tagNew3">Nuevo</span></div>
+                    <div class="change-desc" data-i18n="misc1d">Elegí entre el marcador nuevo de HaxZero y el marcador default clásico.</div>
+                  </div>
+                </div>
+                <div class="change-row">
+                  <div class="change-icon is-gold">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title"><span data-i18n="misc2t">Avatar con imagen</span><span class="tag tag--new" data-i18n="tagNew4">Nuevo</span></div>
+                    <div class="change-desc" data-i18n="misc2d">Poné una imagen dentro de tu avatar en el juego. Si subís una imagen no permitida, serás baneado de HaxZero.</div>
+                  </div>
+                </div>
+                <div class="change-row">
+                  <div class="change-icon is-blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title"><span data-i18n="misc3t">Visibilidad</span><span class="tag tag--new" data-i18n="tagNew5">Nuevo</span></div>
+                    <div class="change-desc" data-i18n="misc3d">Desactivar avatar con imagen, visible solo para vos o visible para todos.</div>
+                  </div>
+                </div>
+                <div class="change-row">
+                  <div class="change-icon is-red">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title"><span data-i18n="misc4t">Diferencia de equipo</span><span class="tag tag--pro" data-i18n="tagPro3">Pro</span></div>
+                    <div class="change-desc" data-i18n="misc4d">Bordes rojo/azul por equipo. Todos pueden activarlo, pero la configuración de color, grosor y borde hacia adentro/afuera es solo Pro.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Paso 7: Listo -->
+          <section class="panel" data-step="6">
+            <h2 data-i18n="readyTitle">¡Todo listo!</h2>
+            <p class="lead" data-i18n="readyLead">Ya conocés las novedades de la versión 2.0. Entrá a una sala y probá todo lo nuevo.</p>
+            <div class="list-block">
+              <div class="section-title" data-i18n="readySec">Además</div>
+              <div class="list">
+                <div class="change-row">
+                  <div class="change-icon is-green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title" data-i18n="ready1t">Bugs corregidos</div>
+                    <div class="change-desc" data-i18n="ready1d">Corregimos bugs del juego, incluyendo problemas de crasheos y otros errores reportados por la comunidad.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="list-block">
+              <div class="section-title" data-i18n="readySecCommunity">Comunidad</div>
+              <div class="list">
+                <button type="button" class="change-row change-row--link" id="welcome-discord">
+                  <div class="change-icon is-discord">
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.32 4.37a19.8 19.8 0 0 0-4.93-1.52.07.07 0 0 0-.075.035c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.07.07 0 0 0-.075-.036 19.74 19.74 0 0 0-4.929 1.52.07.07 0 0 0-.032.027C1.086 9.048.56 13.57 1.087 18.025a.08.08 0 0 0 .031.056 19.9 19.9 0 0 0 5.993 3.03.08.08 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+                  </div>
+                  <div class="change-text">
+                    <div class="change-title" data-i18n="discord">Unirse al Discord</div>
+                    <div class="change-desc" data-i18n="discordDesc">Sumate a la comunidad oficial de HaxBall Zero.</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="card-footer">
+          <div class="dots" id="dots" aria-hidden="true"></div>
+          <div class="footer-actions">
+            <button type="button" class="nav-btn" id="btn-back" data-i18n="back">Atrás</button>
+            <button type="button" class="nav-btn secondary" id="btn-skip" hidden data-i18n="choiceSkip">No, continuar</button>
+            <button type="button" class="nav-btn primary" id="btn-yes" hidden data-i18n="choiceYes">Sí, contame más</button>
+            <button type="button" class="nav-btn primary" id="btn-next" data-i18n="next">Siguiente</button>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="dev-badge" id="dev-badge" hidden>Preview · datos demo</div>
+
+<script>
+(function () {
+  var I18N = {
+    es: {
+      version: 'v2.0', versionBig: '2.0', badge: 'Novedades',
+      langTitle: 'Elegí tu idioma',
+      welcomePre: 'Bienvenido a HaxBall Zero',
+      introLead: 'Renovamos todo de cero. En unos pasos te mostramos lo más importante para que arranques con todo.',
+      secStart: 'Para empezar',
+      start1t: 'Una experiencia renovada', start1d: 'Nuevo diseño, interfaz más clara y todo más rápido para que jugar sea más cómodo.',
+      start2t: 'Introducción guiada', start2d: 'Te mostramos lo esencial y vos elegís si querés profundizar en roomlist o configuración.',
+      start3t: 'Hecho para vos', start3d: 'Elegí tu idioma y seguí el tutorial a tu ritmo. Podés volver atrás cuando quieras.',
+      devSec: 'Desarrollo', devBy: 'Dev by @wxferro / @Puyiss',
+      overviewTitle: '¿Qué hay de nuevo?', overviewLead: 'Te presentamos HaxBall Zero 2.0: una introducción rápida a todo lo que cambió antes de profundizar.',
+      overviewSec: 'Lo principal',
+      overview1t: 'Roomlist renovada', overview1d: 'Nueva lista de salas con Todos, Pro y Favoritos, búsqueda, perfil y más.',
+      overview2t: 'Configuración reorganizada', overview2d: 'Media, Input, Perf, Multi, Chat, Look y Misc — todo más claro y ordenado.',
+      overview3t: 'Marcador, avatar y más', overview3d: 'Nuevo marcador, avatar con imagen, temas, wallpaper y exportar config.',
+      overview4t: 'Más estable', overview4d: 'Corregimos bugs, crasheos y otros problemas reportados por la comunidad.',
+      roomIntroLead: 'Rediseñamos la roomlist por completo: encontrar salas, guardar favoritas y acceder a tu perfil es mucho más fácil.',
+      roomIntroSec: 'En pocas palabras', roomIntro1t: 'Todos · Pro · Favoritos', roomIntro1d: 'Tres pestañas para navegar salas, ajustes Pro y tus favoritas.',
+      roomIntro2t: 'Tu perfil', roomIntro2d: 'Tocá tu avatar para ver horas jugadas, fecha de creación y racha de días.',
+      roomChoice: '¿Querés conocer un poco más sobre la roomlist?',
+      cfgIntroLead: 'Reorganizamos toda la configuración en secciones claras para que encuentres todo más rápido.',
+      cfgIntroSec: 'Secciones', cfgIntro1t: 'Media · Input · Perf', cfgIntro1d: 'Audio, video, resolución, controles, atajos y optimización con export de config.',
+      cfgIntro2t: 'Multi · Chat · Look · Misc', cfgIntro2d: 'Cuentas múltiples, atajos de chat, temas, wallpaper, marcador y avatar.',
+      cfgChoice: '¿Querés conocer un poco más sobre la configuración?',
+      cfgDetailTitle: 'Configuración en detalle',
+      choiceYes: 'Sí, contame más', choiceSkip: 'No, continuar',
+      tagNew: 'Nuevo', tagNew2: 'Nuevo', tagNew3: 'Nuevo', tagNew4: 'Nuevo', tagNew5: 'Nuevo',
+      tagPro: 'Pro', tagPro2: 'Pro', tagPro3: 'Pro', tagImproved: 'Mejorado', tagImproved2: 'Mejorado',
+      roomTitle: 'Lista de salas', roomLead: 'Rediseñamos y actualizamos toda la roomlist para que encontrar y gestionar salas sea más rápido.',
+      roomSecTabs: 'Pestañas', roomSecProfile: 'Tu perfil',
+      room1t: 'Todos', room1d: 'Todas las salas en un solo lugar. A la izquierda tenés búsqueda. Click derecho en una sala para añadir a favoritos o fijarla.',
+      room2t: 'Pro', room2d: 'Toda la configuración Pro: modificar tu perfil, colores, banner y sonidos personalizados.',
+      room3t: 'Favoritos', room3d: 'Accedé rápido a tus salas favoritas desde su propia pestaña.',
+      room4t: 'Avatar y perfil', room4d: 'Tocá tu avatar para abrir TU PERFIL: horas jugadas, fecha de creación y racha de días consecutivos.',
+      cfgTitle: 'Configuración', cfgLead: 'Rediseñamos toda la configuración dejándola más organizada. Vamos por partes.',
+      media1t: 'Audio', media1d: 'Unimos lo que antes estaba separado. Activá o desactivá cada sonido del juego por separado.',
+      media2t: 'Video', media2d: 'Limitá FPS, escala de resolución del canvas y más opciones para ir ajustando según tu rendimiento en HaxZero.',
+      media3t: 'Resolución', media3d: 'Cambiá la resolución a la que vas a ver la partida, integrada en esta misma sección.',
+      inputLead: 'Todos los controles en un solo lugar: cámara, zoom y atajos de teclado.',
+      inputSec: 'Controles', input1t: 'Cámara y zoom', input1d: 'Modelos de cámara, zoom y todos los controles de input centralizados.',
+      input2t: 'Atajos de partida', input2d: 'Arreglamos los problemas con los atajos de restart match, start match y stop match.',
+      perfLead: 'Todas las opciones de rendimiento para habilitar o deshabilitar según tu PC.',
+      perfSec: 'Optimización', perf1t: 'Opciones de rendimiento', perf1d: 'Activá o desactivá cada opción de optimización para sacarle el máximo a tu equipo.',
+      perf2t: 'Exportar configuración', perf2d: 'Exportá tu config y pasala a tus amigos. Aplica MEDIA y PERF — la replican en su HaxZero.',
+      multiLead: 'Configurá varias cuentas con slots dedicados.',
+      multiSec: 'Cuentas', multi1t: '5 slots Pro · 2 slots free', multi1d: 'Los Pro tienen 5 slots y los usuarios normales 2. Agregá tu idkey para configurar cada cuenta.',
+      chatLead: 'Atajos de chat para escribir más rápido en partida.',
+      chatSec: 'Atajos', chat1t: 'Atajos personalizados', chat1d: 'Agregá tus propios atajos de chat. Por defecto incluimos /e número, que optimiza el comando /extrapolation número.',
+      lookLead: 'Personalizá el aspecto del cliente a tu gusto.',
+      lookSec: 'Apariencia', look1t: 'Temas', look1d: 'Elegí un tema predefinido o creá tu propio tema personalizado.',
+      look2t: 'Wallpaper', look2d: 'Más abajo en la sección podés elegir tu wallpaper de fondo a elección.',
+      miscLead: 'Otros ajustes del cliente con opciones nuevas.',
+      miscSecScore: 'Marcador', miscSecAvatar: 'Avatar',
+      misc1t: 'Marcador nuevo o clásico', misc1d: 'Elegí entre el marcador nuevo de HaxZero y el marcador default clásico.',
+      misc2t: 'Avatar con imagen', misc2d: 'Poné una imagen dentro de tu avatar en el juego. Si subís una imagen no permitida, serás baneado de HaxZero.',
+      misc3t: 'Visibilidad', misc3d: 'Desactivar avatar con imagen, visible solo para vos o visible para todos.',
+      misc4t: 'Diferencia de equipo', misc4d: 'Bordes rojo/azul por equipo. Todos pueden activarlo, pero la configuración de color, grosor y borde hacia adentro/afuera es solo Pro.',
+      readyTitle: '¡Todo listo!', readyLead: 'Ya conocés las novedades de la versión 2.0. Entrá a una sala y probá todo lo nuevo.',
+      readySec: 'Además', ready1t: 'Bugs corregidos', ready1d: 'Corregimos bugs del juego, incluyendo problemas de crasheos y otros errores reportados por la comunidad.',
+      readySecCommunity: 'Comunidad', discordDesc: 'Sumate a la comunidad oficial de HaxBall Zero.',
+      discord: 'Unirse al Discord',
+      back: 'Atrás', next: 'Siguiente', start: 'Empezar a jugar',
+      tabIntro: 'Inicio', tabOverview: 'Novedades', tabRoom: 'Salas', tabConfig: 'Config', tabReady: 'Listo'
+    },
+    en: {
+      version: 'v2.0', versionBig: '2.0', badge: "What's new",
+      langTitle: 'Choose your language',
+      welcomePre: 'Welcome to HaxBall Zero',
+      introLead: 'We rebuilt everything from scratch. In a few steps we will show you the essentials so you can jump in.',
+      secStart: 'Getting started',
+      start1t: 'A refreshed experience', start1d: 'New design, clearer interface and faster performance for a smoother game.',
+      start2t: 'Guided introduction', start2d: 'We show you the essentials and you choose whether to go deeper on the room list or settings.',
+      start3t: 'Made for you', start3d: 'Pick your language and follow the tutorial at your own pace. You can go back anytime.',
+      devSec: 'Development', devBy: 'Dev by @wxferro / @Puyiss',
+      overviewTitle: "What's new?", overviewLead: 'Here is HaxBall Zero 2.0: a quick intro to everything that changed before going deeper.',
+      overviewSec: 'Highlights',
+      overview1t: 'New room list', overview1d: 'Redesigned list with All, Pro and Favorites, search, profile and more.',
+      overview2t: 'Reorganized settings', overview2d: 'Media, Input, Perf, Multi, Chat, Look and Misc — clearer and better organized.',
+      overview3t: 'Scoreboard, avatar and more', overview3d: 'New scoreboard, image avatar, themes, wallpaper and config export.',
+      overview4t: 'More stable', overview4d: 'We fixed bugs, crashes and other issues reported by the community.',
+      roomIntroLead: 'We fully redesigned the room list: finding rooms, saving favorites and accessing your profile is much easier.',
+      roomIntroSec: 'In short', roomIntro1t: 'All · Pro · Favorites', roomIntro1d: 'Three tabs for rooms, Pro settings and your favorites.',
+      roomIntro2t: 'Your profile', roomIntro2d: 'Tap your avatar to see hours played, creation date and daily streak.',
+      roomChoice: 'Want to learn a bit more about the room list?',
+      cfgIntroLead: 'We reorganized all settings into clear sections so you find everything faster.',
+      cfgIntroSec: 'Sections', cfgIntro1t: 'Media · Input · Perf', cfgIntro1d: 'Audio, video, resolution, controls, shortcuts and optimization with config export.',
+      cfgIntro2t: 'Multi · Chat · Look · Misc', cfgIntro2d: 'Multiple accounts, chat shortcuts, themes, wallpaper, scoreboard and avatar.',
+      cfgChoice: 'Want to learn a bit more about settings?',
+      cfgDetailTitle: 'Settings in detail',
+      choiceYes: 'Yes, tell me more', choiceSkip: 'No, continue',
+      tagNew: 'New', tagNew2: 'New', tagNew3: 'New', tagNew4: 'New', tagNew5: 'New',
+      tagPro: 'Pro', tagPro2: 'Pro', tagPro3: 'Pro', tagImproved: 'Improved', tagImproved2: 'Improved',
+      roomTitle: 'Room list', roomLead: 'We redesigned and updated the entire room list so finding and managing rooms is faster.',
+      roomSecTabs: 'Tabs', roomSecProfile: 'Your profile',
+      room1t: 'All', room1d: 'Every room in one place. Search on the left. Right-click a room to add it to favorites or pin it.',
+      room2t: 'Pro', room2d: 'All Pro settings: edit your profile, colors, banner and custom sounds.',
+      room3t: 'Favorites', room3d: 'Quick access to your favorite rooms in their own tab.',
+      room4t: 'Avatar and profile', room4d: 'Tap your avatar to open YOUR PROFILE: hours played, creation date and daily streak.',
+      cfgTitle: 'Settings', cfgLead: 'We redesigned all settings to be better organized. One section at a time.',
+      media1t: 'Audio', media1d: 'We merged what used to be separate. Enable or disable each in-game sound individually.',
+      media2t: 'Video', media2d: 'Limit FPS, canvas resolution scale and more options to tune performance in HaxZero.',
+      media3t: 'Resolution', media3d: 'Change the resolution you use to watch the match, built into this same section.',
+      inputLead: 'All controls in one place: camera, zoom and keyboard shortcuts.',
+      inputSec: 'Controls', input1t: 'Camera and zoom', input1d: 'Camera modes, zoom and all input controls centralized.',
+      input2t: 'Match shortcuts', input2d: 'We fixed issues with restart match, start match and stop match shortcuts.',
+      perfLead: 'All performance options to enable or disable based on your PC.',
+      perfSec: 'Optimization', perf1t: 'Performance options', perf1d: 'Toggle each optimization option to get the most from your setup.',
+      perf2t: 'Export configuration', perf2d: 'Export your config and share it with friends. Applies MEDIA and PERF — they replicate it in HaxZero.',
+      multiLead: 'Set up multiple accounts with dedicated slots.',
+      multiSec: 'Accounts', multi1t: '5 Pro slots · 2 free slots', multi1d: 'Pro users get 5 slots and regular users get 2. Add your idkey to configure each account.',
+      chatLead: 'Chat shortcuts to type faster in matches.',
+      chatSec: 'Shortcuts', chat1t: 'Custom shortcuts', chat1d: 'Add your own chat shortcuts. By default we include /e number, which optimizes the /extrapolation number command.',
+      lookLead: 'Customize the client look to your taste.',
+      lookSec: 'Appearance', look1t: 'Themes', look1d: 'Pick a preset theme or create your own custom theme.',
+      look2t: 'Wallpaper', look2d: 'Further down in the section you can choose your background wallpaper.',
+      miscLead: 'Other client settings with new options.',
+      miscSecScore: 'Scoreboard', miscSecAvatar: 'Avatar',
+      misc1t: 'New or classic scoreboard', misc1d: 'Choose between the new HaxZero scoreboard and the classic default one.',
+      misc2t: 'Avatar with image', misc2d: 'Put an image inside your in-game avatar. Uploading a disallowed image will get you banned from HaxZero.',
+      misc3t: 'Visibility', misc3d: 'Disable image avatar, visible only to you or visible to everyone.',
+      misc4t: 'Team difference', misc4d: 'Red/blue borders by team. Everyone can enable it, but color, thickness and inner/outer border settings are Pro only.',
+      readyTitle: 'All set!', readyLead: 'You now know the version 2.0 news. Jump into a room and try everything new.',
+      readySec: 'Also', ready1t: 'Bugs fixed', ready1d: 'We fixed in-game bugs, including crash issues and other errors reported by the community.',
+      readySecCommunity: 'Community', discordDesc: 'Join the official HaxBall Zero community.',
+      discord: 'Join the Discord',
+      back: 'Back', next: 'Next', start: 'Start playing',
+      tabIntro: 'Start', tabOverview: 'News', tabRoom: 'Rooms', tabConfig: 'Settings', tabReady: 'Done'
+    },
+    pt: {
+      version: 'v2.0', versionBig: '2.0', badge: 'Novidades',
+      langTitle: 'Escolha seu idioma',
+      welcomePre: 'Bem-vindo ao HaxBall Zero',
+      introLead: 'Renovamos tudo do zero. Em poucos passos mostramos o essencial para você começar com tudo.',
+      secStart: 'Para começar',
+      start1t: 'Uma experiência renovada', start1d: 'Novo design, interface mais clara e tudo mais rápido para jogar com conforto.',
+      start2t: 'Introdução guiada', start2d: 'Mostramos o essencial e você escolhe se quer aprofundar na roomlist ou configurações.',
+      start3t: 'Feito para você', start3d: 'Escolha seu idioma e siga o tutorial no seu ritmo. Você pode voltar quando quiser.',
+      devSec: 'Desenvolvimento', devBy: 'Dev by @wxferro / @Puyiss',
+      overviewTitle: 'O que há de novo?', overviewLead: 'Apresentamos o HaxBall Zero 2.0: uma introdução rápida a tudo que mudou antes de aprofundar.',
+      overviewSec: 'Destaques',
+      overview1t: 'Roomlist renovada', overview1d: 'Nova lista com Todos, Pro e Favoritos, busca, perfil e mais.',
+      overview2t: 'Configuração reorganizada', overview2d: 'Media, Input, Perf, Multi, Chat, Look e Misc — tudo mais claro e organizado.',
+      overview3t: 'Placar, avatar e mais', overview3d: 'Novo placar, avatar com imagem, temas, wallpaper e exportar config.',
+      overview4t: 'Mais estável', overview4d: 'Corrigimos bugs, crashes e outros problemas reportados pela comunidade.',
+      roomIntroLead: 'Redesenhamos a roomlist por completo: encontrar salas, favoritos e perfil ficou muito mais fácil.',
+      roomIntroSec: 'Em resumo', roomIntro1t: 'Todos · Pro · Favoritos', roomIntro1d: 'Três abas para salas, ajustes Pro e favoritas.',
+      roomIntro2t: 'Seu perfil', roomIntro2d: 'Toque no avatar para ver horas jogadas, data de criação e sequência de dias.',
+      roomChoice: 'Quer saber um pouco mais sobre a roomlist?',
+      cfgIntroLead: 'Reorganizamos toda a configuração em seções claras para encontrar tudo mais rápido.',
+      cfgIntroSec: 'Seções', cfgIntro1t: 'Media · Input · Perf', cfgIntro1d: 'Áudio, vídeo, resolução, controles, atalhos e otimização com export de config.',
+      cfgIntro2t: 'Multi · Chat · Look · Misc', cfgIntro2d: 'Contas múltiplas, atalhos de chat, temas, wallpaper, placar e avatar.',
+      cfgChoice: 'Quer saber um pouco mais sobre a configuração?',
+      cfgDetailTitle: 'Configuração em detalhe',
+      choiceYes: 'Sim, me conte mais', choiceSkip: 'Não, continuar',
+      tagNew: 'Novo', tagNew2: 'Novo', tagNew3: 'Novo', tagNew4: 'Novo', tagNew5: 'Novo',
+      tagPro: 'Pro', tagPro2: 'Pro', tagPro3: 'Pro', tagImproved: 'Melhorado', tagImproved2: 'Melhorado',
+      roomTitle: 'Lista de salas', roomLead: 'Redesenhamos e atualizamos toda a roomlist para encontrar e gerenciar salas mais rápido.',
+      roomSecTabs: 'Abas', roomSecProfile: 'Seu perfil',
+      room1t: 'Todos', room1d: 'Todas as salas em um só lugar. Busca à esquerda. Clique direito numa sala para favoritar ou fixar.',
+      room2t: 'Pro', room2d: 'Toda a configuração Pro: editar perfil, cores, banner e sons personalizados.',
+      room3t: 'Favoritos', room3d: 'Acesse rápido suas salas favoritas na aba dedicada.',
+      room4t: 'Avatar e perfil', room4d: 'Toque no avatar para abrir SEU PERFIL: horas jogadas, data de criação e sequência de dias.',
+      cfgTitle: 'Configuração', cfgLead: 'Redesenhamos toda a configuração deixando tudo mais organizado. Vamos por partes.',
+      media1t: 'Áudio', media1d: 'Unimos o que antes estava separado. Ative ou desative cada som do jogo individualmente.',
+      media2t: 'Vídeo', media2d: 'Limite FPS, escala de resolução do canvas e mais opções conforme seu desempenho no HaxZero.',
+      media3t: 'Resolução', media3d: 'Mude a resolução em que você assiste a partida, integrada nesta mesma seção.',
+      inputLead: 'Todos os controles em um lugar: câmera, zoom e atalhos de teclado.',
+      inputSec: 'Controles', input1t: 'Câmera e zoom', input1d: 'Modos de câmera, zoom e todos os controles de input centralizados.',
+      input2t: 'Atalhos de partida', input2d: 'Corrigimos problemas com os atalhos de restart match, start match e stop match.',
+      perfLead: 'Todas as opções de desempenho para habilitar ou desabilitar conforme seu PC.',
+      perfSec: 'Otimização', perf1t: 'Opções de desempenho', perf1d: 'Ative ou desative cada opção de otimização para extrair o máximo do seu setup.',
+      perf2t: 'Exportar configuração', perf2d: 'Exporte sua config e passe para amigos. Aplica MEDIA e PERF — eles replicam no HaxZero.',
+      multiLead: 'Configure várias contas com slots dedicados.',
+      multiSec: 'Contas', multi1t: '5 slots Pro · 2 slots free', multi1d: 'Pro tem 5 slots e usuários normais 2. Adicione seu idkey para configurar cada conta.',
+      chatLead: 'Atalhos de chat para digitar mais rápido na partida.',
+      chatSec: 'Atalhos', chat1t: 'Atalhos personalizados', chat1d: 'Adicione seus atalhos de chat. Por padrão incluímos /e número, que otimiza o comando /extrapolation número.',
+      lookLead: 'Personalize a aparência do cliente ao seu gosto.',
+      lookSec: 'Aparência', look1t: 'Temas', look1d: 'Escolha um tema predefinido ou crie seu próprio tema personalizado.',
+      look2t: 'Wallpaper', look2d: 'Mais abaixo na seção você pode escolher seu wallpaper de fundo.',
+      miscLead: 'Outros ajustes do cliente com opções novas.',
+      miscSecScore: 'Placar', miscSecAvatar: 'Avatar',
+      misc1t: 'Placar novo ou clássico', misc1d: 'Escolha entre o placar novo do HaxZero e o placar default clássico.',
+      misc2t: 'Avatar com imagem', misc2d: 'Coloque uma imagem dentro do seu avatar no jogo. Enviar imagem não permitida resulta em banimento do HaxZero.',
+      misc3t: 'Visibilidade', misc3d: 'Desativar avatar com imagem, visível só para você ou visível para todos.',
+      misc4t: 'Diferença de time', misc4d: 'Bordas vermelho/azul por time. Todos podem ativar, mas cor, espessura e borda para dentro/fora é só Pro.',
+      readyTitle: 'Tudo pronto!', readyLead: 'Agora você conhece as novidades da versão 2.0. Entre numa sala e teste tudo de novo.',
+      readySec: 'Além disso', ready1t: 'Bugs corrigidos', ready1d: 'Corrigimos bugs do jogo, incluindo problemas de crash e outros erros reportados pela comunidade.',
+      readySecCommunity: 'Comunidade', discordDesc: 'Entre na comunidade oficial do HaxBall Zero.',
+      discord: 'Entrar no Discord',
+      back: 'Voltar', next: 'Avançar', start: 'Começar a jogar',
+      tabIntro: 'Início', tabOverview: 'Novidades', tabRoom: 'Salas', tabConfig: 'Config', tabReady: 'Pronto'
+    }
+  };
+
+  var NAV = [
+    { tab: 'tabIntro', firstStep: 0 },
+    { tab: 'tabOverview', firstStep: 1 },
+    { tab: 'tabRoom', firstStep: 2 },
+    { tab: 'tabConfig', firstStep: 4 },
+    { tab: 'tabReady', firstStep: 6 }
+  ];
+
+  var TOTAL_STEPS = 7;
+  var OFFER_STEPS = [2, 4];
+
+  var lang = 'es';
+  var isDemo = window.parent === window;
+  var step = 0;
+  var skipped = { room: false, config: false };
+
+  var panels = document.querySelectorAll('.panel');
+  var tabsEl = document.getElementById('step-tabs');
+  var dotsEl = document.getElementById('dots');
+  var btnBack = document.getElementById('btn-back');
+  var btnNext = document.getElementById('btn-next');
+  var btnYes = document.getElementById('btn-yes');
+  var btnSkip = document.getElementById('btn-skip');
+  var devBadge = document.getElementById('dev-badge');
+  var langBar = document.getElementById('lang-bar');
+
+  function getNavIndex(s) {
+    for (var i = NAV.length - 1; i >= 0; i--) {
+      if (s >= NAV[i].firstStep) return i;
+    }
+    return 0;
+  }
+
+  function isOfferStep(s) {
+    return OFFER_STEPS.indexOf(s) !== -1;
+  }
+
+  function t(key) {
+    return (I18N[lang] && I18N[lang][key]) || I18N.es[key] || key;
+  }
+
+  function setLang(next) {
+    if (!I18N[next]) return;
+    lang = next;
+    applyI18n();
+    sendCmd('setLanguage', { lang: lang });
+  }
+
+  function syncLangTabs() {
+    if (!langBar) return;
+    langBar.querySelectorAll('.lang-tab').forEach(function (btn) {
+      var on = btn.getAttribute('data-lang') === lang;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+  }
+
+  function applyI18n() {
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      var key = el.getAttribute('data-i18n');
+      if (key) el.textContent = t(key);
+    });
+    syncLangTabs();
+    buildTabs();
+    updateNav();
+  }
+
+  function buildTabs() {
+    tabsEl.innerHTML = '';
+    var navIdx = getNavIndex(step);
+    NAV.forEach(function (s, i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'tab' + (i === navIdx ? ' active' : '');
+      b.setAttribute('role', 'tab');
+      b.textContent = t(s.tab);
+      b.addEventListener('click', function () { setStep(s.firstStep); });
+      tabsEl.appendChild(b);
+    });
+  }
+
+  function buildDots() {
+    dotsEl.innerHTML = '';
+    var navIdx = getNavIndex(step);
+    NAV.forEach(function (s, i) {
+      var d = document.createElement('span');
+      d.className = 'dot-step' + (i === navIdx ? ' active' : '');
+      dotsEl.appendChild(d);
+    });
+  }
+
+  function updateNav() {
+    btnBack.disabled = step === 0;
+    var offer = isOfferStep(step);
+    var last = step === TOTAL_STEPS - 1;
+
+    btnNext.hidden = offer;
+    btnYes.hidden = !offer;
+    btnSkip.hidden = !offer;
+
+    btnNext.textContent = last ? t('start') : t('next');
+    btnBack.textContent = t('back');
+    btnYes.textContent = t('choiceYes');
+    btnSkip.textContent = t('choiceSkip');
+  }
+
+  function goNext() {
+    if (step === 3) { setStep(4); return; }
+    if (step === 5) { setStep(6); return; }
+    if (step < TOTAL_STEPS - 1) setStep(step + 1);
+    else finish();
+  }
+
+  function goBack() {
+    if (step === 6) {
+      setStep(skipped.config ? 4 : 5);
+      return;
+    }
+    if (step === 5) { setStep(4); return; }
+    if (step === 4) { setStep(skipped.room ? 2 : 3); return; }
+    if (step === 3) { setStep(2); return; }
+    if (step > 0) setStep(step - 1);
+  }
+
+  function chooseYes() {
+    if (step === 2) {
+      skipped.room = false;
+      setStep(3);
+    } else if (step === 4) {
+      skipped.config = false;
+      setStep(5);
+    }
+  }
+
+  function chooseSkip() {
+    if (step === 2) {
+      skipped.room = true;
+      setStep(4);
+    } else if (step === 4) {
+      skipped.config = true;
+      setStep(6);
+    }
+  }
+
+  function setStep(i) {
+    step = Math.max(0, Math.min(TOTAL_STEPS - 1, i));
+    panels.forEach(function (p) {
+      p.classList.toggle('active', Number(p.getAttribute('data-step')) === step);
+    });
+    buildTabs();
+    buildDots();
+    updateNav();
+    var inner = document.getElementById('panels');
+    if (inner) inner.scrollTop = 0;
+    sendCmd('step', { step: step });
+  }
+
+  function finish() {
+    sendCmd('start', { dontShowAgain: true });
+  }
+
+  function sendCmd(action, payload) {
+    if (isDemo) return;
+    window.parent.postMessage({ type: 'hxd-welcome-preview-cmd', action: action, payload: payload || {} }, '*');
+  }
+
+  function applyTheme(theme, themeId) {
+    if (!theme || typeof theme !== 'object') return;
+    var root = document.documentElement;
+    Object.keys(theme).forEach(function (key) {
+      if (key.indexOf('--') === 0) root.style.setProperty(key, theme[key]);
+    });
+    if (themeId) root.setAttribute('data-theme', themeId);
+    var bgImg = theme['--theme-app-background-image'];
+    if (bgImg && String(bgImg).trim()) root.setAttribute('data-app-bg-image', '1');
+    else root.removeAttribute('data-app-bg-image');
+  }
+
+  btnBack.addEventListener('click', goBack);
+  btnNext.addEventListener('click', goNext);
+  btnYes.addEventListener('click', chooseYes);
+  btnSkip.addEventListener('click', chooseSkip);
+  var DISCORD_URL = 'https://discord.gg/haxzero';
+
+  document.getElementById('welcome-discord').addEventListener('click', function () {
+    sendCmd('openDiscord', { url: DISCORD_URL });
+    window.open(DISCORD_URL, '_blank', 'noopener,noreferrer');
+  });
+
+  if (langBar) {
+    langBar.querySelectorAll('.lang-tab').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setLang(btn.getAttribute('data-lang'));
+      });
+    });
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight') {
+      if (isOfferStep(step)) chooseYes();
+      else goNext();
+    } else if (e.key === 'ArrowLeft') {
+      goBack();
+    }
+  });
+
+  window.addEventListener('message', function (e) {
+    var data = e.data;
+    if (!data || data.type !== 'hxd-welcome-sync') return;
+    devBadge.hidden = true;
+    if (data.lang && I18N[data.lang]) { lang = data.lang; }
+    if (data.theme) applyTheme(data.theme, data.themeId);
+    applyI18n();
+  });
+
+  applyI18n();
+  setStep(0);
+
+  if (isDemo) {
+    devBadge.hidden = false;
+  } else {
+    window.parent.postMessage({ type: 'hxd-welcome-preview-ready' }, '*');
+  }
+})();
+</script>
+</body>
+</html>

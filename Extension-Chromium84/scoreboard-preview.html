@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HaxBall Zero — Scoreboard Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <script>if(window.parent!==window)document.documentElement.setAttribute('data-embed','1');</script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --theme-bg-primary: #141414;
+      --theme-bg-secondary: #1a1a1a;
+      --theme-bg-tertiary: #272727;
+      --theme-bg-hover: #333;
+      --theme-bg-selected: #222;
+      --theme-border: #232323;
+      --theme-border-light: #333;
+      --theme-text-primary: #fff;
+      --theme-text-secondary: #888;
+      --theme-text-muted: #666;
+      --theme-scrollbar-track: #1a1a1a;
+      --theme-scrollbar-thumb: #555;
+      --theme-scrollbar-thumb-hover: #666;
+      --online: #22c55e;
+      --shadow-nav: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
+      --shadow-soft: 0 20px 60px rgba(0, 0, 0, 0.35);
+      --team-red: #cf3c47;
+      --team-blue: #4099ff;
+      --scoreboard-opacity: 1;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: Inter, system-ui, sans-serif;
+      background: var(--theme-bg-primary);
+      color: var(--theme-text-primary);
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    .scene {
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--theme-bg-primary);
+      background-image:
+        radial-gradient(ellipse 80% 60% at 50% 100%, color-mix(in srgb, var(--theme-border-light) 35%, transparent), transparent 55%),
+        radial-gradient(ellipse 50% 40% at 80% 20%, color-mix(in srgb, var(--theme-text-muted) 18%, transparent), transparent 50%),
+        linear-gradient(180deg, var(--theme-bg-tertiary) 0%, var(--theme-bg-primary) 55%, var(--theme-bg-primary) 100%);
+    }
+
+    html[data-app-bg-image="1"] .scene {
+      background-color: var(--theme-bg-primary);
+      background-image: var(--theme-app-background-image, none);
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    html[data-embed="1"] {
+      background: transparent !important;
+      width: fit-content;
+      height: fit-content;
+      overflow: visible;
+    }
+
+    html[data-embed="1"],
+    html[data-embed="1"] body {
+      background: transparent !important;
+      height: auto;
+      min-height: 0;
+      overflow: visible;
+    }
+
+    html[data-embed="1"] body {
+      display: inline-block;
+      width: fit-content;
+      height: fit-content;
+      line-height: 0;
+    }
+
+    html[data-embed="1"] .scene {
+      display: none;
+    }
+
+    html[data-embed="1"] .top-shell {
+      position: static;
+      display: block;
+      width: fit-content;
+      padding: 0;
+      opacity: var(--scoreboard-opacity);
+      pointer-events: none;
+      line-height: normal;
+    }
+
+    html[data-embed="1"] .nav-shell {
+      width: auto;
+      display: inline-block;
+    }
+
+    html[data-embed="1"] .nav-shell,
+    html[data-embed="1"] .navbar,
+    html[data-embed="1"] .nav-circle {
+      pointer-events: auto;
+    }
+
+    html[data-embed="1"] .nav-center,
+    html[data-embed="1"] .score-board {
+      pointer-events: none;
+    }
+
+    /* En partida: sin caja exterior, solo chip + botones flotantes */
+    html[data-embed="1"] .navbar {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      padding: 0;
+      gap: 10px;
+    }
+
+    html[data-embed="1"] .dev-badge {
+      display: none !important;
+    }
+
+    /* ─── Navbar idéntico a roomlist-preview ─── */
+    .top-shell {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: center;
+      padding: 32px 24px 0;
+      box-sizing: border-box;
+      opacity: var(--scoreboard-opacity);
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+    }
+
+    .nav-shell {
+      width: min(1040px, 100%);
+      position: relative;
+      flex-shrink: 0;
+      pointer-events: auto;
+      display: flex;
+      justify-content: center;
+    }
+
+    .navbar {
+      width: fit-content;
+      max-width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 8px 18px;
+      background: var(--theme-bg-secondary);
+      border: 1px solid var(--theme-border);
+      border-radius: 14px;
+      box-shadow: var(--shadow-nav);
+    }
+
+    .nav-left,
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .nav-center {
+      flex: 0 0 auto;
+      display: flex;
+      justify-content: center;
+      min-width: 0;
+    }
+
+    .nav-chip {
+      display: inline-flex;
+      align-items: stretch;
+      background: var(--theme-bg-primary);
+      border: 1px solid var(--theme-border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .nav-chip.score-board {
+      border-radius: 8px;
+      overflow: hidden;
+      height: 40px;
+      box-shadow: inset 0 1px 0 color-mix(in srgb, var(--theme-text-primary) 5%, transparent);
+    }
+
+    .score-board {
+      display: inline-flex;
+      align-items: stretch;
+    }
+
+    .score-side {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 14px;
+      min-width: 64px;
+      height: 100%;
+      position: relative;
+    }
+
+    .score-side--red {
+      justify-content: flex-end;
+      background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--team-red) 24%, var(--theme-bg-primary)) 0%,
+        color-mix(in srgb, var(--team-red) 8%, var(--theme-bg-secondary)) 100%
+      );
+    }
+
+    .score-side--red::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 22%;
+      bottom: 22%;
+      width: 1px;
+      background: color-mix(in srgb, var(--theme-border-light) 65%, transparent);
+    }
+
+    .score-side--blue {
+      justify-content: flex-start;
+      background: linear-gradient(
+        225deg,
+        color-mix(in srgb, var(--team-blue) 24%, var(--theme-bg-primary)) 0%,
+        color-mix(in srgb, var(--team-blue) 8%, var(--theme-bg-secondary)) 100%
+      );
+    }
+
+    .score-side--blue::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 22%;
+      bottom: 22%;
+      width: 1px;
+      background: color-mix(in srgb, var(--theme-border-light) 65%, transparent);
+    }
+
+    .score-timer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 14px;
+      min-width: 68px;
+      height: 100%;
+      background: var(--theme-bg-tertiary);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      font-variant-numeric: tabular-nums;
+      color: var(--theme-text-primary);
+      white-space: nowrap;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .team-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .team-dot--red {
+      background: var(--team-red);
+      color: var(--team-red);
+      box-shadow:
+        0 0 0 2px color-mix(in srgb, var(--team-red) 28%, transparent),
+        0 0 10px color-mix(in srgb, var(--team-red) 55%, transparent);
+    }
+
+    .team-dot--blue {
+      background: var(--team-blue);
+      color: var(--team-blue);
+      box-shadow:
+        0 0 0 2px color-mix(in srgb, var(--team-blue) 28%, transparent),
+        0 0 10px color-mix(in srgb, var(--team-blue) 55%, transparent);
+    }
+
+    .team-score {
+      font-size: 17px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: var(--theme-text-primary);
+      line-height: 1;
+      min-width: 1.2ch;
+      text-align: center;
+      letter-spacing: -0.02em;
+    }
+
+    .team-score.pop {
+      animation: score-pop 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+    }
+
+    @keyframes score-pop {
+      0% { transform: scale(1); }
+      40% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+
+    .nav-circle {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid var(--theme-border);
+      background: var(--theme-bg-tertiary);
+      color: var(--theme-text-primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.12s;
+      outline: none;
+      flex-shrink: 0;
+    }
+
+    .nav-circle:hover:not(.search-active) {
+      background: var(--theme-bg-hover);
+      border-color: var(--theme-border-light);
+    }
+
+    .nav-circle:active { transform: scale(0.96); }
+
+    .nav-circle svg {
+      width: 18px;
+      height: 18px;
+      display: block;
+    }
+
+    .tab-bar {
+      display: inline-flex;
+      background: var(--theme-bg-primary);
+      border: 1px solid var(--theme-border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .tab {
+      padding: 11px 18px;
+      border: none;
+      background: transparent;
+      color: var(--theme-text-primary);
+      font: inherit;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.12s ease, color 0.12s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tab:hover:not(.active) { background: var(--theme-bg-hover); }
+
+    .tab svg {
+      width: 16px;
+      height: 16px;
+      display: block;
+      flex-shrink: 0;
+    }
+
+    .dev-badge {
+      position: fixed;
+      bottom: 10px;
+      right: 12px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: var(--theme-bg-secondary);
+      border: 1px solid var(--theme-border);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--theme-text-muted);
+      pointer-events: none;
+      z-index: 50;
+    }
+
+    .dev-badge[hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <div class="scene"></div>
+
+  <div class="top-shell" id="top-shell">
+    <div class="nav-shell">
+      <header class="navbar" id="top-bar" role="banner">
+        <div class="nav-left">
+          <button type="button" class="nav-circle" id="btn-menu" title="Menu" aria-label="Menu">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <line x1="4" y1="7" x2="20" y2="7"/>
+              <line x1="4" y1="12" x2="20" y2="12"/>
+              <line x1="4" y1="17" x2="20" y2="17"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="nav-center">
+          <div class="nav-chip score-board" role="status" aria-live="polite" aria-label="Marcador">
+            <div class="score-side score-side--red">
+              <span class="team-dot team-dot--red" aria-hidden="true"></span>
+              <span class="team-score" id="score-red">0</span>
+            </div>
+            <span class="score-timer" id="match-timer">00:00</span>
+            <div class="score-side score-side--blue">
+              <span class="team-score" id="score-blue">0</span>
+              <span class="team-dot team-dot--blue" aria-hidden="true"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="nav-right">
+        <button type="button" class="nav-circle" id="btn-settings" title="Ajustes" aria-label="Ajustes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+          </svg>
+        </button>
+        </div>
+      </header>
+    </div>
+  </div>
+
+  <div class="dev-badge" id="dev-badge" hidden>Preview · Q/P gol · A/L restar · 0 reset</div>
+
+<script>
+(function () {
+  var I18N = {
+    es: { menu: 'Menu' },
+    en: { menu: 'Menu' },
+    pt: { menu: 'Menu' }
+  };
+
+  var lang = 'es';
+  var scores = { red: 0, blue: 0 };
+  var timerSec = 0;
+  var isDemo = window.parent === window;
+
+  var scoreRedEl = document.getElementById('score-red');
+  var scoreBlueEl = document.getElementById('score-blue');
+  var timerEl = document.getElementById('match-timer');
+  var devBadge = document.getElementById('dev-badge');
+
+  function t(key) {
+    return (I18N[lang] && I18N[lang][key]) || I18N.es[key] || key;
+  }
+
+  function applyI18n() {
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      var key = el.getAttribute('data-i18n');
+      if (key) el.textContent = t(key);
+    });
+  }
+
+  function clampScore(n) {
+    return Math.max(0, Math.min(99, n | 0));
+  }
+
+  function formatTimer(sec) {
+    var s = Math.max(0, sec | 0);
+    var m = Math.floor(s / 60);
+    var r = s % 60;
+    return (m < 10 ? '0' : '') + m + ':' + (r < 10 ? '0' : '') + r;
+  }
+
+  function popScore(el) {
+    el.classList.remove('pop');
+    void el.offsetWidth;
+    el.classList.add('pop');
+    el.addEventListener('animationend', function onEnd() {
+      el.classList.remove('pop');
+      el.removeEventListener('animationend', onEnd);
+    });
+  }
+
+  function renderScores(changedTeam) {
+    scoreRedEl.textContent = String(scores.red);
+    scoreBlueEl.textContent = String(scores.blue);
+    if (changedTeam === 'red') popScore(scoreRedEl);
+    if (changedTeam === 'blue') popScore(scoreBlueEl);
+  }
+
+  function renderTimer() {
+    timerEl.textContent = formatTimer(timerSec);
+  }
+
+  function setScores(red, blue, changedTeam) {
+    var prevRed = scores.red;
+    var prevBlue = scores.blue;
+    scores.red = clampScore(red);
+    scores.blue = clampScore(blue);
+    var team = changedTeam;
+    if (!team) {
+      if (scores.red !== prevRed) team = 'red';
+      else if (scores.blue !== prevBlue) team = 'blue';
+    }
+    renderScores(team);
+  }
+
+  function setTimer(sec) {
+    timerSec = Math.max(0, sec | 0);
+    renderTimer();
+  }
+
+  function addGoal(team) {
+    if (team === 'red') setScores(scores.red + 1, scores.blue, 'red');
+    else if (team === 'blue') setScores(scores.red, scores.blue + 1, 'blue');
+  }
+
+  function removeGoal(team) {
+    if (team === 'red') setScores(scores.red - 1, scores.blue, 'red');
+    else if (team === 'blue') setScores(scores.red, scores.blue - 1, 'blue');
+  }
+
+  function sendCmd(action, payload) {
+    if (isDemo) return;
+    window.parent.postMessage({ type: 'hxd-scoreboard-preview-cmd', action: action, payload: payload || {} }, '*');
+  }
+
+  function reportSize() {
+    if (isDemo) return;
+    var shell = document.getElementById('top-shell');
+    if (!shell) return;
+    var r = shell.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    window.parent.postMessage({
+      type: 'hxd-scoreboard-preview-resize',
+      width: Math.ceil(r.width),
+      height: Math.ceil(r.height)
+    }, '*');
+  }
+
+  function scheduleReportSize() {
+    requestAnimationFrame(function () {
+      requestAnimationFrame(reportSize);
+    });
+  }
+
+  function applyTheme(theme, themeId) {
+    if (!theme || typeof theme !== 'object') return;
+    var root = document.documentElement;
+    Object.keys(theme).forEach(function (key) {
+      if (key.indexOf('--') === 0) root.style.setProperty(key, theme[key]);
+    });
+    if (themeId) root.setAttribute('data-theme', themeId);
+    var bgImg = theme['--theme-app-background-image'];
+    if (bgImg && String(bgImg).trim()) root.setAttribute('data-app-bg-image', '1');
+    else root.removeAttribute('data-app-bg-image');
+  }
+
+  function setOpacity(pct) {
+    var v = Math.max(0, Math.min(100, Number(pct)));
+    if (isNaN(v)) return;
+    document.documentElement.style.setProperty('--scoreboard-opacity', String(v / 100));
+  }
+
+  document.getElementById('btn-menu').addEventListener('click', function () { sendCmd('openMenu'); });
+  document.getElementById('btn-settings').addEventListener('click', function () { sendCmd('openSettings'); });
+
+  if (isDemo) {
+    devBadge.hidden = false;
+    document.addEventListener('keydown', function (e) {
+      if (e.repeat) return;
+      var k = e.key.toLowerCase();
+      if (k === 'q') addGoal('red');
+      else if (k === 'a') removeGoal('red');
+      else if (k === 'p') addGoal('blue');
+      else if (k === 'l') removeGoal('blue');
+      else if (k === '0') setScores(0, 0);
+    });
+  }
+
+  window.addEventListener('message', function (e) {
+    var data = e.data;
+    if (!data) return;
+
+    if (data.type === 'hxd-scoreboard-sync') {
+      devBadge.hidden = true;
+      if (data.lang && I18N[data.lang]) lang = data.lang;
+      if (data.theme) applyTheme(data.theme, data.themeId);
+      if (data.opacity !== undefined) setOpacity(data.opacity);
+      if (data.timer != null) setTimer(data.timer);
+      if (data.scores) {
+        setScores(
+          data.scores.red != null ? data.scores.red : scores.red,
+          data.scores.blue != null ? data.scores.blue : scores.blue,
+          data.changedTeam || null
+        );
+      }
+      applyI18n();
+      scheduleReportSize();
+      return;
+    }
+
+    if (data.type === 'hxd-scoreboard-goal') {
+      devBadge.hidden = true;
+      if (data.team === 'red' || data.team === 'blue') addGoal(data.team);
+    }
+  });
+
+  applyI18n();
+  renderScores();
+  renderTimer();
+
+  if (!isDemo) {
+    window.parent.postMessage({ type: 'hxd-scoreboard-preview-ready' }, '*');
+    scheduleReportSize();
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(scheduleReportSize).catch(function () {});
+    }
+    window.addEventListener('resize', scheduleReportSize);
+    var shell = document.getElementById('top-shell');
+    if (shell && typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(scheduleReportSize).observe(shell);
+    }
+  }
+})();
+</script>
+</body>
+</html>

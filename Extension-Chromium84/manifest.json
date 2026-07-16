@@ -1,0 +1,54 @@
+{
+  "manifest_version": 2,
+  "name": "HaxBall Zero",
+  "version": "2.0.5",
+  "description": "Extensão oficial do HaxBall Zero",
+  "content_scripts": [
+    {
+      "matches": [
+        "*://www.haxball.com/*",
+        "*://haxball.com/*",
+        "*://*.haxball.com/*",
+        "*://html5.haxball.com/*"
+      ],
+      "js": [
+        "browser-loader.js",
+        "core.js",
+        "header.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "background": {
+    "scripts": [
+      "interceptor.js"
+    ],
+    "persistent": false
+  },
+  "web_accessible_resources": [
+    "runtime.js",
+    "game-min-original.js",
+    "*.js",
+    "*.html",
+    "icons/*"
+  ],
+  "permissions": [
+    "downloads",
+    "tabs",
+    "webRequest",
+    "webRequestBlocking",
+    "*://www.haxball.com/*",
+    "*://haxball.com/*",
+    "*://*.haxball.com/*",
+    "*://html5.haxball.com/*",
+    "*://localhost/*",
+    "*://127.0.0.1/*"
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

@@ -1,0 +1,3676 @@
+  <!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HaxBall Zero — Roomlist Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://flagcdn.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Poppins:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&family=Oswald:wght@400;500;600;700&family=Raleway:wght@400;500;600;700&family=Ubuntu:wght@400;500;700&family=Quicksand:wght@400;500;600;700&family=Comfortaa:wght@400;500;600;700&family=Righteous&family=Orbitron:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --theme-bg-primary: #141414;
+      --theme-bg-secondary: #1a1a1a;
+      --theme-bg-tertiary: #272727;
+      --theme-bg-hover: #333;
+      --theme-bg-selected: #222;
+      --theme-border: #232323;
+      --theme-border-light: #333;
+      --theme-text-primary: #fff;
+      --theme-text-secondary: #888;
+      --theme-text-muted: #666;
+      --theme-scrollbar-track: #1a1a1a;
+      --theme-scrollbar-thumb: #555;
+      --theme-scrollbar-thumb-hover: #666;
+      --online: #22c55e;
+      --fav: #f59e0b;
+      --pin: #3b82f6;
+      --shadow-nav: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
+      --shadow-soft: 0 20px 60px rgba(0, 0, 0, 0.35);
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: Inter, system-ui, sans-serif;
+      background: transparent;
+      color: var(--theme-text-primary);
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    input { user-select: text; -webkit-user-select: text; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .scene {
+      height: 100vh;
+      overflow: hidden;
+      background: transparent;
+    }
+
+    html[data-app-bg-image="1"] .scene {
+      background: transparent;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    .page {
+      height: 100vh;
+      max-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 24px 64px;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    .nav-shell {
+      width: min(1040px, 100%);
+      position: relative;
+      flex-shrink: 0;
+      margin-bottom: 20px;
+    }
+
+    .navbar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 14px;
+      background: var(--theme-bg-secondary);
+      border: 1px solid var(--theme-border);
+      border-radius: 14px;
+      box-shadow: var(--shadow-nav);
+    }
+
+    .nav-left, .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .nav-center {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      min-width: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .nav-center::-webkit-scrollbar { display: none; }
+
+    .navbar.search-open .nav-center {
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
+    .nav-search-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 40px;
+    }
+
+    .nav-search-input {
+      width: 0;
+      opacity: 0;
+      padding: 0;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      background: var(--theme-bg-primary);
+      color: var(--theme-text-primary);
+      font: inherit;
+      font-size: 13px;
+      transition: width 0.2s ease, opacity 0.15s ease, padding 0.2s ease, border-color 0.15s;
+      outline: none;
+    }
+
+    .navbar.search-open .nav-search-input {
+      width: min(220px, 36vw);
+      opacity: 1;
+      padding: 9px 14px;
+      border-color: var(--theme-border);
+    }
+
+    .country-filter-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .country-filter-btn.has-country svg { display: none; }
+
+    .country-filter-code {
+      display: none;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+    }
+
+    .country-filter-btn.has-country .country-filter-code { display: block; }
+
+    .country-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      z-index: 80;
+      min-width: 168px;
+      max-height: min(360px, 58vh);
+      overflow-y: auto;
+      padding: 6px;
+      border: 1px solid var(--theme-border);
+      border-radius: 8px;
+      background: var(--theme-bg-secondary);
+      box-shadow: var(--shadow-soft);
+      display: none;
+    }
+
+    .country-menu.open { display: block; }
+
+    .country-sort-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding: 2px 2px 6px;
+      margin-bottom: 4px;
+      border-bottom: 1px solid var(--theme-border);
+    }
+
+    .country-sort-btn {
+      height: 30px;
+      border: none;
+      border-radius: 6px;
+      background: var(--theme-bg-primary);
+      color: var(--theme-text-secondary);
+      font: inherit;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .country-sort-btn:hover,
+    .country-sort-btn.active {
+      background: var(--theme-text-primary);
+      color: var(--theme-bg-primary);
+    }
+
+    .country-item {
+      width: 100%;
+      height: 34px;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--theme-text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 8px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .country-item:hover,
+    .country-item.active { background: var(--theme-bg-hover); }
+
+    .country-item-count {
+      margin-left: auto;
+      color: var(--theme-text-muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .country-menu-flag {
+      width: 22px;
+      height: 15px;
+      border-radius: 2px;
+      object-fit: cover;
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--theme-border-light) 70%, transparent);
+      flex-shrink: 0;
+    }
+
+    .nav-circle {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid var(--theme-border);
+      background: var(--theme-bg-tertiary);
+      color: var(--theme-text-primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.12s;
+      outline: none;
+      flex-shrink: 0;
+    }
+
+    .nav-circle:hover:not(.search-active) {
+      background: var(--theme-bg-hover);
+      border-color: var(--theme-border-light);
+    }
+
+    .nav-circle:active { transform: scale(0.96); }
+    .nav-circle.search-active {
+      background: var(--theme-text-primary);
+      color: var(--theme-bg-primary);
+      border-color: var(--theme-text-primary);
+    }
+
+    .nav-circle svg { width: 18px; height: 18px; display: block; }
+    .nav-circle[data-hidden="1"] { display: none; }
+
+    .tab-bar {
+      display: inline-flex;
+      background: var(--theme-bg-primary);
+      border: 1px solid var(--theme-border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .tab {
+      padding: 11px 18px;
+      border: none;
+      background: transparent;
+      color: var(--theme-text-primary);
+      font: inherit;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.12s ease, color 0.12s ease;
+    }
+
+    .tab:hover:not(.active) { background: var(--theme-bg-hover); }
+    .tab.active {
+      background: var(--theme-text-primary);
+      color: var(--theme-bg-primary);
+    }
+
+    .tab.tab--pro.active {
+      background: linear-gradient(135deg, #ffd76a, #ffb347);
+      color: #1a1200;
+    }
+
+    .avatar-btn {
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      border: 2px solid var(--theme-border-light);
+      border-radius: 50%;
+      background: var(--theme-bg-tertiary);
+      cursor: pointer;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .avatar-btn img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+      display: block;
+    }
+
+    .avatar-fallback {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--theme-text-primary);
+    }
+
+    .status-dot {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 11px;
+      height: 11px;
+      background: var(--online);
+      border: 2px solid var(--theme-bg-secondary);
+      border-radius: 50%;
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--online) 40%, transparent);
+    }
+
+    .content-card {
+      width: min(1040px, 100%);
+      flex: 1;
+      min-height: 0;
+      background: var(--theme-bg-secondary);
+      border: 1px solid var(--theme-border);
+      border-radius: 16px;
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .content-inner {
+      flex: 1;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 28px 32px 36px;
+      scrollbar-gutter: stable;
+      scrollbar-width: thin;
+      scrollbar-color: var(--theme-scrollbar-thumb) transparent;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .content-inner:has(#rooms-panel.active) {
+      overflow: hidden;
+    }
+
+    .content-inner::-webkit-scrollbar { width: 7px; }
+    .content-inner::-webkit-scrollbar-track { background: transparent; margin: 10px 0; }
+    .content-inner::-webkit-scrollbar-thumb {
+      background: var(--theme-scrollbar-thumb);
+      border-radius: 99px;
+      border: 2px solid var(--theme-bg-secondary);
+    }
+    .content-inner::-webkit-scrollbar-thumb:hover { background: var(--theme-scrollbar-thumb-hover); }
+
+    .panel h2 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--theme-text-primary);
+      margin-bottom: 6px;
+    }
+
+    .panel .lead {
+      font-size: 14px;
+      color: var(--theme-text-secondary);
+      line-height: 1.5;
+      margin-bottom: 24px;
+      max-width: 520px;
+    }
+
+    .list {
+      background: transparent;
+      border: none;
+      border-radius: 0;
+    }
+
+    #rooms-panel.panel.active {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+
+    #rooms-panel .list-block {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+
+    #rooms-panel .list {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+
+    #rooms-panel .list-virtual-scroll {
+      flex: 1;
+      min-height: 120px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      overflow-anchor: none;
+      scrollbar-width: thin;
+      scrollbar-color: var(--theme-scrollbar-thumb) transparent;
+    }
+
+    #rooms-panel .list-virtual-scroll::-webkit-scrollbar { width: 6px; }
+    #rooms-panel .list-virtual-scroll::-webkit-scrollbar-thumb {
+      background: var(--theme-scrollbar-thumb);
+      border-radius: 99px;
+    }
+
+    #room-list-inner {
+      position: relative;
+      width: 100%;
+    }
+
+    #rooms-panel #room-list {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      flex-shrink: 0;
+    }
+
+    #rooms-panel h2 {
+      font-size: 20px;
+      margin-bottom: 4px;
+    }
+
+    #rooms-panel .lead {
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+
+    #rooms-panel .list-table-head {
+      margin-bottom: 4px;
+      padding-top: 4px;
+      padding-bottom: 4px;
+      font-size: 9px;
+    }
+
+    #rooms-panel .list-row {
+      align-items: center;
+      height: var(--room-row-h, 26px);
+      min-height: var(--room-row-h, 26px);
+      max-height: var(--room-row-h, 26px);
+      padding-top: 0;
+      padding-bottom: 0;
+      box-sizing: border-box;
+      contain: layout style paint;
+    }
+
+    #rooms-panel .list-table-head,
+    #rooms-panel .list-row {
+      gap: 8px;
+      padding-left: 4px;
+      padding-right: 6px;
+    }
+
+    #rooms-panel .room-flag,
+    #rooms-panel .room-flag-ph {
+      width: 20px;
+      height: 14px;
+    }
+
+    #rooms-panel .name-line .room-flag,
+    #rooms-panel .name-line .room-flag-ph {
+      width: 20px;
+      height: 14px;
+    }
+
+    #rooms-panel .list-row .label {
+      font-size: 12px;
+      text-rendering: geometricPrecision;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #rooms-panel .dist-hint {
+      font-size: 10px;
+    }
+
+    #rooms-panel .col-players .players {
+      font-size: 11px;
+    }
+
+    #rooms-panel .col-flag {
+      width: 42px;
+    }
+
+    .list-table-head,
+    .list-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-left: 6px;
+      padding-right: 10px;
+    }
+
+    .list-table-head {
+      margin-bottom: 8px;
+      padding-top: 8px;
+      padding-bottom: 8px;
+      border-radius: 6px;
+      background: var(--theme-bg-tertiary);
+      border: none;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--theme-text-muted);
+    }
+
+    .col-flag {
+      width: 48px;
+      flex-shrink: 0;
+      text-align: center;
+    }
+
+    .col-name {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .col-players {
+      width: 56px;
+      flex-shrink: 0;
+      text-align: right;
+      padding-right: 2px;
+    }
+
+    .list-table-head .col-players {
+      text-align: right;
+    }
+
+    #room-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .list-row {
+      padding-top: 8px;
+      padding-bottom: 8px;
+      border: none;
+      background: transparent;
+      border-radius: 4px;
+      border-left: 3px solid transparent;
+    }
+
+    .list-row.click { cursor: pointer; }
+
+    @media (hover: hover) {
+      .list-row.click:hover:not(.is-active),
+      .list-row.click.is-hover:not(.is-active) { background: var(--theme-bg-selected); }
+      .list-row.is-active:hover,
+      .list-row.is-active.is-hover { background: var(--theme-bg-hover); }
+      .list-row.is-pinned:hover,
+      .list-row.is-pinned.is-hover {
+        background: color-mix(in srgb, var(--pin) 12%, var(--theme-bg-selected));
+      }
+    }
+
+    .list-row.is-active {
+      background: var(--theme-bg-tertiary);
+    }
+
+    .list-row.is-locked { opacity: 0.5; }
+
+    .list-row.is-pinned {
+      border-left-color: var(--pin);
+      background: color-mix(in srgb, var(--pin) 6%, transparent);
+    }
+
+    .list-row.is-fav .label { color: var(--fav); }
+
+    .room-flag {
+      width: 24px;
+      height: 17px;
+      border-radius: 2px;
+      object-fit: cover;
+      border: none;
+      background: var(--theme-bg-tertiary);
+      display: block;
+      margin: 0 auto;
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--theme-border-light) 70%, transparent);
+    }
+
+    .room-flag-ph {
+      width: 24px;
+      height: 17px;
+      border-radius: 2px;
+      border: none;
+      background: var(--theme-bg-tertiary);
+      display: block;
+      margin: 0 auto;
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--theme-border-light) 70%, transparent);
+    }
+
+    .name-line {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .list-row .label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--theme-text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+      letter-spacing: 0;
+      text-rendering: geometricPrecision;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .ping-hint {
+      flex-shrink: 0;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--theme-text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .dist-hint {
+      font-size: 11px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--theme-text-secondary);
+      white-space: nowrap;
+    }
+
+    .name-line .room-flag,
+    .name-line .room-flag-ph {
+      flex-shrink: 0;
+      margin: 0;
+    }
+
+    .col-players .players {
+      font-size: 12px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--theme-text-secondary);
+    }
+
+    .col-players .players.is-full { color: #ef4444; }
+
+    .search-empty {
+      padding: 32px 18px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--theme-text-muted);
+      border: 1px solid var(--theme-border);
+      border-radius: 10px;
+      background: var(--theme-bg-primary);
+    }
+
+    .search-empty.hidden { display: none; }
+
+    .rooms-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .rooms-loading svg {
+      animation: pro-spin 1.1s linear infinite;
+      color: var(--theme-text-muted);
+    }
+
+    .rooms-loading.hidden { display: none; }
+
+    .card-footer {
+      flex-shrink: 0;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 14px 32px 18px;
+      border-top: 1px solid var(--theme-border);
+      background: var(--theme-bg-secondary);
+    }
+
+    .card-footer button {
+      border: 1px solid var(--theme-border);
+      background: var(--theme-bg-tertiary);
+      color: var(--theme-text-primary);
+      border-radius: 8px;
+      padding: 9px 16px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+
+    .card-footer button:hover { background: var(--theme-bg-hover); }
+    .card-footer button.primary {
+      background: var(--theme-text-primary);
+      color: var(--theme-bg-primary);
+      border-color: var(--theme-text-primary);
+    }
+
+    .card-footer button.primary:hover { opacity: 0.92; }
+    .card-footer button:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.58);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+      padding: 20px;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal.modal--create {
+      width: min(360px, 100%);
+      border-radius: 8px;
+      background: var(--theme-bg-secondary);
+      border: 1px solid var(--theme-border);
+      box-shadow: var(--shadow-soft);
+      padding: 20px 22px 18px;
+    }
+
+    .modal--create h1 {
+      margin: 0 0 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--theme-border);
+      font-size: 18px;
+      font-weight: 700;
+      text-align: center;
+      color: var(--theme-text-primary);
+    }
+
+    .modal--create .label-input {
+      margin: 0 0 12px;
+    }
+
+    .modal--create .label-input label {
+      display: none;
+    }
+
+    .modal--create .label-input input,
+    .modal--create .label-input select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 9px 11px;
+      border: 1px solid var(--theme-border-light);
+      border-radius: 6px;
+      background: var(--theme-bg-primary);
+      color: var(--theme-text-primary);
+      font: inherit;
+      font-size: 13px;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .modal--create .label-input select {
+      cursor: pointer;
+    }
+
+    .modal--create .label-input input:focus,
+    .modal--create .label-input select:focus {
+      border-color: var(--theme-border);
+    }
+
+    .modal--create .create-unlisted-btn {
+      width: 100%;
+      margin: 0 0 12px;
+      padding: 9px 11px;
+      border: 1px solid var(--theme-border-light);
+      border-radius: 6px;
+      background: var(--theme-bg-tertiary);
+      color: var(--theme-text-primary);
+      font: inherit;
+      font-size: 13px;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+
+    .modal--create .create-unlisted-btn:hover {
+      background: var(--theme-bg-hover);
+    }
+
+    .modal--create .create-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .modal--create .create-actions button {
+      flex: 1;
+      padding: 9px 12px;
+      border: 1px solid var(--theme-border-light);
+      border-radius: 6px;
+      background: var(--theme-bg-tertiary);
+      color: var(--theme-text-primary);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+
+    .modal--create .create-actions button:hover {
+      background: var(--theme-bg-hover);
+    }
+
+    .hxd-toast {
+      position: fixed;
+      left: 50%;
+      bottom: 28px;
+      transform: translateX(-50%) translateY(12px);
+      z-index: 110;
+      padding: 10px 16px;
+      border-radius: 10px;
+      background: var(--theme-bg-secondary);
+      border: 1px solid var(--theme-border);
+      color: var(--theme-text-primary);
+      font-size: 13px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+
+    .hxd-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .ctx-menu {
+      display: none;
+      position: fixed;
+      z-index: 60;
+      min-width: 172px;
+      background: var(--theme-bg-secondary);
+      border: 1px solid var(--theme-border);
+      border-radius: 12px;
+      box-shadow: var(--shadow-nav);
+      overflow: hidden;
+      padding: 4px;
+    }
+
+    .ctx-menu.open { display: block; }
+
+    .ctx-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 10px 12px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--theme-text-primary);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+
+    .ctx-item:hover { background: var(--theme-bg-hover); }
+    .ctx-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+    .dev-badge {
+      position: fixed;
+      bottom: 10px;
+      right: 12px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: var(--theme-bg-secondary);
+      border: 1px solid var(--theme-border);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--theme-text-muted);
+      pointer-events: none;
+      z-index: 50;
+    }
+
+    .profile-panel.panel.active {
+      display: block;
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+    }
+
+    .pp-hidden { display: none !important; }
+
+    .profile-panel .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--theme-text-muted);
+      margin: 28px 0 12px;
+    }
+
+    .profile-panel .list-block .section-title { margin: 0 0 12px; }
+    .profile-panel .list-block + .list-block { margin-top: 24px; }
+
+    .profile-panel .list {
+      border: 1px solid var(--theme-border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--theme-bg-primary);
+    }
+
+    .profile-panel .list-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--theme-border);
+      background: var(--theme-bg-secondary);
+    }
+
+    .profile-panel .list-row:last-child { border-bottom: none; }
+
+    .profile-panel .list-row .label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--theme-text-primary);
+      flex-shrink: 0;
+    }
+
+    .profile-panel .list-row .hint {
+      font-size: 13px;
+      color: var(--theme-text-secondary);
+      text-align: right;
+      word-break: break-word;
+    }
+
+    .profile-panel .list-row--note {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 14px;
+      padding: 20px 18px;
+      cursor: default;
+    }
+
+    .profile-panel .list-row--note .hint {
+      text-align: left;
+      line-height: 1.5;
+      color: var(--theme-text-secondary);
+      margin: 0;
+    }
+
+    .profile-panel .profile-login-btn {
+      align-self: flex-start;
+      padding: 10px 18px;
+      border-radius: 8px;
+      border: none;
+      background: var(--theme-text-primary);
+      color: var(--theme-bg-primary);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .profile-panel .profile-login-btn:hover { opacity: 0.9; }
+
+    .profile-panel .profile-identity-row {
+      justify-content: flex-start;
+      gap: 16px;
+      padding: 18px;
+      cursor: default;
+    }
+
+    .profile-panel .profile-identity-row:hover { background: var(--theme-bg-secondary); }
+
+    .profile-panel .profile-avatar-wrap {
+      position: relative;
+      flex-shrink: 0;
+      width: 56px;
+      height: 56px;
+    }
+
+    .profile-panel .profile-avatar-wrap img {
+      width: 56px;
+      height: 56px;
+      border-radius: 10px;
+      object-fit: cover;
+      border: 1px solid var(--theme-border);
+      display: block;
+    }
+
+    .profile-panel .profile-avatar-fb {
+      width: 56px;
+      height: 56px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--theme-text-primary);
+      background: var(--theme-bg-tertiary);
+      border: 1px solid var(--theme-border);
+    }
+
+    .profile-panel .profile-status-dot {
+      position: absolute;
+      bottom: -2px;
+      right: -2px;
+      width: 11px;
+      height: 11px;
+      background: var(--online);
+      border: 2px solid var(--theme-bg-secondary);
+      border-radius: 50%;
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--online) 40%, transparent);
+    }
+
+    .profile-panel .profile-identity-meta {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .profile-panel .profile-name-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .profile-panel .profile-name {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--theme-text-primary);
+      word-break: break-word;
+    }
+
+    .profile-panel .profile-tier {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      vertical-align: middle;
+    }
+
+    .profile-panel .profile-tier--pro {
+      color: #1a1200;
+      background: linear-gradient(135deg, #ffd76a, #ffb347);
+    }
+
+    .profile-panel .profile-tier--vip {
+      color: #fef3c7;
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid rgba(251, 191, 36, 0.35);
+    }
+
+    .profile-panel .profile-tier--default {
+      color: var(--theme-text-secondary);
+      background: var(--theme-bg-tertiary);
+      border: 1px solid var(--theme-border);
+    }
+
+    .profile-panel .profile-handle {
+      margin: 4px 0 0;
+      font-size: 13px;
+      color: var(--theme-text-muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .profile-panel .profile-handle.pp-hidden { display: none !important; }
+
+    /* legacy pp-shell removed */
+    .panel { display: none; }
+    .panel.active {
+      display: block;
+      animation: panelIn 0.22s ease;
+    }
+
+    .panel.hidden { display: none; }
+
+    .pro-tag {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: #1a1200;
+      background: linear-gradient(135deg, #ffd76a, #ffb347);
+      vertical-align: middle;
+    }
+
+    .tab-bar.hidden { display: none !important; }
+    .nav-circle.hidden { display: none !important; }
+
+    @keyframes panelIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    /* ─── Pro panel (mismo lenguaje que settings-preview) ─── */
+    .pro-panel .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--theme-text-muted);
+      margin: 28px 0 12px;
+    }
+
+    .pro-panel .list-block .section-title { margin: 0 0 12px; }
+    .pro-panel .list-block + .list-block { margin-top: 32px; }
+    .pro-panel .section-title--split { margin-top: 32px; margin-bottom: 14px; }
+
+    .pro-panel .group-lead {
+      font-size: 12px;
+      color: var(--theme-text-secondary);
+      line-height: 1.45;
+      margin: -4px 0 12px;
+      padding: 0 2px;
+    }
+
+    .pro-panel .list {
+      border: 1px solid var(--theme-border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--theme-bg-primary);
+    }
+
+    .pro-panel .list-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--theme-border);
+      background: var(--theme-bg-secondary);
+    }
+
+    .pro-panel .list-row--stacked {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+      padding: 13px 16px;
+    }
+
+    .pro-panel .list-row--stacked .row-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .pro-panel .list-row--stacked select {
+      width: 100%;
+      padding: 9px 11px;
+      border: 1px solid var(--theme-border);
+      border-radius: 8px;
+      background: var(--theme-bg-tertiary);
+      color: var(--theme-text-primary);
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .pro-panel .list-row--stacked select:focus {
+      border-color: var(--theme-border-light);
+    }
+
+    .pro-panel .list-row--note {
+      cursor: default;
+      padding: 0;
+      background: var(--theme-bg-primary);
+      border-bottom: none;
+      display: block;
+    }
+
+    .pro-panel .list-row--note:hover { background: var(--theme-bg-primary); }
+
+    .pro-panel .list-row:last-child { border-bottom: none; }
+    .pro-panel .list-row.click { cursor: pointer; }
+    .pro-panel .list-row.click:hover { background: var(--theme-bg-hover); }
+
+    .pro-panel .list-row .label {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--theme-text-primary);
+    }
+
+    .pro-panel .list-row .hint {
+      font-size: 12px;
+      color: var(--theme-text-secondary);
+      margin-top: 2px;
+    }
+
+    .pro-panel .row-chips {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .pro-panel .chip {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 12px;
+      background: var(--theme-bg-tertiary);
+      border: 1px solid var(--theme-border);
+      border-radius: 8px;
+      color: var(--theme-text-primary);
+      min-width: 56px;
+      text-align: center;
+      cursor: pointer;
+      font: inherit;
+      line-height: 1.2;
+    }
+
+    .pro-panel .chip:hover:not(:disabled) { background: var(--theme-bg-hover); }
+    .pro-panel .chip:disabled { opacity: 0.4; cursor: not-allowed; }
+    .pro-panel .chip--muted { color: var(--theme-text-muted); min-width: 36px; }
+
+    .pro-panel .chip-pick {
+      position: relative;
+      overflow: hidden;
+      display: inline-block;
+    }
+
+    .pro-panel .chip-pick input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .pro-panel .sw {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+      display: inline-block;
+      cursor: pointer;
+    }
+
+    .pro-panel .sw input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      opacity: 0;
+      cursor: pointer;
+      z-index: 2;
+    }
+
+    .pro-panel .sw-track {
+      position: absolute;
+      inset: 0;
+      background: var(--theme-border-light);
+      border-radius: 99px;
+      transition: background 0.15s;
+      pointer-events: none;
+    }
+
+    .pro-panel .sw-track::after {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      left: 3px;
+      top: 3px;
+      background: var(--theme-bg-secondary);
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      transition: transform 0.15s;
+    }
+
+    .pro-panel .sw input:checked + .sw-track { background: var(--theme-text-primary); }
+    .pro-panel .sw input:checked + .sw-track::after { transform: translateX(18px); }
+
+    .pro-preview-stage {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 76px;
+      padding: 18px 20px;
+      background: #111;
+      flex-wrap: wrap;
+    }
+
+    .pro-preview-nick {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .pro-preview-ball {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: #fff;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.08);
+    }
+
+    .pro-preview-foot {
+      padding: 10px 18px 12px;
+      font-size: 12px;
+      color: var(--theme-text-muted);
+      text-align: center;
+      border-top: 1px solid var(--theme-border);
+      background: var(--theme-bg-secondary);
+    }
+
+    .pro-color-swatches {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pro-color-swatch {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid var(--theme-border-light);
+      overflow: hidden;
+      position: relative;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .pro-color-swatch input[type="color"] {
+      position: absolute;
+      inset: -4px;
+      width: calc(100% + 8px);
+      height: calc(100% + 8px);
+      border: none;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .pro-panel .btn-line {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+      margin-bottom: 8px;
+    }
+
+    .pro-panel .btn {
+      padding: 10px 18px;
+      border-radius: 8px;
+      border: 1px solid var(--theme-border);
+      background: var(--theme-bg-tertiary);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--theme-text-primary);
+    }
+
+    .pro-panel .btn:hover { background: var(--theme-bg-hover); }
+
+    .pro-panel .btn.dark {
+      background: var(--theme-text-primary);
+      color: var(--theme-bg-primary);
+      border-color: var(--theme-text-primary);
+    }
+
+    .pro-panel .btn.dark:hover {
+      background: color-mix(in srgb, var(--theme-text-primary) 88%, var(--theme-bg-primary));
+    }
+
+    .pro-panel .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .pro-panel .pro-foot {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--theme-text-muted);
+      text-align: center;
+      padding: 0 2px;
+    }
+
+    .pro-upsell-block .list-row { cursor: default; }
+    .pro-upsell-block .list-row:hover { background: var(--theme-bg-secondary); }
+
+    .pro-discord-btn {
+      width: 100%;
+      padding: 12px 14px;
+      border: none;
+      border-radius: 8px;
+      background: #5865F2;
+      color: #fff;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .pro-discord-btn:hover { background: #4752C4; }
+
+    .pro-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      min-height: 200px;
+      color: var(--theme-text-secondary);
+      font-size: 14px;
+    }
+
+    .pro-loading svg {
+      animation: pro-spin 1.1s linear infinite;
+      color: var(--theme-text-muted);
+    }
+
+    @keyframes pro-spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="scene">
+  <div class="page">
+
+    <div class="nav-shell">
+      <header class="navbar" id="navbar">
+        <div class="nav-left">
+          <button type="button" class="nav-circle hidden" id="pro-back-btn" title="Volver a salas" aria-label="Volver a salas">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+          </button>
+          <button type="button" class="nav-circle" data-cmd="refresh" title="Actualizar" aria-label="Actualizar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+          </button>
+          <div class="nav-search-wrap">
+            <button type="button" class="nav-circle" id="search-toggle" title="Buscar sala" aria-label="Buscar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </button>
+            <input class="nav-search-input" id="search-input" type="search" autocomplete="off" spellcheck="false" aria-label="Buscar sala">
+          </div>
+          <div class="country-filter-wrap" id="country-filter-wrap">
+            <button type="button" class="nav-circle country-filter-btn" id="country-filter-toggle" title="Filtrar pais" aria-label="Filtrar pais">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+              <span class="country-filter-code" id="country-filter-code">BR</span>
+            </button>
+            <div class="country-menu" id="country-menu"></div>
+          </div>
+        </div>
+
+        <div class="nav-center">
+          <nav class="tab-bar" id="room-nav-tabs" role="tablist">
+            <button type="button" class="tab active" data-filter="all" role="tab" data-i18n="all">Todos</button>
+            <button type="button" class="tab tab--pro" data-filter="pro" role="tab" data-i18n="pro" data-anon-hide="1">Pro</button>
+            <button type="button" class="tab" data-filter="fav" role="tab" data-i18n="fav">Favoritos</button>
+          </nav>
+          <nav class="tab-bar hidden" id="pro-nav-tabs" role="tablist">
+            <button type="button" class="tab active" data-pro-tab="profile" role="tab" data-i18n="proTabProfile">Perfil</button>
+            <button type="button" class="tab" data-pro-tab="sounds" role="tab" data-i18n="proTabSounds">Sonido</button>
+          </nav>
+        </div>
+
+        <div class="nav-right">
+          <button type="button" class="nav-circle" data-cmd="settings" title="Ajustes" aria-label="Ajustes">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          </button>
+          <button type="button" class="avatar-btn" data-cmd="openProfile" title="Perfil" aria-label="Perfil">
+            <div class="avatar-fallback">GZ</div>
+            <span class="status-dot"></span>
+          </button>
+        </div>
+      </header>
+    </div>
+
+    <main class="content-card">
+      <div class="content-inner">
+        <div class="panel active" id="rooms-panel">
+          <h2 data-i18n="title">Salas</h2>
+          <p class="lead" id="room-lead">—</p>
+
+          <div class="list-block">
+            <div class="list">
+              <div class="list-table-head">
+                <span class="col-flag" data-i18n="colDist">Dist.</span>
+                <span class="col-name" data-i18n="colName">Nombre</span>
+                <span class="col-players" data-i18n="colPlayers">Jugadores</span>
+              </div>
+              <div class="list-virtual-scroll" id="room-list-scroll">
+                <div id="room-list-inner">
+                  <div id="room-list"></div>
+                </div>
+              </div>
+            </div>
+            <div class="search-empty rooms-loading hidden" id="loading-state" aria-live="polite">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M3 12h4M17 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+              </svg>
+              <span data-i18n="loading">Cargando…</span>
+            </div>
+            <div class="search-empty hidden" id="empty-state" data-i18n="empty">No hay salas que coincidan</div>
+          </div>
+        </div>
+
+        <div class="panel pro-panel" id="pro-panel-profile">
+          <h2><span data-i18n="proTabProfile">Perfil</span> <span class="pro-tag">PRO</span></h2>
+          <p class="lead" data-i18n="proProfileLead">Colores, fuente, banner y pelota en la sala.</p>
+          <div id="pro-profile-body"></div>
+        </div>
+
+        <div class="panel pro-panel" id="pro-panel-sounds">
+          <h2 data-i18n="proTabSounds">Sonido</h2>
+          <p class="lead" data-i18n="proSoundsLead">Reemplazá los sonidos del juego con archivos propios (.wav, .mp3, .ogg).</p>
+          <div id="pro-sounds-body"></div>
+        </div>
+
+        <div class="panel profile-panel" id="player-profile-panel">
+          <h2 data-i18n="ppTitle">Mi perfil</h2>
+          <p class="lead" data-i18n="ppLead">Tu cuenta y estado en HaxBall Zero.</p>
+
+          <div id="pp-login-wall" class="pp-hidden">
+            <div class="list-block">
+              <div class="list">
+                <div class="list-row list-row--note">
+                  <p class="hint" id="pp-login-msg"></p>
+                  <button type="button" class="profile-login-btn" id="pp-login-btn"></button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="pp-main" class="pp-hidden">
+            <div class="list-block">
+              <div class="list">
+                <div class="list-row profile-identity-row">
+                  <div class="profile-avatar-wrap">
+                    <img id="pp-avatar" alt="" hidden>
+                    <div class="profile-avatar-fb" id="pp-avatar-fb">GZ</div>
+                    <span class="profile-status-dot"></span>
+                  </div>
+                  <div class="profile-identity-meta">
+                    <div class="profile-name-row">
+                      <span class="profile-name" id="pp-nick">—</span>
+                      <span class="profile-tier profile-tier--default" id="pp-tier">NOVATO+</span>
+                    </div>
+                    <p class="profile-handle pp-hidden" id="pp-handle"></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="list-block">
+              <div class="section-title" data-i18n="ppStatsKicker">Estadísticas</div>
+              <div class="list">
+                <div class="list-row">
+                  <span class="label" id="pp-lbl-playtime">Horas jugadas</span>
+                  <span class="hint" id="pp-playtime">—</span>
+                </div>
+                <div class="list-row">
+                  <span class="label" id="pp-lbl-created">Fecha de creación</span>
+                  <span class="hint" id="pp-created">—</span>
+                </div>
+                <div class="list-row">
+                  <span class="label" id="pp-lbl-streak">Racha de días</span>
+                  <span class="hint" id="pp-streak">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-footer" id="card-footer">
+        <button type="button" data-cmd="replays" data-i18n="replays">Replays</button>
+        <button type="button" id="create-btn" data-i18n="create">Crear sala</button>
+        <button type="button" class="primary" id="join-btn" data-cmd="join" disabled data-i18n="join">Entrar</button>
+      </div>
+    </main>
+
+  </div>
+</div>
+
+<div class="ctx-menu" id="ctx-menu" role="menu"></div>
+
+<div class="modal-overlay" id="create-overlay" aria-hidden="true">
+  <div class="modal modal--create create-room-view" role="dialog" aria-modal="true" aria-labelledby="create-title">
+    <h1 id="create-title" data-i18n="createTitle">Crear sala</h1>
+    <div class="label-input">
+      <label data-i18n="createName">Nombre</label>
+      <input type="text" id="create-name" maxlength="40" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="label-input">
+      <label data-i18n="createPass">Contraseña</label>
+      <input type="text" id="create-pass" maxlength="30" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="label-input">
+      <label data-i18n="createMax">Máx. jugadores</label>
+      <select id="create-max"></select>
+    </div>
+    <button type="button" id="create-unlisted-btn" class="create-unlisted-btn"></button>
+    <div class="row create-actions">
+      <button type="button" id="create-cancel" data-i18n="createCancel">Cancelar</button>
+      <button type="button" id="create-submit" data-i18n="createSubmit">Crear</button>
+    </div>
+  </div>
+</div>
+
+<div class="hxd-toast" id="toast"></div>
+<div class="dev-badge" id="dev-badge" hidden>Preview · datos demo</div>
+
+<script>
+(function () {
+  var I18N = {
+    es: {
+      title: 'Salas', lead: '{n} salas disponibles', leadOne: '1 sala disponible', leadSel: ' · {name} seleccionada',
+      all: 'Todos', pro: 'Pro', fav: 'Favoritos',
+      countryFilter: 'Filtrar pais', countryAll: 'Todos los paises',
+      countrySortAlpha: 'A-Z', countrySortCount: 'Mas salas',
+      colDist: 'Dist.', colName: 'Nombre', colPlayers: 'Jugadores',
+      empty: 'No hay salas que coincidan',
+      loading: 'Cargando…',
+      create: 'Crear sala', join: 'Entrar', replays: 'Replays',
+      searchPh: 'Buscar sala…',
+      ctxFavAdd: 'Agregar a favoritos', ctxFavRemove: 'Quitar de favoritos',
+      ctxPinAdd: 'Fijar arriba', ctxPinRemove: 'Desfijar',
+      createTitle: 'Crear sala',
+      createName: 'Nombre', createPass: 'Contraseña', createMax: 'Máx. jugadores',
+      createShowList: 'Mostrar en lista: {val}', createShowYes: 'Sí', createShowNo: 'No',
+      createNameDefault: 'Mi sala',
+      createCancel: 'Cancelar', createSubmit: 'Crear',
+      createOk: 'Sala creada', createErr: 'El nombre es obligatorio',
+      proTitle: 'Pro', proLead: 'Personalizá tu perfil y los sonidos del juego.',
+      proProfileLead: 'Colores, fuente, banner y pelota en la sala.',
+      proTabProfile: 'Perfil', proTabSounds: 'Sonido',
+      proPreview: 'Vista previa', proPreviewNote: 'Así se verá tu nick en la sala.',
+      proSecColors: 'Colores', proLblNick: 'Nick', proLblVerified: 'Verificado',
+      proGrad: 'Gradiente', proSync: 'Sincronizar nick → verificado', proSynced: '¡Sincronizado!',
+      proSecLook: 'Apariencia', proFont: 'Fuente', proBanner: 'Banner', proBall: 'Pelota',
+      proBallHint: 'Efecto visual local de la pelota para usuarios Pro.',
+      proBallColors: 'Colores de la pelota', proBannerColors: 'Colores del banner',
+      proSave: 'Guardar cambios', proSaving: 'Guardando…', proSaved: 'Cambios guardados',
+      proSaveErr: 'No se pudieron guardar los cambios', proExpires: 'Válido hasta',
+      proLifetime: 'Vitalicio', proLoading: 'Cargando Pro…',
+      proSoundsLead: 'Reemplazá los sonidos del juego con archivos propios (.wav, .mp3, .ogg).',
+      proSoundsEnable: 'Activar sonidos personalizados', proSoundsSave: 'Guardar sonidos',
+      proSoundsSaved: 'Sonidos guardados', proSoundsSaveErr: 'Error al guardar sonidos',
+      proSoundsFile: 'Archivo cargado', proSoundsSilent: 'Sin archivo (silencio)',
+      proSoundsPick: 'Elegir', proSoundsTest: 'Probar', proSoundsMute: 'Silencio',
+      proSoundsRemove: 'Quitar',
+      proSndChat: 'Chat', proSndMention: 'Mención', proSndKick: 'Patada / pelota',
+      proSndGoal: 'Gol', proSndJoin: 'Jugador entra', proSndLeave: 'Jugador sale',
+      proUpsellTitle: 'Desbloqueá Pro', proUpsellText: 'Colores, banner, fuente, pelota y sonidos personalizados.',
+      proUpsellDiscord: 'Unirse en Discord',
+      ppTitle: 'Mi perfil', ppLead: 'Tu cuenta y estado en HaxBall Zero.', ppDetailsKicker: 'Detalles',
+      ppLoginMsg: 'Para ver tu perfil con foto de Discord, iniciá sesión desde HaxBall Zero y volvé a la lista de salas.',
+      ppLoginBtn: 'Ir al juego', ppStatusLbl: 'Estado', ppRoomLbl: 'Sala actual', ppAccountLbl: 'Cuenta',
+      ppStatsKicker: 'Estadísticas', ppPlayTimeLbl: 'Horas jugadas', ppCreatedLbl: 'Fecha de creación',
+      ppStreakLbl: 'Racha de días',
+      ppOnline: 'En línea', ppInRoom: 'En sala', ppNotInRoom: 'Sin sala',
+      ppAccountDiscord: 'Discord', ppAccountGuest: 'Invitado'
+    },
+    en: {
+      title: 'Rooms', lead: '{n} rooms available', leadOne: '1 room available', leadSel: ' · {name} selected',
+      all: 'All', pro: 'Pro', fav: 'Favorites',
+      countryFilter: 'Filter country', countryAll: 'All countries',
+      countrySortAlpha: 'A-Z', countrySortCount: 'Most rooms',
+      colDist: 'Dist.', colName: 'Name', colPlayers: 'Players',
+      empty: 'No matching rooms',
+      loading: 'Loading…',
+      create: 'Create room', join: 'Join', replays: 'Replays',
+      searchPh: 'Search room…',
+      ctxFavAdd: 'Add to favorites', ctxFavRemove: 'Remove from favorites',
+      ctxPinAdd: 'Pin to top', ctxPinRemove: 'Unpin',
+      createTitle: 'Create room',
+      createName: 'Name', createPass: 'Password', createMax: 'Max players',
+      createShowList: 'Show in room list: {val}', createShowYes: 'Yes', createShowNo: 'No',
+      createNameDefault: 'My room',
+      createCancel: 'Cancel', createSubmit: 'Create',
+      createOk: 'Room created', createErr: 'Name is required',
+      proTitle: 'Pro', proLead: 'Customize your profile and in-game sounds.',
+      proProfileLead: 'Colors, font, banner and ball in the room list.',
+      proTabProfile: 'Profile', proTabSounds: 'Sound',
+      proPreview: 'Preview', proPreviewNote: 'How your nick will look in the room list.',
+      proSecColors: 'Colors', proLblNick: 'Nick', proLblVerified: 'Verified',
+      proGrad: 'Gradient', proSync: 'Sync nick → verified', proSynced: 'Synced!',
+      proSecLook: 'Appearance', proFont: 'Font', proBanner: 'Banner', proBall: 'Ball',
+      proBallHint: 'Local ball visual effect for Pro users.',
+      proBallColors: 'Ball colors', proBannerColors: 'Banner colors',
+      proSave: 'Save changes', proSaving: 'Saving…', proSaved: 'Changes saved',
+      proSaveErr: 'Could not save changes', proExpires: 'Valid until',
+      proLifetime: 'Lifetime', proLoading: 'Loading Pro…',
+      proSoundsLead: 'Replace in-game sounds with your own files (.wav, .mp3, .ogg).',
+      proSoundsEnable: 'Enable custom sounds', proSoundsSave: 'Save sounds',
+      proSoundsSaved: 'Sounds saved', proSoundsSaveErr: 'Could not save sounds',
+      proSoundsFile: 'File loaded', proSoundsSilent: 'No file (silent)',
+      proSoundsPick: 'Choose', proSoundsTest: 'Test', proSoundsMute: 'Silent',
+      proSoundsRemove: 'Remove',
+      proSndChat: 'Chat', proSndMention: 'Mention', proSndKick: 'Kick / ball',
+      proSndGoal: 'Goal', proSndJoin: 'Player join', proSndLeave: 'Player leave',
+      proUpsellTitle: 'Unlock Pro', proUpsellText: 'Colors, banner, font, ball and custom sounds.',
+      proUpsellDiscord: 'Join on Discord',
+      ppTitle: 'My profile', ppLead: 'Your account and status in HaxBall Zero.', ppDetailsKicker: 'Details',
+      ppLoginMsg: 'To see your profile with Discord avatar, sign in from HaxBall Zero and return to the room list.',
+      ppLoginBtn: 'Go to game', ppStatusLbl: 'Status', ppRoomLbl: 'Current room', ppAccountLbl: 'Account',
+      ppStatsKicker: 'Statistics', ppPlayTimeLbl: 'Hours played', ppCreatedLbl: 'Account created',
+      ppStreakLbl: 'Day streak',
+      ppOnline: 'Online', ppInRoom: 'In room', ppNotInRoom: 'Not in a room',
+      ppAccountDiscord: 'Discord', ppAccountGuest: 'Guest'
+    },
+    pt: {
+      title: 'Salas', lead: '{n} salas disponíveis', leadOne: '1 sala disponível', leadSel: ' · {name} selecionada',
+      all: 'Todos', pro: 'Pro', fav: 'Favoritos',
+      countryFilter: 'Filtrar pais', countryAll: 'Todos os paises',
+      countrySortAlpha: 'A-Z', countrySortCount: 'Mais salas',
+      colDist: 'Dist.', colName: 'Nome', colPlayers: 'Jogadores',
+      empty: 'Nenhuma sala encontrada',
+      loading: 'Carregando…',
+      create: 'Criar sala', join: 'Entrar', replays: 'Replays',
+      searchPh: 'Buscar sala…',
+      ctxFavAdd: 'Adicionar aos favoritos', ctxFavRemove: 'Remover dos favoritos',
+      ctxPinAdd: 'Fixar no topo', ctxPinRemove: 'Desafixar',
+      createTitle: 'Criar sala',
+      createName: 'Nome', createPass: 'Senha', createMax: 'Máx. jogadores',
+      createShowList: 'Mostrar na lista: {val}', createShowYes: 'Sim', createShowNo: 'Não',
+      createNameDefault: 'Minha sala',
+      createCancel: 'Cancelar', createSubmit: 'Criar',
+      createOk: 'Sala criada', createErr: 'O nome é obrigatório',
+      proTitle: 'Pro', proLead: 'Personalize seu perfil e os sons do jogo.',
+      proProfileLead: 'Cores, fonte, banner e bola na sala.',
+      proTabProfile: 'Perfil', proTabSounds: 'Som',
+      proPreview: 'Pré-visualização', proPreviewNote: 'Como seu nick aparecerá na sala.',
+      proSecColors: 'Cores', proLblNick: 'Nick', proLblVerified: 'Verificado',
+      proGrad: 'Gradiente', proSync: 'Sincronizar nick → verificado', proSynced: 'Sincronizado!',
+      proSecLook: 'Aparência', proFont: 'Fonte', proBanner: 'Banner', proBall: 'Bola',
+      proBallHint: 'Efeito visual local da bola para usuários Pro.',
+      proBallColors: 'Cores da bola', proBannerColors: 'Cores do banner',
+      proSave: 'Salvar alterações', proSaving: 'Salvando…', proSaved: 'Alterações salvas',
+      proSaveErr: 'Não foi possível salvar', proExpires: 'Válido até',
+      proLifetime: 'Vitalício', proLoading: 'Carregando Pro…',
+      proSoundsLead: 'Substitua os sons do jogo por arquivos próprios (.wav, .mp3, .ogg).',
+      proSoundsEnable: 'Ativar sons personalizados', proSoundsSave: 'Salvar sons',
+      proSoundsSaved: 'Sons salvos', proSoundsSaveErr: 'Erro ao salvar sons',
+      proSoundsFile: 'Arquivo carregado', proSoundsSilent: 'Sem arquivo (silêncio)',
+      proSoundsPick: 'Escolher', proSoundsTest: 'Testar', proSoundsMute: 'Silêncio',
+      proSoundsRemove: 'Remover',
+      proSndChat: 'Chat', proSndMention: 'Menção', proSndKick: 'Chute / bola',
+      proSndGoal: 'Gol', proSndJoin: 'Jogador entra', proSndLeave: 'Jogador sai',
+      proUpsellTitle: 'Desbloqueie o Pro', proUpsellText: 'Cores, banner, fonte, bola e sons personalizados.',
+      proUpsellDiscord: 'Entrar no Discord',
+      ppTitle: 'Meu perfil', ppLead: 'Sua conta e status no HaxBall Zero.', ppDetailsKicker: 'Detalhes',
+      ppLoginMsg: 'Para ver seu perfil com foto do Discord, entre no HaxBall Zero e volte à lista de salas.',
+      ppLoginBtn: 'Ir ao jogo', ppStatusLbl: 'Estado', ppRoomLbl: 'Sala atual', ppAccountLbl: 'Conta',
+      ppStatsKicker: 'Estatísticas', ppPlayTimeLbl: 'Horas jogadas', ppCreatedLbl: 'Data de criação',
+      ppStreakLbl: 'Sequência de dias',
+      ppOnline: 'Online', ppInRoom: 'Na sala', ppNotInRoom: 'Sem sala',
+      ppAccountDiscord: 'Discord', ppAccountGuest: 'Convidado'
+    }
+  };
+
+  var lang = 'es';
+  var rooms = [];
+  var selectedName = '';
+  var filterMode = 'all';
+  var countryFilter = 'all';
+  var countryMenuOpen = false;
+  var countrySortMode = 'alpha';
+  var searchQuery = '';
+  var isLive = false;
+  var roomsLoading = window.parent !== window;
+  var ctxRoomName = '';
+  var toastTimer = null;
+  var roomsRenderSig = '';
+  var listEventsBound = false;
+  var renderRaf = 0;
+  var scrollRaf = 0;
+  var roomsDataVer = 0;
+  var lastRoomsStructCrc = '';
+  var lastRoomsCrc = '';
+  var sortedRoomsCache = null;
+  var sortedRoomsCacheVer = -1;
+  var visibleRooms = [];
+  var virtStart = -1;
+  var virtEnd = -1;
+  var ROW_H = 26;
+  var VIRT_OVERSCAN = 5;
+  var pendingRoomSync = null;
+  var isListScrolling = false;
+  var scrollEndTimer = 0;
+  var listPointerInside = false;
+  var hoveredRowName = null;
+  var lastSyncedInpanelMode = '';
+  var currentPlayerNick = '';
+
+  try {
+    countrySortMode = localStorage.getItem('hxd_room_country_sort') === 'count' ? 'count' : 'alpha';
+  } catch (eCountrySort) {}
+
+  var navbar = document.getElementById('navbar');
+  var searchToggle = document.getElementById('search-toggle');
+  var searchInput = document.getElementById('search-input');
+  var countryFilterWrap = document.getElementById('country-filter-wrap');
+  var countryFilterToggle = document.getElementById('country-filter-toggle');
+  var countryFilterCode = document.getElementById('country-filter-code');
+  var countryMenu = document.getElementById('country-menu');
+  var listEl = document.getElementById('room-list');
+  var listInnerEl = document.getElementById('room-list-inner');
+  var listScrollEl = document.getElementById('room-list-scroll');
+  var emptyEl = document.getElementById('empty-state');
+  var loadingEl = document.getElementById('loading-state');
+  var joinBtn = document.getElementById('join-btn');
+  var createBtn = document.getElementById('create-btn');
+  var createOverlay = document.getElementById('create-overlay');
+  var createNameInput = document.getElementById('create-name');
+  var createPassInput = document.getElementById('create-pass');
+  var createMaxSelect = document.getElementById('create-max');
+  var createUnlistedBtn = document.getElementById('create-unlisted-btn');
+  var createCancelBtn = document.getElementById('create-cancel');
+  var createSubmitBtn = document.getElementById('create-submit');
+  var createUnlisted = false;
+  var toastEl = document.getElementById('toast');
+  var leadEl = document.getElementById('room-lead');
+  var ctxMenu = document.getElementById('ctx-menu');
+  var devBadge = document.getElementById('dev-badge');
+  var roomsPanel = document.getElementById('rooms-panel');
+  var proPanelProfile = document.getElementById('pro-panel-profile');
+  var proPanelSounds = document.getElementById('pro-panel-sounds');
+  var playerProfilePanel = document.getElementById('player-profile-panel');
+  var proProfileBody = document.getElementById('pro-profile-body');
+  var proSoundsBody = document.getElementById('pro-sounds-body');
+  var cardFooter = document.getElementById('card-footer');
+  var roomNavTabs = document.getElementById('room-nav-tabs');
+  var proNavTabs = document.getElementById('pro-nav-tabs');
+  var proBackBtn = document.getElementById('pro-back-btn');
+  var proViewOpen = false;
+  var playerProfileOpen = false;
+  var proSubTab = 'profile';
+  var proDataLoaded = false;
+  var proStatusCache = null;
+  var proSettingsCache = null;
+  var proUserNick = 'GZ';
+  var API_BASE = 'http://127.0.0.1:5483';
+
+  var PRO_BANNERS = {
+    none: { name: 'Ninguno', gradient: 'none' },
+    gold: { name: 'Oro', gradient: 'linear-gradient(90deg, rgba(255,215,0,0.15) 0%, rgba(255,193,7,0.25) 50%, rgba(255,215,0,0.15) 100%)' },
+    diamond: { name: 'Diamante', gradient: 'linear-gradient(90deg, rgba(185,242,255,0.15) 0%, rgba(0,191,255,0.25) 50%, rgba(185,242,255,0.15) 100%)' },
+    fire: { name: 'Fuego', gradient: 'linear-gradient(90deg, rgba(255,69,0,0.15) 0%, rgba(255,140,0,0.25) 50%, rgba(255,69,0,0.15) 100%)' },
+    emerald: { name: 'Esmeralda', gradient: 'linear-gradient(90deg, rgba(0,201,87,0.15) 0%, rgba(80,200,120,0.25) 50%, rgba(0,201,87,0.15) 100%)' },
+    purple: { name: 'Púrpura', gradient: 'linear-gradient(90deg, rgba(138,43,226,0.15) 0%, rgba(186,85,211,0.25) 50%, rgba(138,43,226,0.15) 100%)' },
+    rainbow: { name: 'Arcoíris', gradient: 'linear-gradient(90deg, rgba(255,0,0,0.2) 0%, rgba(255,127,0,0.2) 17%, rgba(255,255,0,0.2) 33%, rgba(0,255,0,0.2) 50%, rgba(0,127,255,0.2) 67%, rgba(139,0,255,0.2) 83%, rgba(255,0,0,0.2) 100%)' },
+    neon: { name: 'Neon', gradient: 'linear-gradient(90deg, rgba(57,255,20,0.15) 0%, rgba(0,255,255,0.25) 50%, rgba(57,255,20,0.15) 100%)' },
+    sunset: { name: 'Atardecer', gradient: 'linear-gradient(90deg, rgba(255,94,77,0.15) 0%, rgba(255,154,0,0.25) 50%, rgba(255,94,77,0.15) 100%)' },
+    ocean: { name: 'Océano', gradient: 'linear-gradient(90deg, rgba(0,105,148,0.15) 0%, rgba(0,168,232,0.25) 50%, rgba(0,105,148,0.15) 100%)' },
+    midnight: { name: 'Medianoche', gradient: 'linear-gradient(90deg, rgba(25,25,112,0.2) 0%, rgba(72,61,139,0.3) 50%, rgba(25,25,112,0.2) 100%)' },
+    cherry: { name: 'Cereza', gradient: 'linear-gradient(90deg, rgba(222,49,99,0.15) 0%, rgba(255,105,180,0.25) 50%, rgba(222,49,99,0.15) 100%)' },
+    custom: { name: 'Personalizado', gradient: 'none' }
+  };
+
+  var PRO_FONTS = {
+    default: { name: 'Predeterminada', family: 'Space Grotesk' },
+    roboto: { name: 'Roboto', family: 'Roboto' },
+    poppins: { name: 'Poppins', family: 'Poppins' },
+    montserrat: { name: 'Montserrat', family: 'Montserrat' },
+    oswald: { name: 'Oswald', family: 'Oswald' },
+    raleway: { name: 'Raleway', family: 'Raleway' },
+    ubuntu: { name: 'Ubuntu', family: 'Ubuntu' },
+    quicksand: { name: 'Quicksand', family: 'Quicksand' },
+    comfortaa: { name: 'Comfortaa', family: 'Comfortaa' },
+    righteous: { name: 'Righteous', family: 'Righteous' },
+    orbitron: { name: 'Orbitron', family: 'Orbitron' },
+    pressstart: { name: 'Press Start 2P', family: 'Press Start 2P' }
+  };
+
+  var PRO_BALL_EFFECTS = {
+    none: { name: 'Normal' },
+    rgb: { name: 'RGB' },
+    rainbow: { name: 'Rainbow' },
+    fire: { name: 'Fuego' },
+    ocean: { name: 'Océano' },
+    sunset: { name: 'Sunset' },
+    neon: { name: 'Neon' },
+    gold: { name: 'Gold' },
+    custom: { name: 'Personalizado' }
+  };
+
+  function t(key) {
+    var pack = I18N[lang] || I18N.es;
+    return pack[key] || I18N.es[key] || key;
+  }
+
+  function updateUnlistedBtn() {
+    var val = createUnlisted ? t('createShowNo') : t('createShowYes');
+    createUnlistedBtn.textContent = t('createShowList').replace('{val}', val);
+  }
+
+  function applyI18n() {
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      el.textContent = t(el.getAttribute('data-i18n'));
+    });
+    searchInput.placeholder = t('searchPh');
+    updateCountryFilterUi();
+    updateUnlistedBtn();
+    updateLead();
+  }
+
+  (function buildMaxSelect() {
+    for (var n = 2; n <= 20; n++) {
+      var opt = document.createElement('option');
+      opt.value = String(n);
+      opt.textContent = String(n);
+      createMaxSelect.appendChild(opt);
+    }
+    createMaxSelect.value = '12';
+  })();
+
+  function normalizeCountry(code) {
+    code = String(code || '').trim().toLowerCase();
+    return /^[a-z]{2}$/.test(code) ? code : '';
+  }
+
+  function getCountryStats() {
+    var counts = Object.create(null);
+    var total = 0;
+    for (var i = 0; i < rooms.length; i++) {
+      var code = normalizeCountry(rooms[i] && rooms[i].country);
+      if (!code) continue;
+      counts[code] = (counts[code] || 0) + 1;
+      total++;
+    }
+    var items = Object.keys(counts).map(function (code) {
+      return { code: code, count: counts[code] };
+    });
+    items.sort(function (a, b) {
+      if (countrySortMode === 'count' && b.count !== a.count) return b.count - a.count;
+      return a.code.localeCompare(b.code);
+    });
+    return { items: items, total: total };
+  }
+
+  function renderCountryMenu() {
+    if (!countryMenu) return;
+    var stats = getCountryStats();
+    var html = '<div class="country-sort-row">' +
+      '<button type="button" class="country-sort-btn' + (countrySortMode === 'alpha' ? ' active' : '') + '" data-country-sort="alpha">' + escHtml(t('countrySortAlpha')) + '</button>' +
+      '<button type="button" class="country-sort-btn' + (countrySortMode === 'count' ? ' active' : '') + '" data-country-sort="count">' + escHtml(t('countrySortCount')) + '</button>' +
+      '</div>' +
+      '<button type="button" class="country-item' + (countryFilter === 'all' ? ' active' : '') + '" data-country="all">' +
+      '<span>' + escHtml(t('countryAll')) + '</span><span class="country-item-count">' + rooms.length + '</span></button>';
+    for (var i = 0; i < stats.items.length; i++) {
+      var item = stats.items[i];
+      html += '<button type="button" class="country-item' + (countryFilter === item.code ? ' active' : '') + '" data-country="' + escAttr(item.code) + '">' +
+        '<img class="country-menu-flag" src="' + escAttr(flagUrl(item.code)) + '" alt="" width="22" height="15" loading="lazy" decoding="async">' +
+        '<span>' + escHtml(item.code.toUpperCase()) + '</span><span class="country-item-count">' + item.count + '</span></button>';
+    }
+    countryMenu.innerHTML = html;
+  }
+
+  function updateCountryFilterUi() {
+    if (!countryFilterToggle || !countryFilterCode) return;
+    var active = countryFilter !== 'all';
+    countryFilterToggle.classList.toggle('has-country', active);
+    countryFilterCode.textContent = active ? countryFilter.toUpperCase() : '';
+    var label = active ? t('countryFilter') + ': ' + countryFilter.toUpperCase() : t('countryFilter');
+    countryFilterToggle.title = label;
+    countryFilterToggle.setAttribute('aria-label', label);
+  }
+
+  function openCountryMenu() {
+    if (!countryMenu) return;
+    renderCountryMenu();
+    countryMenu.classList.add('open');
+    countryMenuOpen = true;
+  }
+
+  function closeCountryMenu() {
+    if (!countryMenu) return;
+    countryMenu.classList.remove('open');
+    countryMenuOpen = false;
+  }
+
+  function setCountryFilter(code) {
+    code = normalizeCountry(code);
+    countryFilter = code || 'all';
+    roomsRenderSig = '';
+    updateCountryFilterUi();
+    closeCountryMenu();
+    render();
+  }
+
+  function setNavTab(mode) {
+    roomNavTabs.querySelectorAll('.tab').forEach(function (t) {
+      var on = t.getAttribute('data-filter') === mode;
+      t.classList.toggle('active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+  }
+
+  function exitProView() {
+    lastSyncedInpanelMode = '';
+    var restoreFav = filterMode === 'fav';
+    sendCmd('closeInpanel');
+    hideProView();
+    if (!restoreFav) filterMode = 'all';
+    setNavTab(restoreFav ? 'fav' : 'all');
+  }
+
+  function applyAnonUi(anonymous) {
+    document.querySelectorAll('[data-anon-hide="1"]').forEach(function (el) {
+      el.style.display = anonymous ? 'none' : '';
+    });
+    if (anonymous && (filterMode === 'pro' || proViewOpen)) {
+      filterMode = 'all';
+      lastSyncedInpanelMode = '';
+      hideProView();
+      setNavTab('all');
+    }
+  }
+
+  function refreshRoomsListViewAfterShow() {
+    virtStart = -1;
+    virtEnd = -1;
+    roomsRenderSig = '';
+    listPointerInside = false;
+    hoveredRowName = null;
+
+    function paint() {
+      if (!roomsPanel.classList.contains('active')) {
+        requestAnimationFrame(paint);
+        return;
+      }
+      if (listScrollEl && listScrollEl.clientHeight < 8) {
+        requestAnimationFrame(paint);
+        return;
+      }
+      if (pendingRoomSync) flushPendingRoomSync();
+      else render();
+    }
+    requestAnimationFrame(paint);
+  }
+
+  function applyInpanelModeFromSync(mode) {
+    var next = mode || '';
+    if (next === lastSyncedInpanelMode) return;
+    lastSyncedInpanelMode = next;
+
+    if (next === 'pro') {
+      if (playerProfileOpen) hidePlayerProfileView();
+      setNavTab('pro');
+      showProView();
+      return;
+    }
+
+    if (next === 'profile') {
+      if (proViewOpen) hideProView();
+      showPlayerProfileView();
+      return;
+    }
+
+    if (playerProfileOpen) hidePlayerProfileView();
+    var wasPro = proViewOpen;
+    if (wasPro) hideProView();
+    if (filterMode === 'fav') setNavTab('fav');
+    else setNavTab('all');
+  }
+
+  function showPlayerProfileView() {
+    playerProfileOpen = true;
+    roomsPanel.classList.remove('active');
+    roomNavTabs.classList.add('hidden');
+    proNavTabs.classList.add('hidden');
+    proBackBtn.classList.remove('hidden');
+    cardFooter.style.display = 'none';
+    playerProfilePanel.classList.add('active');
+  }
+
+  function hidePlayerProfileView() {
+    if (!playerProfileOpen) return;
+    playerProfileOpen = false;
+    playerProfilePanel.classList.remove('active');
+    roomsPanel.classList.add('active');
+    roomNavTabs.classList.remove('hidden');
+    proBackBtn.classList.add('hidden');
+    cardFooter.style.display = '';
+    refreshRoomsListViewAfterShow();
+  }
+
+  function formatPlayStreakDays(days) {
+    var n = Math.max(0, Math.floor(Number(days) || 0));
+    if (lang === 'en') return n + (n === 1 ? ' day' : ' days');
+    if (lang === 'pt') return n + (n === 1 ? ' dia' : ' dias');
+    return n + (n === 1 ? ' día' : ' días');
+  }
+
+  function formatPlayTimeMinutes(minutes) {
+    var m = Math.max(0, Math.floor(Number(minutes) || 0));
+    if (m <= 0) return '0 min';
+    var h = Math.floor(m / 60);
+    var rem = m % 60;
+    if (h <= 0) return rem + ' min';
+    if (rem === 0) {
+      if (lang === 'en') return h + (h === 1 ? ' hr' : ' hrs');
+      return h + ' h';
+    }
+    if (lang === 'en') return h + (h === 1 ? ' hr' : ' hrs') + ' ' + rem + ' min';
+    return h + ' h ' + rem + ' min';
+  }
+
+  function formatCreatedAt(value) {
+    if (!value) return '—';
+    var d = new Date(value);
+    if (isNaN(d.getTime())) return '—';
+    var loc = lang === 'en' ? 'en-US' : lang === 'pt' ? 'pt-BR' : 'es-AR';
+    try {
+      return d.toLocaleDateString(loc, { year: 'numeric', month: 'long', day: 'numeric' });
+    } catch (eFmt) {
+      return d.toISOString().slice(0, 10);
+    }
+  }
+
+  function getLocalPreviewUser() {
+    var nick = '';
+    try {
+      nick = localStorage.getItem('haxball_nick') || localStorage.getItem('ghost_nick') || localStorage.getItem('haxclient_my_nick') || nick;
+    } catch (eNick) {}
+    var stored = null;
+    try { stored = JSON.parse(localStorage.getItem('haxclient_user') || 'null'); } catch (eStored) {}
+    return Object.assign({}, stored || {}, {
+      logged_in: true,
+      nick: (stored && (stored.nick || stored.username)) || nick,
+      username: (stored && (stored.username || stored.nick)) || nick,
+      discord_id: (stored && stored.discord_id) || 'zero-local-test',
+      is_verified: true,
+      is_pro: true,
+      is_vip: true
+    });
+  }
+
+  function buildProfileFromUser(user) {
+    user = user || getLocalPreviewUser();
+    var nick = user.nick || user.username || '';
+    var avatarUrl = '';
+    try { avatarUrl = localStorage.getItem('hxd_settings_preview_avatar') || ''; } catch (eAv) {}
+    if (!avatarUrl && user.discord_avatar) avatarUrl = user.discord_avatar;
+    return {
+      loggedIn: true,
+      nick: nick,
+      handle: user.username || user.discord_username || '',
+      avatarUrl: avatarUrl,
+      tier: user.is_pro ? 'PRO' : user.is_vip ? 'VIP' : 'NOVATO+',
+      online: true,
+      roomName: user.room_name || null,
+      playTimeMinutes: Number(user.play_time_minutes) || 0,
+      createdAt: user.created_at || null,
+      playStreakDays: Number(user.play_streak_days) || 0
+    };
+  }
+
+  function renderPlayerProfileFromSync(profile) {
+    if (!profile) return;
+    var loginWall = document.getElementById('pp-login-wall');
+    var main = document.getElementById('pp-main');
+    if (!profile.loggedIn) {
+      profile = buildProfileFromUser(getLocalPreviewUser());
+    }
+    if (!profile.loggedIn) {
+      loginWall.classList.remove('pp-hidden');
+      main.classList.add('pp-hidden');
+      document.getElementById('pp-login-msg').textContent = t('ppLoginMsg');
+      document.getElementById('pp-login-btn').textContent = t('ppLoginBtn');
+      return;
+    }
+    loginWall.classList.add('pp-hidden');
+    main.classList.remove('pp-hidden');
+
+    var nick = profile.nick || '';
+    document.getElementById('pp-nick').textContent = nick;
+
+    var tierEl = document.getElementById('pp-tier');
+    var tier = profile.tier || 'NOVATO+';
+    tierEl.textContent = tier;
+    tierEl.className = 'profile-tier';
+    if (tier === 'PRO') tierEl.classList.add('profile-tier--pro');
+    else if (tier === 'VIP') tierEl.classList.add('profile-tier--vip');
+    else tierEl.classList.add('profile-tier--default');
+
+    var handleEl = document.getElementById('pp-handle');
+    if (handleEl) {
+      if (profile.handle) {
+        handleEl.textContent = '@' + profile.handle;
+        handleEl.classList.remove('pp-hidden');
+      } else {
+        handleEl.textContent = '';
+        handleEl.classList.add('pp-hidden');
+      }
+    }
+
+    var avatarImg = document.getElementById('pp-avatar');
+    var avatarFb = document.getElementById('pp-avatar-fb');
+    var initials = nick.slice(0, 2).toUpperCase();
+    avatarFb.textContent = initials;
+    if (profile.avatarUrl) {
+      avatarImg.src = profile.avatarUrl;
+      avatarImg.hidden = false;
+      avatarFb.style.display = 'none';
+    } else {
+      avatarImg.hidden = true;
+      avatarFb.style.display = '';
+    }
+
+    document.getElementById('pp-lbl-playtime').textContent = t('ppPlayTimeLbl');
+    document.getElementById('pp-lbl-created').textContent = t('ppCreatedLbl');
+    document.getElementById('pp-lbl-streak').textContent = t('ppStreakLbl');
+    document.getElementById('pp-playtime').textContent = formatPlayTimeMinutes(profile.playTimeMinutes);
+    document.getElementById('pp-created').textContent = formatCreatedAt(profile.createdAt);
+    document.getElementById('pp-streak').textContent = formatPlayStreakDays(profile.playStreakDays);
+  }
+
+  function exitProfileView() {
+    lastSyncedInpanelMode = '';
+    sendCmd('closeInpanel');
+    hidePlayerProfileView();
+    setNavTab(filterMode === 'fav' ? 'fav' : 'all');
+  }
+
+  function showProView() {
+    proViewOpen = true;
+    roomsPanel.classList.remove('active');
+    roomNavTabs.classList.add('hidden');
+    proNavTabs.classList.remove('hidden');
+    proBackBtn.classList.remove('hidden');
+    cardFooter.style.display = 'none';
+    if (!proDataLoaded) loadProPanel();
+    setProSubTab(proSubTab);
+  }
+
+  function hideProView() {
+    if (!proViewOpen) return;
+    proViewOpen = false;
+    proPanelProfile.classList.remove('active');
+    proPanelSounds.classList.remove('active');
+    roomsPanel.classList.add('active');
+    roomNavTabs.classList.remove('hidden');
+    proNavTabs.classList.add('hidden');
+    proBackBtn.classList.add('hidden');
+    cardFooter.style.display = '';
+    refreshRoomsListViewAfterShow();
+  }
+
+  function setProSubTab(tab) {
+    proSubTab = tab;
+    proNavTabs.querySelectorAll('[data-pro-tab]').forEach(function (btn) {
+      var on = btn.getAttribute('data-pro-tab') === tab;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    proPanelProfile.classList.toggle('active', tab === 'profile');
+    proPanelSounds.classList.toggle('active', tab === 'sounds');
+  }
+
+  function proLoadingHtml() {
+    return '<div class="pro-loading">' +
+      '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M3 12h4M17 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>' +
+      '<span>' + escHtml(t('proLoading')) + '</span></div>';
+  }
+
+  function loadProStatus() {
+    if (!isLive) {
+      return Promise.resolve({ is_pro: true, is_vip: true, expires_at: null });
+    }
+    try {
+      var parentStatus = window.parent && window.parent.__proStatus;
+      if (parentStatus && (parentStatus.is_pro || parentStatus.is_vip)) {
+        return Promise.resolve(parentStatus);
+      }
+    } catch (eParentStatus) {}
+    return Promise.resolve({ is_pro: true, is_vip: true, allpro: true, expires_at: null });
+  }
+
+  function loadProSettings() {
+    if (!isLive) {
+      var demo = {
+        banner: 'gold', font: 'default', ball_effect: 'neon',
+        verified_color: '#249EF0', nick_color: '#f59e0b',
+        verified_gradient: '', nick_gradient: '',
+        ball_color1: '#60a5fa', ball_color2: '#7c3aed',
+        custom_banner_color1: '#6366f1', custom_banner_color2: '#8b5cf6'
+      };
+      return Promise.resolve(demo);
+    }
+    return fetch(API_BASE + '/vip/settings').then(function (r) { return r.json(); }).catch(function () {
+      try { return JSON.parse(localStorage.getItem('haxclient_pro_settings') || '{}'); } catch (e) { return {}; }
+    });
+  }
+
+  function loadProUser() {
+    if (!isLive) return Promise.resolve({ nick: 'GZ', is_verified: true });
+    return fetch(API_BASE + '/user').then(function (r) { return r.json(); }).then(function (u) {
+      return u && u.logged_in ? u : getLocalPreviewUser();
+    }).catch(function () { return getLocalPreviewUser(); });
+  }
+
+  function loadProPanel() {
+    proProfileBody.innerHTML = proLoadingHtml();
+    proSoundsBody.innerHTML = '';
+    Promise.all([loadProStatus(), loadProSettings(), loadProUser()]).then(function (res) {
+      proStatusCache = res[0] || {};
+      proSettingsCache = res[1] || {};
+      proUserNick = (res[2] && res[2].nick) ? res[2].nick : '';
+      proDataLoaded = true;
+      if (proStatusCache.is_pro || proStatusCache.is_vip) {
+        proNavTabs.classList.remove('hidden');
+        renderProMemberUI();
+      } else {
+        proNavTabs.classList.add('hidden');
+        renderProUpsell();
+      }
+      setProSubTab(proSubTab);
+    }).catch(function () {
+      proStatusCache = proStatusCache || {};
+      proSettingsCache = proSettingsCache || {};
+      proUserNick = proUserNick || '';
+      proDataLoaded = true;
+      if (proStatusCache.is_pro || proStatusCache.is_vip) {
+        proNavTabs.classList.remove('hidden');
+        renderProMemberUI();
+      } else {
+        proNavTabs.classList.add('hidden');
+        renderProUpsell();
+      }
+      setProSubTab(proSubTab);
+    });
+  }
+
+  function renderProUpsell() {
+    proProfileBody.innerHTML =
+      '<div class="list-block pro-upsell-block">' +
+      '<div class="section-title">' + escHtml(t('proUpsellTitle')) + '</div>' +
+      '<div class="list">' +
+      '<div class="list-row list-row--stacked">' +
+      '<div class="label">' + escHtml(t('proUpsellTitle')) + '</div>' +
+      '<div class="hint">' + escHtml(t('proUpsellText')) + '</div>' +
+      '</div></div>' +
+      '<div class="btn-line">' +
+      '<button type="button" class="pro-discord-btn" id="pro-discord-btn">' + escHtml(t('proUpsellDiscord')) + '</button>' +
+      '</div></div>';
+    var btn = document.getElementById('pro-discord-btn');
+    if (btn) btn.addEventListener('click', function () {
+      if (window.parent === window) {
+        try { window.open('https://discord.gg/haxzero', '_blank', 'noopener,noreferrer'); } catch (e) {}
+      } else {
+        sendCmd('openDiscord');
+      }
+    });
+  }
+
+  function buildSelectOptions(map, current) {
+    var html = '';
+    Object.keys(map).forEach(function (k) {
+      html += '<option value="' + escAttr(k) + '"' + (k === current ? ' selected' : '') + '>' + escHtml(map[k].name) + '</option>';
+    });
+    return html;
+  }
+
+  function renderProMemberUI() {
+    var s = proSettingsCache || {};
+    var nickColor = s.nick_color || '#f59e0b';
+    var verifiedColor = s.verified_color || '#249EF0';
+    var nickGrad = s.nick_gradient || '';
+    var verifiedGrad = s.verified_gradient || '';
+    var currentBanner = s.banner || 'none';
+    var currentFont = s.font || 'default';
+    var currentBall = s.ball_effect || 'none';
+    var ballC1 = s.ball_color1 || '#60a5fa';
+    var ballC2 = s.ball_color2 || '#7c3aed';
+    var bannerC1 = s.custom_banner_color1 || '#6366f1';
+    var bannerC2 = s.custom_banner_color2 || '#8b5cf6';
+    var sndCfg = loadProSoundsFromStorage();
+
+    proProfileBody.innerHTML =
+      '<div class="list-block">' +
+      '<div class="section-title">' + escHtml(t('proPreview')) + '</div>' +
+      '<div class="list">' +
+      '<div class="list-row list-row--note">' +
+      '<div class="pro-preview-stage" id="pro-preview-stage">' +
+      '<span class="pro-preview-nick" id="pro-preview-nick">' + escHtml(proUserNick) + '</span>' +
+      '<span id="pro-preview-badge"></span>' +
+      '<span class="pro-preview-ball" id="pro-preview-ball"></span>' +
+      '</div>' +
+      '<p class="pro-preview-foot">' + escHtml(t('proPreviewNote')) + '</p>' +
+      '</div></div></div>' +
+      '<div class="list-block">' +
+      '<div class="section-title section-title--split">' + escHtml(t('proSecColors')) + '</div>' +
+      '<div class="list">' +
+      '<div class="list-row list-row--stacked">' +
+      '<div class="row-top"><div><div class="label">' + escHtml(t('proLblNick')) + '</div></div>' +
+      '<label class="sw" title="' + escAttr(t('proGrad')) + '"><input type="checkbox" id="nick-grad-check"' + (nickGrad ? ' checked' : '') + '><span class="sw-track"></span></label></div>' +
+      '<div class="pro-color-swatches">' +
+      '<label class="pro-color-swatch"><input type="color" id="nick-color" value="' + escAttr(nickColor) + '"></label>' +
+      '<span id="nick-grad-colors" class="pro-color-swatches" style="display:' + (nickGrad ? 'flex' : 'none') + '">' +
+      '<label class="pro-color-swatch"><input type="color" id="nick-grad1" value="' + escAttr((nickGrad.split(',')[0] || '#f59e0b')) + '"></label>' +
+      '<label class="pro-color-swatch"><input type="color" id="nick-grad2" value="' + escAttr((nickGrad.split(',')[1] || '#ef4444')) + '"></label></span></div></div>' +
+      '<div class="list-row list-row--stacked">' +
+      '<div class="row-top"><div><div class="label">' + escHtml(t('proLblVerified')) + '</div></div>' +
+      '<label class="sw" title="' + escAttr(t('proGrad')) + '"><input type="checkbox" id="verified-grad-check"' + (verifiedGrad ? ' checked' : '') + '><span class="sw-track"></span></label></div>' +
+      '<div class="pro-color-swatches">' +
+      '<label class="pro-color-swatch"><input type="color" id="verified-color" value="' + escAttr(verifiedColor) + '"></label>' +
+      '<span id="verified-grad-colors" class="pro-color-swatches" style="display:' + (verifiedGrad ? 'flex' : 'none') + '">' +
+      '<label class="pro-color-swatch"><input type="color" id="verified-grad1" value="' + escAttr((verifiedGrad.split(',')[0] || '#6366f1')) + '"></label>' +
+      '<label class="pro-color-swatch"><input type="color" id="verified-grad2" value="' + escAttr((verifiedGrad.split(',')[1] || '#ec4899')) + '"></label></span></div></div>' +
+      '</div>' +
+      '<div class="btn-line"><button type="button" class="btn" id="pro-sync-btn">' + escHtml(t('proSync')) + '</button></div></div>' +
+      '<div class="list-block">' +
+      '<div class="section-title section-title--split">' + escHtml(t('proSecLook')) + '</div>' +
+      '<div class="list">' +
+      '<div class="list-row list-row--stacked"><span class="label">' + escHtml(t('proFont')) + '</span>' +
+      '<select id="font-select">' + buildSelectOptions(PRO_FONTS, currentFont) + '</select></div>' +
+      '<div class="list-row list-row--stacked"><span class="label">' + escHtml(t('proBanner')) + '</span>' +
+      '<select id="banner-select">' + buildSelectOptions(PRO_BANNERS, currentBanner) + '</select></div>' +
+      '<div class="list-row list-row--stacked"><span class="label">' + escHtml(t('proBall')) + '</span>' +
+      '<select id="ball-effect-select">' + buildSelectOptions(PRO_BALL_EFFECTS, currentBall) + '</select>' +
+      '<span class="hint">' + escHtml(t('proBallHint')) + '</span></div>' +
+      '<div class="list-row list-row--stacked" id="custom-banner-row" style="display:' + (currentBanner === 'custom' ? '' : 'none') + '">' +
+      '<span class="label">' + escHtml(t('proBannerColors')) + '</span>' +
+      '<div class="pro-color-swatches"><label class="pro-color-swatch"><input type="color" id="banner-c1" value="' + escAttr(bannerC1) + '"></label>' +
+      '<label class="pro-color-swatch"><input type="color" id="banner-c2" value="' + escAttr(bannerC2) + '"></label></div></div>' +
+      '<div class="list-row list-row--stacked" id="custom-ball-row" style="display:' + (currentBall === 'custom' ? '' : 'none') + '">' +
+      '<span class="label">' + escHtml(t('proBallColors')) + '</span>' +
+      '<div class="pro-color-swatches"><label class="pro-color-swatch"><input type="color" id="ball-c1" value="' + escAttr(ballC1) + '"></label>' +
+      '<label class="pro-color-swatch"><input type="color" id="ball-c2" value="' + escAttr(ballC2) + '"></label></div></div></div></div>' +
+      '<div class="btn-line"><button type="button" class="btn dark" id="pro-profile-save">' + escHtml(t('proSave')) + '</button></div>' +
+      '<p class="pro-foot">' + escHtml(t('proExpires')) + ': ' + escHtml(proStatusCache.expires_at ? new Date(proStatusCache.expires_at).toLocaleDateString() : t('proLifetime')) + '</p>';
+
+    proSoundsBody.innerHTML =
+      '<div class="list-block">' +
+      '<div class="list">' +
+      '<div class="list-row click">' +
+      '<div><div class="label">' + escHtml(t('proSoundsEnable')) + '</div></div>' +
+      '<label class="sw"><input type="checkbox" id="pro-sounds-enabled"' + (sndCfg.enabled ? ' checked' : '') + '><span class="sw-track"></span></label></div></div></div>' +
+      '<div class="list-block">' +
+      '<div class="list" id="pro-sounds-list"></div></div>' +
+      '<div class="btn-line"><button type="button" class="btn dark" id="pro-sounds-save">' + escHtml(t('proSoundsSave')) + '</button></div>';
+
+    var soundKeys = [
+      ['chat', 'proSndChat'], ['highlight', 'proSndMention'], ['kick', 'proSndKick'],
+      ['goal', 'proSndGoal'], ['join', 'proSndJoin'], ['leave', 'proSndLeave']
+    ];
+    var sndList = document.getElementById('pro-sounds-list');
+    if (sndList) {
+      soundKeys.forEach(function (pair) {
+        sndList.appendChild(buildProSoundRow(pair[0], t(pair[1]), sndCfg[pair[0]] || ''));
+      });
+    }
+    bindProProfileHandlers();
+    bindProSoundHandlers();
+    updateProPreview();
+  }
+
+  function sanitizeSoundUrl(v) {
+    if (v == null) return '';
+    v = String(v).trim();
+    return v.indexOf('data:') === 0 ? v : '';
+  }
+
+  function loadProSoundsFromStorage() {
+    try {
+      var o = JSON.parse(localStorage.getItem('haxclient_pro_custom_sounds') || 'null');
+      if (!o || typeof o !== 'object') return { enabled: false };
+      ['chat', 'highlight', 'kick', 'goal', 'join', 'leave'].forEach(function (k) {
+        o[k] = sanitizeSoundUrl(o[k]);
+      });
+      return o;
+    } catch (e) { return { enabled: false }; }
+  }
+
+  function saveProSoundsToStorage(cfg) {
+    try {
+      localStorage.setItem('haxclient_pro_custom_sounds', JSON.stringify(cfg));
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function buildProSoundRow(key, label, valueRaw) {
+    var raw = sanitizeSoundUrl(valueRaw);
+    var row = document.createElement('div');
+    row.className = 'list-row list-row--stacked';
+    row.setAttribute('data-sound', key);
+    row.innerHTML =
+      '<div class="row-top">' +
+      '<div><div class="label">' + escHtml(label) + '</div>' +
+      '<div class="hint" data-sound-hint="' + escAttr(key) + '">' + escHtml(raw ? t('proSoundsFile') : t('proSoundsSilent')) + '</div></div></div>' +
+      '<input type="hidden" class="pro-snd-url" data-sound="' + escAttr(key) + '" value="' + escAttr(raw) + '">' +
+      '<div class="row-chips">' +
+      '<button type="button" class="chip pro-snd-play" data-sound="' + escAttr(key) + '">' + escHtml(t('proSoundsTest')) + '</button>' +
+      '<label class="chip chip-pick pro-snd-pick">' + escHtml(t('proSoundsPick')) +
+      '<input type="file" class="pro-snd-file" data-sound="' + escAttr(key) + '" accept="audio/*,.wav,.mp3,.ogg,.m4a"></label>' +
+      '<button type="button" class="chip pro-snd-muted" data-sound="' + escAttr(key) + '">' + escHtml(t('proSoundsMute')) + '</button>' +
+      '<button type="button" class="chip pro-snd-clear" data-sound="' + escAttr(key) + '"' + (raw ? '' : ' disabled') + '>' + escHtml(t('proSoundsRemove')) + '</button>' +
+      '</div>';
+    return row;
+  }
+
+  function syncProSoundRow(key) {
+    var ur = document.querySelector('.pro-snd-url[data-sound="' + key + '"]');
+    var hint = document.querySelector('[data-sound-hint="' + key + '"]');
+    var clr = document.querySelector('.pro-snd-clear[data-sound="' + key + '"]');
+    var raw = ur ? sanitizeSoundUrl(ur.value) : '';
+    if (hint) hint.textContent = raw ? t('proSoundsFile') : t('proSoundsSilent');
+    if (clr) clr.disabled = !raw;
+  }
+
+  function getBallPreviewBg(effect, c1, c2) {
+    switch (effect) {
+      case 'rgb': return 'linear-gradient(135deg, #ff3b30 0%, #34c759 50%, #0a84ff 100%)';
+      case 'rainbow': return 'linear-gradient(135deg, #ff003c 0%, #ff8a00 18%, #f8ff00 36%, #00ff85 54%, #00c2ff 72%, #8f00ff 100%)';
+      case 'fire': return 'radial-gradient(circle at 30% 30%, #ffd166 0%, #ff7b00 45%, #ef4444 100%)';
+      case 'ocean': return 'radial-gradient(circle at 30% 30%, #7dd3fc 0%, #0ea5e9 48%, #1d4ed8 100%)';
+      case 'sunset': return 'radial-gradient(circle at 30% 30%, #fde68a 0%, #fb7185 52%, #7c3aed 100%)';
+      case 'neon': return 'radial-gradient(circle at 30% 30%, #67e8f9 0%, #22c55e 48%, #0f172a 100%)';
+      case 'gold': return 'radial-gradient(circle at 30% 30%, #fef3c7 0%, #f59e0b 55%, #b45309 100%)';
+      case 'custom': return 'radial-gradient(circle at 30% 30%, ' + c1 + ' 0%, ' + c2 + ' 100%)';
+      default: return '#ffffff';
+    }
+  }
+
+  function updateProPreview() {
+    var previewNick = document.getElementById('pro-preview-nick');
+    var previewStage = document.getElementById('pro-preview-stage');
+    var previewBall = document.getElementById('pro-preview-ball');
+    var previewBadge = document.getElementById('pro-preview-badge');
+    if (!previewNick) return;
+
+    var fontSel = document.getElementById('font-select');
+    var nickColor = document.getElementById('nick-color');
+    var nickGradCheck = document.getElementById('nick-grad-check');
+    var nickGrad1 = document.getElementById('nick-grad1');
+    var nickGrad2 = document.getElementById('nick-grad2');
+    var verifiedColor = document.getElementById('verified-color');
+    var verifiedGradCheck = document.getElementById('verified-grad-check');
+    var verifiedGrad1 = document.getElementById('verified-grad1');
+    var verifiedGrad2 = document.getElementById('verified-grad2');
+    var bannerSel = document.getElementById('banner-select');
+    var ballSel = document.getElementById('ball-effect-select');
+    var ballC1 = document.getElementById('ball-c1');
+    var ballC2 = document.getElementById('ball-c2');
+    var bannerC1 = document.getElementById('banner-c1');
+    var bannerC2 = document.getElementById('banner-c2');
+
+    if (fontSel && PRO_FONTS[fontSel.value]) {
+      previewNick.style.setProperty('font-family', "'" + PRO_FONTS[fontSel.value].family + "', sans-serif", 'important');
+    }
+
+    if (nickGradCheck && nickGradCheck.checked && nickGrad1 && nickGrad2) {
+      var ng = 'linear-gradient(90deg, ' + nickGrad1.value + ', ' + nickGrad2.value + ')';
+      previewNick.style.background = ng;
+      previewNick.style.webkitBackgroundClip = 'text';
+      previewNick.style.webkitTextFillColor = 'transparent';
+      previewNick.style.backgroundClip = 'text';
+    } else if (nickColor) {
+      previewNick.style.background = 'none';
+      previewNick.style.webkitBackgroundClip = 'unset';
+      previewNick.style.webkitTextFillColor = 'unset';
+      previewNick.style.backgroundClip = 'unset';
+      previewNick.style.color = nickColor.value;
+    }
+
+    if (previewBadge && verifiedColor) {
+      var gid = 'vg-' + Date.now();
+      if (verifiedGradCheck && verifiedGradCheck.checked && verifiedGrad1 && verifiedGrad2) {
+        previewBadge.innerHTML = '<svg width="14" height="14" viewBox="0 0 22 22"><defs><linearGradient id="' + gid + '" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="' + verifiedGrad1.value + '"/><stop offset="100%" stop-color="' + verifiedGrad2.value + '"/></linearGradient></defs><path d="M20.4 11c0-1.2-.7-2.3-1.8-2.9.4-1.2.2-2.5-.7-3.4-.9-.9-2.2-1.1-3.4-.7C14 2.9 12.9 2.2 11.7 2.2c-1.2 0-2.3.7-2.9 1.8-1.2-.4-2.5-.2-3.4.7-.9.9-1.1 2.2-.7 3.4C3.6 8.7 2.9 9.8 2.9 11c0 1.2.7 2.3 1.8 2.9-.4 1.2-.2 2.5.7 3.4.9.9 2.2 1.1 3.4.7.6 1.1 1.7 1.8 2.9 1.8 1.2 0 2.3-.7 2.9-1.8 1.2.4 2.5.2 3.4-.7.9-.9 1.1-2.2.7-3.4 1.1-.6 1.7-1.7 1.7-2.9z" fill="url(#' + gid + ')"/><path d="M15 9l-4.5 4.5L8 11" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      } else {
+        previewBadge.innerHTML = '<svg width="14" height="14" viewBox="0 0 22 22" fill="none"><path d="M20.4 11c0-1.2-.7-2.3-1.8-2.9.4-1.2.2-2.5-.7-3.4-.9-.9-2.2-1.1-3.4-.7C14 2.9 12.9 2.2 11.7 2.2c-1.2 0-2.3.7-2.9 1.8-1.2-.4-2.5-.2-3.4.7-.9.9-1.1 2.2-.7 3.4C3.6 8.7 2.9 9.8 2.9 11c0 1.2.7 2.3 1.8 2.9-.4 1.2-.2 2.5.7 3.4.9.9 2.2 1.1 3.4.7.6 1.1 1.7 1.8 2.9 1.8 1.2 0 2.3-.7 2.9-1.8 1.2.4 2.5.2 3.4-.7.9-.9 1.1-2.2.7-3.4 1.1-.6 1.7-1.7 1.7-2.9z" fill="' + verifiedColor.value + '"/><path d="M15 9l-4.5 4.5L8 11" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      }
+    }
+
+    if (previewStage && bannerSel) {
+      var bk = bannerSel.value;
+      if (bk === 'custom' && bannerC1 && bannerC2) {
+        previewStage.style.background = 'linear-gradient(90deg, ' + bannerC1.value + '33 0%, ' + bannerC2.value + '44 50%, ' + bannerC1.value + '33 100%)';
+      } else if (PRO_BANNERS[bk] && PRO_BANNERS[bk].gradient !== 'none') {
+        previewStage.style.background = PRO_BANNERS[bk].gradient;
+      } else {
+        previewStage.style.background = '#111';
+      }
+    }
+
+    if (previewBall && ballSel) {
+      var bc1 = ballC1 ? ballC1.value : '#60a5fa';
+      var bc2 = ballC2 ? ballC2.value : '#7c3aed';
+      previewBall.style.background = getBallPreviewBg(ballSel.value, bc1, bc2);
+      previewBall.style.boxShadow = ballSel.value === 'none'
+        ? '0 0 0 1px rgba(255,255,255,0.08)'
+        : '0 0 12px rgba(255,255,255,0.18), 0 0 0 1px rgba(255,255,255,0.12)';
+    }
+  }
+
+  function bindProProfileHandlers() {
+    var ids = ['nick-color', 'nick-grad1', 'nick-grad2', 'verified-color', 'verified-grad1', 'verified-grad2', 'ball-c1', 'ball-c2', 'banner-c1', 'banner-c2'];
+    ids.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('input', updateProPreview);
+    });
+    ['font-select', 'banner-select', 'ball-effect-select'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('change', function () {
+        if (id === 'banner-select') {
+          var row = document.getElementById('custom-banner-row');
+          if (row) row.style.display = el.value === 'custom' ? '' : 'none';
+        }
+        if (id === 'ball-effect-select') {
+          var brow = document.getElementById('custom-ball-row');
+          if (brow) brow.style.display = el.value === 'custom' ? '' : 'none';
+        }
+        updateProPreview();
+      });
+    });
+
+    var nickGradCheck = document.getElementById('nick-grad-check');
+    var verifiedGradCheck = document.getElementById('verified-grad-check');
+    if (nickGradCheck) nickGradCheck.addEventListener('change', function () {
+      var g = document.getElementById('nick-grad-colors');
+      if (g) g.style.display = nickGradCheck.checked ? 'flex' : 'none';
+      updateProPreview();
+    });
+    if (verifiedGradCheck) verifiedGradCheck.addEventListener('change', function () {
+      var g = document.getElementById('verified-grad-colors');
+      if (g) g.style.display = verifiedGradCheck.checked ? 'flex' : 'none';
+      updateProPreview();
+    });
+
+    var syncBtn = document.getElementById('pro-sync-btn');
+    if (syncBtn) syncBtn.addEventListener('click', function () {
+      var nc = document.getElementById('nick-color');
+      var ngc = document.getElementById('nick-grad-check');
+      var ng1 = document.getElementById('nick-grad1');
+      var ng2 = document.getElementById('nick-grad2');
+      var vc = document.getElementById('verified-color');
+      var vgc = document.getElementById('verified-grad-check');
+      var vg1 = document.getElementById('verified-grad1');
+      var vg2 = document.getElementById('verified-grad2');
+      if (vc && nc) vc.value = nc.value;
+      if (vgc && ngc) vgc.checked = ngc.checked;
+      var vgColors = document.getElementById('verified-grad-colors');
+      if (vgColors && ngc) vgColors.style.display = ngc.checked ? 'flex' : 'none';
+      if (vg1 && ng1) vg1.value = ng1.value;
+      if (vg2 && ng2) vg2.value = ng2.value;
+      updateProPreview();
+      syncBtn.textContent = t('proSynced');
+      setTimeout(function () { syncBtn.textContent = t('proSync'); }, 1500);
+    });
+
+    var saveBtn = document.getElementById('pro-profile-save');
+    if (saveBtn) saveBtn.addEventListener('click', function () {
+      var body = collectProProfilePayload();
+      saveBtn.disabled = true;
+      saveBtn.textContent = t('proSaving');
+      saveProSettings(body).then(function (ok) {
+        showToast(ok ? t('proSaved') : t('proSaveErr'));
+        if (ok) {
+          try { if (window.parent.__refreshProFonts) window.parent.__refreshProFonts(); } catch (eF) {}
+          try { if (window.parent.__refreshProBanners) window.parent.__refreshProBanners(); } catch (eB) {}
+          try { if (window.parent.__refreshVerifiedBadges) window.parent.__refreshVerifiedBadges(); } catch (eV) {}
+        }
+      }).finally(function () {
+        saveBtn.disabled = false;
+        saveBtn.textContent = t('proSave');
+      });
+    });
+  }
+
+  function collectProProfilePayload() {
+    var g = function (id) { var el = document.getElementById(id); return el ? el.value : ''; };
+    var c = function (id) { var el = document.getElementById(id); return el ? el.checked : false; };
+    return {
+      verified_color: g('verified-color'),
+      nick_color: g('nick-color'),
+      banner: g('banner-select'),
+      font: g('font-select'),
+      ball_effect: g('ball-effect-select'),
+      ball_color1: g('ball-c1'),
+      ball_color2: g('ball-c2'),
+      verified_gradient: c('verified-grad-check') ? g('verified-grad1') + ',' + g('verified-grad2') : '',
+      nick_gradient: c('nick-grad-check') ? g('nick-grad1') + ',' + g('nick-grad2') : '',
+      custom_banner_color1: g('banner-c1'),
+      custom_banner_color2: g('banner-c2')
+    };
+  }
+
+  function notifyParentProSettingsChanged(settings) {
+    try { window.parent.__proSettings = Object.assign({}, settings || proSettingsCache || {}); } catch (eParent) {}
+    try {
+      window.parent.postMessage({ type: 'hxd-pro-settings-changed', settings: settings || proSettingsCache || {} }, '*');
+    } catch (eMsg) {}
+  }
+
+  function saveProSettings(body) {
+    if (!isLive) {
+      proSettingsCache = Object.assign({}, proSettingsCache || {}, body);
+      try { localStorage.setItem('haxclient_pro_settings', JSON.stringify(proSettingsCache)); } catch (eDemo) {}
+      notifyParentProSettingsChanged(proSettingsCache);
+      return Promise.resolve(true);
+    }
+    return fetch(API_BASE + '/vip/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function (r) { return r.json(); }).then(function (data) {
+      var ok = data && !data.error && data.success !== false;
+      if (ok) {
+        proSettingsCache = Object.assign({}, proSettingsCache || {}, body);
+        try { localStorage.setItem('haxclient_pro_settings', JSON.stringify(proSettingsCache)); } catch (e) {}
+        notifyParentProSettingsChanged(proSettingsCache);
+      }
+      return ok;
+    }).catch(function () { return false; });
+  }
+
+  function bindProSoundHandlers() {
+    var enableRow = document.querySelector('#pro-panel-sounds .list-row.click');
+    var enableInput = document.getElementById('pro-sounds-enabled');
+    if (enableRow && enableInput) {
+      enableRow.addEventListener('click', function (e) {
+        if (e.target.tagName === 'INPUT') return;
+        if (e.target.closest && e.target.closest('.sw')) return;
+        enableInput.checked = !enableInput.checked;
+      });
+    }
+    document.querySelectorAll('.pro-snd-file').forEach(function (input) {
+      input.addEventListener('change', function () {
+        var f = input.files && input.files[0];
+        var key = input.getAttribute('data-sound');
+        if (!f || !key) return;
+        var reader = new FileReader();
+        reader.onload = function () {
+          var ur = document.querySelector('.pro-snd-url[data-sound="' + key + '"]');
+          if (ur) ur.value = sanitizeSoundUrl(reader.result);
+          syncProSoundRow(key);
+        };
+        reader.readAsDataURL(f);
+      });
+    });
+    document.querySelectorAll('.pro-snd-muted, .pro-snd-clear').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (btn.disabled) return;
+        var key = btn.getAttribute('data-sound');
+        var ur = document.querySelector('.pro-snd-url[data-sound="' + key + '"]');
+        var fi = document.querySelector('.pro-snd-file[data-sound="' + key + '"]');
+        if (ur) ur.value = '';
+        if (fi) fi.value = '';
+        syncProSoundRow(key);
+      });
+    });
+    document.querySelectorAll('.pro-snd-play').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var key = btn.getAttribute('data-sound');
+        var ur = document.querySelector('.pro-snd-url[data-sound="' + key + '"]');
+        var u = ur ? sanitizeSoundUrl(ur.value) : '';
+        if (!u) return;
+        var a = new Audio(u);
+        a.volume = 0.88;
+        a.play().catch(function () {});
+      });
+    });
+    var saveSnd = document.getElementById('pro-sounds-save');
+    if (saveSnd) saveSnd.addEventListener('click', function () {
+      var enEl = document.getElementById('pro-sounds-enabled');
+      var cfg = { enabled: !!(enEl && enEl.checked) };
+      ['chat', 'highlight', 'kick', 'goal', 'join', 'leave'].forEach(function (k) {
+        var inp = document.querySelector('.pro-snd-url[data-sound="' + k + '"]');
+        cfg[k] = sanitizeSoundUrl(inp && inp.value ? inp.value : '');
+      });
+      var ok = saveProSoundsToStorage(cfg);
+      if (ok) {
+        try {
+          window.parent.postMessage({ type: 'hxd-pro-sounds-changed', cfg: cfg }, '*');
+        } catch (eSndMsg) {}
+      }
+      showToast(ok ? t('proSoundsSaved') : t('proSoundsSaveErr'));
+    });
+  }
+
+  proNavTabs.querySelectorAll('[data-pro-tab]').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      setProSubTab(btn.getAttribute('data-pro-tab'));
+    });
+  });
+
+  proBackBtn.addEventListener('click', function () {
+    if (playerProfileOpen) exitProfileView();
+    else exitProView();
+  });
+
+  document.getElementById('pp-login-btn').addEventListener('click', function () {
+    sendCmd('settings');
+  });
+
+  function sendCmd(action, payload) {
+    try {
+      window.parent.postMessage({ type: 'hxd-roomlist-preview-cmd', action: action, payload: payload || {} }, '*');
+    } catch (e) {}
+  }
+
+  function applyTheme(theme, themeId) {
+    if (!theme || typeof theme !== 'object') return;
+    var root = document.documentElement;
+    Object.keys(theme).forEach(function (key) {
+      if (key.indexOf('--') === 0) root.style.setProperty(key, theme[key]);
+    });
+    if (themeId) root.setAttribute('data-theme', themeId);
+    var bgImg = theme['--theme-app-background-image'];
+    if (bgImg && String(bgImg).trim()) root.setAttribute('data-app-bg-image', '1');
+    else root.removeAttribute('data-app-bg-image');
+  }
+
+  function syncNavbarAvatar(avatarUrl, nick) {
+    var btn = document.querySelector('.avatar-btn');
+    if (!btn) return;
+    var fallback = btn.querySelector('.avatar-fallback');
+    var img = btn.querySelector('img');
+    var initials = '??';
+    if (nick && String(nick).trim()) {
+      initials = String(nick).trim().slice(0, 2).toUpperCase();
+    }
+    if (fallback) fallback.textContent = initials;
+    if (avatarUrl) {
+      if (!img) {
+        img = document.createElement('img');
+        img.alt = '';
+        btn.insertBefore(img, btn.firstChild);
+      }
+      img.src = avatarUrl;
+      if (fallback) fallback.style.display = 'none';
+    } else {
+      if (img) img.remove();
+      if (fallback) fallback.style.display = '';
+    }
+  }
+
+  function getDefaultCreateRoomName() {
+    var nick = String(currentPlayerNick || '').replace(/\u200B/g, '').trim();
+    return nick ? (nick + "'s room") : t('createNameDefault');
+  }
+
+  function openSearch() {
+    navbar.classList.add('search-open');
+    searchToggle.classList.add('search-active');
+    searchInput.focus();
+  }
+
+  function closeSearch() {
+    navbar.classList.remove('search-open');
+    searchToggle.classList.remove('search-active');
+  }
+
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 2200);
+  }
+
+  function openCreateModal() {
+    createNameInput.value = getDefaultCreateRoomName();
+    createPassInput.value = '';
+    createMaxSelect.value = '12';
+    createUnlisted = false;
+    updateUnlistedBtn();
+    createOverlay.classList.add('open');
+    createOverlay.setAttribute('aria-hidden', 'false');
+    setTimeout(function () { createNameInput.focus(); createNameInput.select(); }, 50);
+  }
+
+  function closeCreateModal() {
+    createOverlay.classList.remove('open');
+    createOverlay.setAttribute('aria-hidden', 'true');
+  }
+
+  function submitCreateRoom() {
+    var name = (createNameInput.value || '').trim();
+    if (!name) {
+      showToast(t('createErr'));
+      createNameInput.focus();
+      return;
+    }
+    var pass = (createPassInput.value || '').trim();
+    var max = parseInt(createMaxSelect.value, 10) || 8;
+    closeCreateModal();
+    if (isLive) {
+      sendCmd('create', {
+        name: name,
+        password: pass,
+        max: max,
+        unlisted: createUnlisted
+      });
+      return;
+    }
+    rooms.unshift({
+      id: 'new-' + Date.now(),
+      name: name,
+      country: 'ar',
+      players: 1,
+      max: max,
+      distance: 32,
+      domIndex: -1,
+      locked: !!pass,
+      fav: false,
+      pinned: false,
+      selected: true
+    });
+    selectedName = name;
+    rooms.forEach(function (r) { r.selected = r.name === name; });
+    showToast(t('createOk'));
+    render();
+  }
+
+  function flagUrl(code) {
+    if (!code || code.length !== 2) return '';
+    return 'https://flagcdn.com/w40/' + code.toLowerCase() + '.png';
+  }
+
+  function buildFlagHtml(country) {
+    var code = String(country || '').trim().toLowerCase();
+    if (!/^[a-z]{2}$/.test(code)) {
+      return '<span class="room-flag-ph" aria-hidden="true"></span>';
+    }
+    return '<img class="room-flag" src="' + escAttr(flagUrl(code)) + '" alt="" width="24" height="17" loading="lazy" decoding="async">';
+  }
+
+  function sortRooms(list) {
+    return list.slice().sort(function (a, b) {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+      var da = roomDistanceKm(a);
+      var db = roomDistanceKm(b);
+      if (da !== db) return da - db;
+      var ia = typeof a.domIndex === 'number' ? a.domIndex : 0;
+      var ib = typeof b.domIndex === 'number' ? b.domIndex : 0;
+      if (ia !== ib) return ia - ib;
+      return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
+    });
+  }
+
+  function roomDistanceKm(room) {
+    if (!room) return Number.MAX_SAFE_INTEGER;
+    if (typeof room.distance === 'number' && room.distance > 0) return room.distance;
+    if (typeof room.ping === 'number' && room.ping > 0) return room.ping;
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+  function formatDistanceKm(km) {
+    if (!(km > 0)) return '';
+    return String(Math.round(km)) + ' km';
+  }
+
+  function roomMatchesFilter(room) {
+    if (filterMode === 'fav' && !room.fav) return false;
+    if (countryFilter !== 'all' && normalizeCountry(room.country) !== countryFilter) return false;
+    if (searchQuery && (room.name || '').toLowerCase().indexOf(searchQuery.toLowerCase()) === -1) return false;
+    return true;
+  }
+
+  function updateLead(visible) {
+    if (roomsLoading && !rooms.length) {
+      leadEl.textContent = t('loading');
+      return;
+    }
+    var n = typeof visible === 'number' ? visible : rooms.length;
+    var txt = n === 1 ? t('leadOne') : t('lead').replace('{n}', String(n));
+    if (selectedName) txt += t('leadSel').replace('{name}', selectedName);
+    leadEl.textContent = txt;
+  }
+
+  function updateListStatus(visible) {
+    var count = typeof visible === 'number' ? visible : visibleRooms.length;
+    if (count > 0) {
+      loadingEl.classList.add('hidden');
+      emptyEl.classList.add('hidden');
+      return;
+    }
+    if (roomsLoading) {
+      loadingEl.classList.remove('hidden');
+      emptyEl.classList.add('hidden');
+    } else {
+      loadingEl.classList.add('hidden');
+      emptyEl.classList.remove('hidden');
+    }
+  }
+
+  function escHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function escAttr(s) { return escHtml(s).replace(/'/g, '&#39;'); }
+
+  function unpackRoom(raw, index) {
+    if (!raw) return null;
+    if (!Array.isArray(raw)) return raw;
+    return {
+      name: raw[0],
+      players: raw[1],
+      max: raw[2],
+      distance: raw[3],
+      country: raw[4] || '',
+      locked: !!raw[5],
+      fav: !!raw[6],
+      pinned: !!raw[7],
+      selected: !!raw[8],
+      domIndex: typeof raw[9] === 'number' ? raw[9] : index
+    };
+  }
+
+  function unpackRoomsList(list) {
+    if (!Array.isArray(list)) return [];
+    var out = new Array(list.length);
+    for (var i = 0; i < list.length; i++) {
+      out[i] = unpackRoom(list[i], i);
+    }
+    return out;
+  }
+
+  function getSortedRooms() {
+    if (sortedRoomsCacheVer !== roomsDataVer) {
+      sortedRoomsCache = sortRooms(rooms);
+      sortedRoomsCacheVer = roomsDataVer;
+    }
+    return sortedRoomsCache;
+  }
+
+  function rebuildVisibleRooms() {
+    var sorted = getSortedRooms();
+    var out = [];
+    for (var i = 0; i < sorted.length; i++) {
+      if (roomMatchesFilter(sorted[i])) out.push(sorted[i]);
+    }
+    visibleRooms = out;
+    return out;
+  }
+
+  function buildRoomsRenderSig(visible, selName) {
+    return String(visible) + '|' + (selName || '') + '|' + filterMode + '|' + countryFilter + '|' + searchQuery + '|' + roomsDataVer;
+  }
+
+  function buildRowHtml(room) {
+    var sel = room.selected || room.name === selectedName;
+    var flag = buildFlagHtml(room.country);
+    var distHint = formatDistanceKm(roomDistanceKm(room));
+    var playersFull = room.max > 0 && room.players >= room.max;
+    var rowCls = 'list-row click' +
+      (sel ? ' is-active' : '') +
+      (room.locked ? ' is-locked' : '') +
+      (room.pinned ? ' is-pinned' : '') +
+      (room.fav ? ' is-fav' : '');
+    return '<div class="' + rowCls + '" data-name="' + escAttr(room.name) + '">' +
+      '<div class="col-flag">' + (distHint ? '<span class="dist-hint">' + escHtml(distHint) + '</span>' : '') + '</div>' +
+      '<div class="col-name"><div class="name-line">' + flag +
+        '<span class="label">' + escHtml(room.name) + '</span>' +
+      '</div></div>' +
+      '<div class="col-players"><span class="players' + (playersFull ? ' is-full' : '') + '">' + room.players + '/' + room.max + '</span></div>' +
+    '</div>';
+  }
+
+  function mergeIncomingRoomMetrics(incoming) {
+    var byName = Object.create(null);
+    for (var i = 0; i < incoming.length; i++) {
+      byName[incoming[i].name] = incoming[i];
+    }
+    for (var j = 0; j < rooms.length; j++) {
+      var inc = byName[rooms[j].name];
+      if (!inc) continue;
+      rooms[j].players = inc.players;
+      rooms[j].max = inc.max;
+      rooms[j].distance = inc.distance;
+      rooms[j].country = inc.country;
+      rooms[j].locked = inc.locked;
+      rooms[j].selected = inc.selected;
+      rooms[j].fav = inc.fav;
+      rooms[j].pinned = inc.pinned;
+    }
+  }
+
+  function reapplyHoverRow() {
+    if (!hoveredRowName || !listEl) return;
+    var rows = listEl.querySelectorAll('.list-row');
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      var active = row.getAttribute('data-name') === hoveredRowName;
+      if (row.classList.contains('is-hover') !== active) {
+        row.classList.toggle('is-hover', active);
+      }
+    }
+  }
+
+  function isSelectedRoomVisible() {
+    if (!selectedName) return false;
+    for (var i = 0; i < visibleRooms.length; i++) {
+      if (visibleRooms[i].name === selectedName) return true;
+    }
+    return false;
+  }
+
+  function patchVisibleRowMetrics() {
+    if (!listEl || virtStart < 0) return false;
+    var rows = listEl.querySelectorAll('.list-row');
+    if (!rows.length) return false;
+
+    var roomByName = Object.create(null);
+    for (var i = virtStart; i < virtEnd && i < visibleRooms.length; i++) {
+      roomByName[visibleRooms[i].name] = visibleRooms[i];
+    }
+
+    for (var r = 0; r < rows.length; r++) {
+      var row = rows[r];
+      var room = roomByName[row.getAttribute('data-name')];
+      if (!room) continue;
+
+      var distEl = row.querySelector('.dist-hint');
+      var distText = formatDistanceKm(roomDistanceKm(room));
+      if (distEl) {
+        if (distText !== distEl.textContent) distEl.textContent = distText;
+      } else if (distText) {
+        var colFlag = row.querySelector('.col-flag');
+        if (colFlag) colFlag.innerHTML = '<span class="dist-hint">' + escHtml(distText) + '</span>';
+      }
+
+      var playersEl = row.querySelector('.players');
+      var playersText = room.players + '/' + room.max;
+      if (playersEl && playersEl.textContent !== playersText) {
+        playersEl.textContent = playersText;
+        playersEl.classList.toggle('is-full', room.max > 0 && room.players >= room.max);
+      }
+
+      var active = room.name === selectedName || room.selected;
+      if (row.classList.contains('is-active') !== active) row.classList.toggle('is-active', active);
+      if (row.classList.contains('is-locked') !== !!room.locked) row.classList.toggle('is-locked', !!room.locked);
+      if (row.classList.contains('is-pinned') !== !!room.pinned) row.classList.toggle('is-pinned', !!room.pinned);
+      if (row.classList.contains('is-fav') !== !!room.fav) row.classList.toggle('is-fav', !!room.fav);
+    }
+
+    joinBtn.disabled = !isSelectedRoomVisible();
+    return true;
+  }
+
+  function shouldDeferRoomDomUpdate() {
+    return proViewOpen || isListScrolling || listPointerInside ||
+      !roomsPanel.classList.contains('active');
+  }
+
+  function applyIncomingRooms(incoming, structCrc, forceFull) {
+    var structSame = !forceFull && structCrc && structCrc === lastRoomsStructCrc &&
+      incoming.length === rooms.length && rooms.length > 0;
+
+    if (structSame) {
+      mergeIncomingRoomMetrics(incoming);
+      lastRoomsStructCrc = structCrc || lastRoomsStructCrc;
+      updateCountryFilterUi();
+      if (countryMenuOpen) renderCountryMenu();
+
+      if (countryFilter !== 'all') {
+        roomsRenderSig = '';
+        render();
+        return;
+      }
+
+      if (shouldDeferRoomDomUpdate()) {
+        pendingRoomSync = { structSame: true };
+        return;
+      }
+
+      if (!visibleRooms.length) {
+        roomsRenderSig = '';
+        render();
+        return;
+      }
+
+      patchVisibleRowMetrics();
+      for (var s = 0; s < incoming.length; s++) {
+        if (incoming[s].selected) {
+          selectedName = incoming[s].name;
+          break;
+        }
+      }
+      updateLead(visibleRooms.length);
+      return;
+    }
+
+    rooms = incoming;
+    lastRoomsStructCrc = structCrc || lastRoomsStructCrc;
+    roomsDataVer++;
+    sortedRoomsCacheVer = -1;
+    updateCountryFilterUi();
+    if (countryMenuOpen) renderCountryMenu();
+
+    if (shouldDeferRoomDomUpdate()) {
+      pendingRoomSync = { structSame: false };
+      return;
+    }
+
+    roomsRenderSig = '';
+    render();
+  }
+
+  function flushPendingRoomSync() {
+    if (!pendingRoomSync) return;
+    var meta = pendingRoomSync;
+    pendingRoomSync = null;
+    applyIncomingRooms(rooms, lastRoomsStructCrc, !meta.structSame);
+  }
+
+  function getVirtRange() {
+    var total = visibleRooms.length;
+    if (!total || !listScrollEl) return { start: 0, end: 0 };
+    var st = listScrollEl.scrollTop;
+    var h = listScrollEl.clientHeight || 400;
+    var start = Math.max(0, Math.floor(st / ROW_H) - VIRT_OVERSCAN);
+    var visibleCount = Math.ceil(h / ROW_H) + (VIRT_OVERSCAN * 2);
+    var end = Math.min(total, start + visibleCount);
+    return { start: start, end: end };
+  }
+
+  function renderVisibleRows(force) {
+    var total = visibleRooms.length;
+    if (!total || !listScrollEl) {
+      if (listEl) listEl.innerHTML = '';
+      if (listInnerEl) listInnerEl.style.height = '0px';
+      joinBtn.disabled = true;
+      return;
+    }
+
+    var range = getVirtRange();
+    if (!force && range.start === virtStart && range.end === virtEnd && roomsRenderSig) {
+      updateSelectionUi();
+      return;
+    }
+
+    var scrollTop = listScrollEl.scrollTop;
+    virtStart = range.start;
+    virtEnd = range.end;
+
+    if (listInnerEl) listInnerEl.style.height = (total * ROW_H) + 'px';
+    if (listEl) {
+      listEl.style.transform = '';
+      listEl.style.top = (range.start * ROW_H) + 'px';
+    }
+
+    var html = '';
+    for (var i = range.start; i < range.end; i++) {
+      html += buildRowHtml(visibleRooms[i]);
+    }
+    listEl.innerHTML = html;
+    listScrollEl.scrollTop = scrollTop;
+    updateSelectionUi();
+    reapplyHoverRow();
+  }
+
+  function scheduleVirtRender() {
+    if (scrollRaf) return;
+    isListScrolling = true;
+    if (scrollEndTimer) clearTimeout(scrollEndTimer);
+    scrollEndTimer = setTimeout(function () {
+      isListScrolling = false;
+      if (listScrollEl) {
+        var st = listScrollEl.scrollTop;
+        var snapped = Math.round(st);
+        if (snapped !== st) listScrollEl.scrollTop = snapped;
+      }
+      flushPendingRoomSync();
+    }, 120);
+    scrollRaf = requestAnimationFrame(function () {
+      scrollRaf = 0;
+      renderVisibleRows(false);
+    });
+  }
+
+  function updateSelectionUi() {
+    var rows = listEl.querySelectorAll('.list-row');
+    var hasSelected = isSelectedRoomVisible();
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      var active = row.getAttribute('data-name') === selectedName;
+      if (row.classList.contains('is-active') !== active) {
+        row.classList.toggle('is-active', active);
+      }
+    }
+    joinBtn.disabled = !hasSelected;
+  }
+
+  function bindListEventsOnce() {
+    if (listEventsBound) return;
+    listEventsBound = true;
+
+    if (listScrollEl) {
+      listScrollEl.addEventListener('scroll', scheduleVirtRender, { passive: true });
+      listScrollEl.addEventListener('mouseenter', function () {
+        listPointerInside = true;
+      });
+      listScrollEl.addEventListener('mouseleave', function () {
+        listPointerInside = false;
+        hoveredRowName = null;
+        if (listEl) {
+          var hoverRow = listEl.querySelector('.list-row.is-hover');
+          if (hoverRow) hoverRow.classList.remove('is-hover');
+        }
+        flushPendingRoomSync();
+      });
+    }
+
+    listEl.addEventListener('mouseover', function (e) {
+      var row = e.target.closest('.list-row');
+      if (!row || !listEl.contains(row)) return;
+      var name = row.getAttribute('data-name');
+      if (name === hoveredRowName) return;
+      hoveredRowName = name;
+      var prev = listEl.querySelector('.list-row.is-hover');
+      if (prev && prev !== row) prev.classList.remove('is-hover');
+      row.classList.add('is-hover');
+    });
+
+    listEl.addEventListener('mouseout', function (e) {
+      var row = e.target.closest('.list-row');
+      if (!row || !listEl.contains(row)) return;
+      if (row.contains(e.relatedTarget)) return;
+      row.classList.remove('is-hover');
+      if (hoveredRowName === row.getAttribute('data-name')) hoveredRowName = null;
+    });
+
+    listEl.addEventListener('click', function (e) {
+      var row = e.target.closest('.list-row');
+      if (!row || !listEl.contains(row)) return;
+      var name = row.getAttribute('data-name');
+      selectedName = name;
+      sendCmd('select', { name: name });
+      rooms.forEach(function (r) { r.selected = r.name === name; });
+      roomsRenderSig = '';
+      updateSelectionUi();
+      updateLead(visibleRooms.length);
+    });
+
+    listEl.addEventListener('dblclick', function (e) {
+      var row = e.target.closest('.list-row');
+      if (!row || !listEl.contains(row)) return;
+      sendCmd('join', { name: row.getAttribute('data-name') });
+    });
+
+    listEl.addEventListener('contextmenu', function (e) {
+      var row = e.target.closest('.list-row');
+      if (!row || !listEl.contains(row)) return;
+      e.preventDefault();
+      openCtx(e.clientX, e.clientY, row.getAttribute('data-name'));
+    });
+  }
+
+  function renderNow() {
+    renderRaf = 0;
+    var visible = rebuildVisibleRooms();
+    var sig = buildRoomsRenderSig(visible.length, selectedName);
+
+    updateListStatus(visible.length);
+    updateLead(visible.length);
+
+    if (sig === roomsRenderSig) {
+      renderVisibleRows(false);
+      return;
+    }
+    roomsRenderSig = sig;
+    virtStart = -1;
+    virtEnd = -1;
+    renderVisibleRows(true);
+    bindListEventsOnce();
+  }
+
+  function render() {
+    if (renderRaf) return;
+    renderRaf = requestAnimationFrame(renderNow);
+  }
+
+  function openCtx(x, y, name) {
+    ctxRoomName = name;
+    var room = rooms.filter(function (r) { return r.name === name; })[0];
+    if (!room) return;
+
+    ctxMenu.innerHTML =
+      '<button type="button" class="ctx-item" data-ctx="fav">' +
+        '<svg viewBox="0 0 24 24" fill="' + (room.fav ? '#f59e0b' : 'none') + '" stroke="' + (room.fav ? '#f59e0b' : 'currentColor') + '" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>' +
+        '<span>' + (room.fav ? t('ctxFavRemove') : t('ctxFavAdd')) + '</span></button>' +
+      '<button type="button" class="ctx-item" data-ctx="pin">' +
+        '<svg viewBox="0 0 24 24" fill="' + (room.pinned ? '#3b82f6' : 'none') + '" stroke="' + (room.pinned ? '#3b82f6' : 'currentColor') + '" stroke-width="2"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>' +
+        '<span>' + (room.pinned ? t('ctxPinRemove') : t('ctxPinAdd')) + '</span></button>';
+
+    ctxMenu.style.left = Math.min(x, window.innerWidth - 180) + 'px';
+    ctxMenu.style.top = Math.min(y, window.innerHeight - 100) + 'px';
+    ctxMenu.classList.add('open');
+
+    ctxMenu.querySelectorAll('.ctx-item').forEach(function (btn) {
+      btn.onclick = function () {
+        var action = btn.getAttribute('data-ctx');
+        if (action === 'fav') {
+          room.fav = !room.fav;
+          roomsRenderSig = '';
+          render();
+          sendCmd('toggleFav', { name: ctxRoomName });
+        } else if (action === 'pin') {
+          room.pinned = !room.pinned;
+          roomsDataVer++;
+          roomsRenderSig = '';
+          render();
+          sendCmd('togglePin', { name: ctxRoomName });
+        }
+        ctxMenu.classList.remove('open');
+      };
+    });
+  }
+
+  document.addEventListener('click', function (e) {
+    ctxMenu.classList.remove('open');
+    if (countryFilterWrap && !countryFilterWrap.contains(e.target)) closeCountryMenu();
+    var navShell = document.querySelector('.nav-shell');
+    if (!navShell || !navShell.contains(e.target)) closeSearch();
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && createOverlay.classList.contains('open')) closeCreateModal();
+  });
+
+  createOverlay.addEventListener('click', function (e) {
+    if (e.target === createOverlay) closeCreateModal();
+  });
+
+  createBtn.addEventListener('click', openCreateModal);
+  createCancelBtn.addEventListener('click', closeCreateModal);
+  createSubmitBtn.addEventListener('click', submitCreateRoom);
+  createUnlistedBtn.addEventListener('click', function () {
+    createUnlisted = !createUnlisted;
+    updateUnlistedBtn();
+  });
+  createNameInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') submitCreateRoom();
+  });
+
+  searchToggle.addEventListener('click', function () {
+    if (navbar.classList.contains('search-open')) closeSearch();
+    else openSearch();
+  });
+
+  searchInput.addEventListener('input', function () {
+    searchQuery = (searchInput.value || '').trim();
+    render();
+  });
+
+  searchInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeSearch();
+    if (e.key === 'Enter' && selectedName) sendCmd('join', { name: selectedName });
+  });
+
+  if (countryFilterToggle) {
+    countryFilterToggle.addEventListener('click', function () {
+      if (countryMenuOpen) closeCountryMenu();
+      else openCountryMenu();
+    });
+  }
+
+  if (countryMenu) {
+    countryMenu.addEventListener('click', function (e) {
+      var sortBtn = e.target.closest('[data-country-sort]');
+      if (sortBtn && countryMenu.contains(sortBtn)) {
+        countrySortMode = sortBtn.getAttribute('data-country-sort') === 'count' ? 'count' : 'alpha';
+        try { localStorage.setItem('hxd_room_country_sort', countrySortMode); } catch (eSortStore) {}
+        renderCountryMenu();
+        return;
+      }
+      var btn = e.target.closest('.country-item');
+      if (!btn || !countryMenu.contains(btn)) return;
+      var code = btn.getAttribute('data-country') || 'all';
+      setCountryFilter(code === 'all' ? '' : code);
+    });
+  }
+
+  window.addEventListener('message', function (e) {
+    var data = e.data;
+    if (!data || data.type !== 'hxd-roomlist-sync') return;
+    isLive = true;
+    devBadge.hidden = true;
+    if (data.theme) applyTheme(data.theme, data.themeId);
+    if (data.avatarUrl !== undefined || data.playerNick) {
+      currentPlayerNick = String(data.playerNick || '').replace(/\u200B/g, '').trim();
+      syncNavbarAvatar(data.avatarUrl || '', data.playerNick || '');
+    }
+    if (data.lang) { lang = data.lang; applyI18n(); }
+    if (typeof data.anonymous === 'boolean') applyAnonUi(data.anonymous);
+    applyInpanelModeFromSync(data.inpanelMode);
+    if (data.profile) renderPlayerProfileFromSync(data.profile);
+    var prevLoading = roomsLoading;
+    if (typeof data.roomsLoading === 'boolean') {
+      roomsLoading = data.roomsLoading;
+      if (!Array.isArray(data.rooms) && prevLoading !== roomsLoading) {
+        render();
+      }
+    }
+    if (Array.isArray(data.rooms)) {
+      var roomsCrc = data.roomsCrc || '';
+      var loadingUnchanged = typeof data.roomsLoading !== 'boolean' || prevLoading === roomsLoading;
+      if (roomsCrc && roomsCrc === lastRoomsCrc &&
+          (data.roomsStructCrc || '') === lastRoomsStructCrc &&
+          loadingUnchanged) {
+        return;
+      }
+      lastRoomsCrc = roomsCrc;
+      if (!data.roomsLoading && data.rooms.length > 0) roomsLoading = false;
+      applyIncomingRooms(unpackRoomsList(data.rooms), data.roomsStructCrc || '', !!data.forceFull);
+    }
+  });
+
+  document.querySelectorAll('[data-cmd]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var cmd = btn.getAttribute('data-cmd');
+      if (cmd === 'join') {
+        if (selectedName) sendCmd('join', { name: selectedName });
+      } else if (cmd === 'openProfile' && !isLive) {
+        lastSyncedInpanelMode = 'profile';
+        showPlayerProfileView();
+        renderPlayerProfileFromSync({
+          loggedIn: true,
+          nick: currentPlayerNick || 'ferro.',
+          handle: (currentPlayerNick || 'ferro.').replace(/\.$/, ''),
+          avatarUrl: document.querySelector('.avatar-btn img') ? document.querySelector('.avatar-btn img').src : '',
+          tier: 'PRO',
+          online: true,
+          roomName: null
+        });
+      } else {
+        if (cmd === 'refresh') {
+          roomsLoading = true;
+          render();
+        }
+        sendCmd(cmd);
+      }
+    });
+  });
+
+  roomNavTabs.querySelectorAll('.tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      var mode = tab.getAttribute('data-filter');
+      if (mode === 'pro') {
+        filterMode = 'all';
+        lastSyncedInpanelMode = 'pro';
+        setNavTab('pro');
+        showProView();
+        sendCmd('openPro');
+        return;
+      }
+      lastSyncedInpanelMode = '';
+      if (mode === 'all') {
+        filterMode = 'all';
+        sendCmd('closeInpanel');
+      } else if (mode === 'fav') {
+        filterMode = 'fav';
+        sendCmd('closeInpanel');
+      }
+      setNavTab(mode);
+      if (proViewOpen) hideProView();
+      else render();
+    });
+  });
+
+  if (window.parent === window) {
+    devBadge.hidden = false;
+    rooms = buildDemoRooms(50);
+    selectedName = rooms[2] ? rooms[2].name : '';
+    applyI18n();
+    render();
+  } else {
+    applyI18n();
+    updateListStatus(0);
+    updateLead();
+  }
+
+  function buildDemoRooms(count) {
+    var prefixes = [
+      'HaxZero Futsal', 'Real Soccer', 'Training Only', 'Baires Club', 'Big Map 3v3',
+      'Rookie Room', 'Pro League', '1v1 Arena', 'Futsal Night', 'Classic Hax',
+      'Speed Room', 'GK Practice', 'Tournament', 'Casual Mix', 'Ranked 4v4'
+    ];
+    var suffixes = ['', ' · NOOBS', ' · PRO', ' · LATAM', ' · EU', ' · BR', ' · AR'];
+    var countries = ['ar', 'br', 'us', 'es', 'de', 'fr', 'uy', 'cl', 'mx', 'pt', 'it', 'gb'];
+    var out = [];
+    for (var i = 0; i < count; i++) {
+      var max = [6, 8, 10, 12, 16][i % 5];
+      var players;
+      if (i % 11 === 0) players = 0;
+      else if (i % 7 === 0) players = max;
+      else players = (i * 3 + 1) % (max + 1);
+      out.push({
+        id: String(i + 1),
+        name: prefixes[i % prefixes.length] + suffixes[i % suffixes.length] + (i > 14 ? ' #' + (i + 1) : ''),
+        country: countries[i % countries.length],
+        players: players,
+        max: max,
+        distance: 28 + ((i * 37) % 220),
+        domIndex: i,
+        locked: i % 9 === 0,
+        fav: i % 6 === 0,
+        pinned: i === 0,
+        selected: i === 2
+      });
+    }
+    return out;
+  }
+})();
+</script>
+</body>
+</html>
