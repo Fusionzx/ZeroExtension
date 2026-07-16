@@ -13283,7 +13283,10 @@
             m.j.Um.ha(b("show_animations", !0));
             m.j.Wm.ha(b("viewport_culling", !1) || b("culling_enabled", !1));
             m.j.hxdHideOffscreenArrows.ha(b("hide_offscreen_arrows", !1));
-            m.j.Uk.ha(b("show_indicators", !0) || b("show_chat_indicator", !0));
+            var showChatIndicators = null != ls.getItem("show_chat_indicator")
+              ? b("show_chat_indicator", !0)
+              : b("show_indicators", !0);
+            m.j.Uk.ha(showChatIndicators);
             m.j.li.ha(b("low_latency_canvas", !1));
             m.j.Qm.ha(b("image_smoothing", !0));
             try {

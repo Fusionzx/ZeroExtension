@@ -52,6 +52,11 @@ if (typeof console !== 'undefined') {
                 '}' +
                 'html[data-hxd-zero-zoom="1"] .dialog.settings-view {' +
                     'zoom:var(--hxd-page-zoom-inverse,1) !important;' +
+                '}' +
+                'html[data-hxd-zero-zoom="1"] .dialog.settings-view #hxd-settings-preview-frame {' +
+                    'width:calc(var(--hxd-page-zoom-squared,1) * 100%) !important;' +
+                    'height:calc(var(--hxd-page-zoom-squared,1) * 100%) !important;' +
+                    'zoom:var(--hxd-page-zoom-squared,1) !important;' +
                 '}';
         }
         document.head.appendChild(style);
@@ -79,6 +84,7 @@ if (typeof console !== 'undefined') {
         root.style.setProperty('--hxd-page-zoom-inverse-percent', String(100 / factor) + '%');
         root.style.setProperty('--hxd-page-zoom-vw', String(factor * 100) + 'vw');
         root.style.setProperty('--hxd-page-zoom-vh', String(factor * 100) + 'vh');
+        root.style.setProperty('--hxd-page-zoom-squared', String(factor * factor));
         root.setAttribute('data-hxd-page-zoom-factor', String(factor));
         root.setAttribute('data-hxd-zero-zoom', enabled ? '1' : '0');
         try {
