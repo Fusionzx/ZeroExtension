@@ -4860,8 +4860,9 @@
         }
         hxdRoomViewFastSig(a, b) {
             try {
-                let c = a.K;
-                return (a.M ? "1" : "0") + ":" + (b ? b.Z + "," + (b.fb ? "1" : "0") : "n") + ":" + a.Ga + ":" + a.kb + ":" + (a.Ac ? "1" : "0") + ":" + c.length
+                let c = a.K
+                  , d = a.T ? a.T.Nh + "," + a.T.D + "," + (a.T.cf() ? "1" : "0") : "n";
+                return (a.M ? "1" : "0") + ":" + (b ? b.Z + "," + (b.fb ? "1" : "0") : "n") + ":" + a.Ga + ":" + a.kb + ":" + d + ":" + (a.Ac ? "1" : "0") + ":" + c.length
             } catch (c) {
                 return ""
             }
@@ -4869,7 +4870,7 @@
         hxdRoomViewSig(a, b) {
             try {
                 let c = a.K
-                  , d = (a.M ? "1" : "0") + ":" + (b ? b.Z + "," + (b.fb ? "1" : "0") : "n") + ":" + a.Ga + ":" + a.kb + ":" + (a.Ac ? "1" : "0") + ":" + c.length
+                  , d = (a.M ? "1" : "0") + ":" + (b ? b.Z + "," + (b.fb ? "1" : "0") : "n") + ":" + a.Ga + ":" + a.kb + ":" + (a.T ? a.T.Nh + "," + a.T.D + "," + (a.T.cf() ? "1" : "0") : "n") + ":" + (a.Ac ? "1" : "0") + ":" + c.length
                   , e = 0;
                 for (; e < c.length; ) {
                     let f = c[e++]
