@@ -4768,7 +4768,7 @@
 
   function defaultCameraBinds() {
     var a = [];
-    for (var i = 0; i < 9; i++) a.push([]);
+    for (var i = 0; i < 9; i++) a.push(['Digit' + i]);
     return a;
   }
 
@@ -4799,6 +4799,15 @@
               def[k] = clean;
             }
           }
+          var hasCameraKey = false;
+          for (var m = 0; m < def.length; m++) {
+            if (def[m].length) { hasCameraKey = true; break; }
+          }
+          if (!hasCameraKey && !storageWin().localStorage.getItem('hxd_camera_defaults_repaired_v1')) {
+            def = defaultCameraBinds();
+            storageWin().localStorage.setItem(CAMERA_STORAGE, JSON.stringify(def));
+            storageWin().localStorage.setItem('hxd_camera_defaults_repaired_v1', '1');
+          }
           return def;
         }
       }
@@ -4807,7 +4816,10 @@
   }
 
   function saveCameraBinds(list) {
-    try { storageWin().localStorage.setItem(CAMERA_STORAGE, JSON.stringify(list)); } catch (eCamSave) {}
+    try {
+      storageWin().localStorage.setItem(CAMERA_STORAGE, JSON.stringify(list));
+      storageWin().localStorage.setItem('hxd_camera_defaults_repaired_v1', '1');
+    } catch (eCamSave) {}
   }
 
   function assignCameraKey(list, slotIndex, code) {

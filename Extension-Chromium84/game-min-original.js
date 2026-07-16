@@ -13192,6 +13192,22 @@
         urls: "stun:stun4.l.google.com:19302"
     }];
     m.j = new xc;
+    try {
+        let storedPlayerKeys = localStorage.getItem("player_keys")
+          , startupPlayerKeys = null == storedPlayerKeys ? Aa.vk() : Aa.Th(storedPlayerKeys);
+        if (null == localStorage.getItem("hxd_player_keys_defaults_repaired_v1")) {
+            let startupNativeDefaults = Aa.vk()
+              , startupDefaultActions = ["Up", "Down", "Left", "Right", "Kick", "ViewModeNext", "ViewModePrev", "ToggleStadium120"];
+            for (let startupAction of startupDefaultActions)
+                if (0 == startupPlayerKeys.kp(startupAction).length)
+                    for (let startupCode of startupNativeDefaults.kp(startupAction))
+                        startupPlayerKeys.Pa(startupCode, startupAction);
+            localStorage.setItem("hxd_player_keys_defaults_repaired_v1", "1")
+        }
+        startupPlayerKeys.Pa("Escape", "ToggleMenu");
+        localStorage.setItem("player_keys", startupPlayerKeys.Ce());
+        m.j.Jd.ha(startupPlayerKeys)
+    } catch (startupPlayerKeysError) {}
     window.__haxAddPlayerKey = function(a, b) {
         try {
             if ("ToggleMenu" == b && "Escape" != a) return !0;
@@ -13349,7 +13365,9 @@
                 // only on a brand-new profile so an intentional removal is
                 // still respected.
                 if (null == pk) {
-                    pk = JSON.stringify({ Escape: "ToggleMenu" });
+                    let defaultPlayerKeys = Aa.vk();
+                    defaultPlayerKeys.Pa("Escape", "ToggleMenu");
+                    pk = defaultPlayerKeys.Ce();
                     ls.setItem("player_keys", pk)
                 } else if (null == ls.getItem("hxd_togglemenu_escape_defaulted")) {
                     // Migrate existing profiles once. After this, removing
@@ -13378,6 +13396,20 @@
                         }
                     } catch (pkRepairError) {}
                     ls.setItem("hxd_togglemenu_escape_repaired_v2", "1")
+                }
+                if (null == ls.getItem("hxd_player_keys_defaults_repaired_v1")) {
+                    try {
+                        let repairedDefaults = Aa.Th(pk)
+                          , nativeDefaults = Aa.vk()
+                          , defaultActions = ["Up", "Down", "Left", "Right", "Kick", "ViewModeNext", "ViewModePrev", "ToggleStadium120"];
+                        for (let defaultAction of defaultActions)
+                            if (0 == repairedDefaults.kp(defaultAction).length)
+                                for (let defaultCode of nativeDefaults.kp(defaultAction))
+                                    repairedDefaults.Pa(defaultCode, defaultAction);
+                        pk = repairedDefaults.Ce();
+                        ls.setItem("player_keys", pk)
+                    } catch (playerKeysDefaultsRepairError) {}
+                    ls.setItem("hxd_player_keys_defaults_repaired_v1", "1")
                 }
                 let fixedPlayerKeys = Aa.Th(pk);
                 fixedPlayerKeys.Pa("Escape", "ToggleMenu");
