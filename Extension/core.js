@@ -49,6 +49,9 @@ if (typeof console !== 'undefined') {
                     'height:var(--hxd-page-zoom-vh,100vh) !important;' +
                     'min-width:0 !important;' +
                     'min-height:0 !important;' +
+                '}' +
+                'html[data-hxd-zero-zoom="1"] .dialog.settings-view {' +
+                    'zoom:var(--hxd-page-zoom-inverse,1) !important;' +
                 '}';
         }
         document.head.appendChild(style);
