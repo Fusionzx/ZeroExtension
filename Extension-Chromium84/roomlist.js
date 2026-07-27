@@ -38,6 +38,9 @@
     var LOCAL_API = 'http://127.0.0.1:5483';
     var profileDataCache = null;
     var profileDataPromise = null;
+    var autoJoinState = null;
+    var AUTOJOIN_REFRESH_DELAY = 350;
+    var AUTOJOIN_SAFETY_DELAY = 1100;
 
     function scheduleRoomlistPreviewEnsure(doc, delay) {
         if (!doc) return;
@@ -907,6 +910,7 @@
     }
 
     function cleanupRoomList() {
+        if (autoJoinState) stopAutoJoin('cancelled', { name: autoJoinState.target.name });
         if (roomListObserver) {
             roomListObserver.disconnect();
             roomListObserver = null;
@@ -1361,6 +1365,146 @@
         return false;
     }
 
+    function postAutoJoinStatus(iframeDoc, status, extra) {
+        var frame = iframeDoc && iframeDoc.getElementById('hxd-roomlist-preview-frame');
+        if (!frame || !frame.contentWindow) return;
+        var payload = { type: 'hxd-autojoin-status', status: status || 'idle' };
+        extra = extra || {};
+        for (var key in extra) payload[key] = extra[key];
+        try { frame.contentWindow.postMessage(payload, '*'); } catch (ePost) {}
+    }
+
+    function clearAutoJoinWork(state) {
+        if (!state) return;
+        if (state.timer) {
+            clearTimeout(state.timer);
+            state.timer = null;
+            state.timerDue = 0;
+        }
+        if (state.observer) {
+            state.observer.disconnect();
+            state.observer = null;
+        }
+    }
+
+    function stopAutoJoin(status, extra) {
+        var state = autoJoinState;
+        if (!state) return;
+        autoJoinState = null;
+        clearAutoJoinWork(state);
+        postAutoJoinStatus(state.doc, status || 'idle', extra || { name: state.target.name });
+    }
+
+    function findAutoJoinRoom(iframeDoc, target) {
+        var rows = getRoomListRows(iframeDoc);
+        var nameFallback = null;
+        for (var i = 0; i < rows.length; i++) {
+            var room = parseRoomRow(rows[i], i);
+            if (!room || room.name !== target.name) continue;
+            if (!nameFallback) nameFallback = { row: rows[i], room: room };
+            var countryOk = !target.country || room.country === target.country;
+            var distanceOk = target.distance == null || Math.abs(room.distance - target.distance) <= 1;
+            if (countryOk && distanceOk) return { row: rows[i], room: room };
+        }
+        return nameFallback;
+    }
+
+    function scheduleAutoJoinCheck(state, delay) {
+        if (!state || state !== autoJoinState) return;
+        var wait = Math.max(0, delay || 0);
+        var due = Date.now() + wait;
+        if (state.timer) {
+            if (state.timerDue && state.timerDue <= due) return;
+            clearTimeout(state.timer);
+        }
+        state.timerDue = due;
+        state.timer = setTimeout(function () {
+            state.timer = null;
+            state.timerDue = 0;
+            runAutoJoinCheck(state);
+        }, wait);
+    }
+
+    function runAutoJoinCheck(state) {
+        if (!state || state !== autoJoinState || state.checking) return;
+        var doc = state.doc;
+        var view = doc && doc.querySelector('.roomlist-view');
+        if (!view || !view.isConnected) {
+            stopAutoJoin('cancelled', { name: state.target.name });
+            return;
+        }
+
+        state.checking = true;
+        try {
+            var match = findAutoJoinRoom(doc, state.target);
+            if (match && match.room.max > 0 && match.room.players < match.room.max) {
+                match.row.click();
+                var joinBtn = doc.querySelector('.roomlist-view [data-hook="join"]');
+                stopAutoJoin('joining', {
+                    name: match.room.name,
+                    players: match.room.players,
+                    max: match.room.max
+                });
+                if (joinBtn && !joinBtn.disabled) joinBtn.click();
+                else match.row.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+                return;
+            }
+
+            postAutoJoinStatus(doc, 'waiting', {
+                name: state.target.name,
+                players: match ? match.room.players : null,
+                max: match ? match.room.max : null
+            });
+
+            var refreshBtn = doc.querySelector('.roomlist-view [data-hook="refresh"]');
+            var now = Date.now();
+            if (refreshBtn && !refreshBtn.disabled && now >= state.nextRefreshAt) {
+                state.nextRefreshAt = now + AUTOJOIN_REFRESH_DELAY;
+                refreshBtn.click();
+            }
+            scheduleAutoJoinCheck(state, refreshBtn && refreshBtn.disabled ? AUTOJOIN_SAFETY_DELAY : AUTOJOIN_REFRESH_DELAY);
+        } finally {
+            state.checking = false;
+        }
+    }
+
+    function startAutoJoin(iframeDoc, target) {
+        target = target || {};
+        var name = String(target.name || '').trim();
+        if (!name) {
+            postAutoJoinStatus(iframeDoc, 'error', { reason: 'no-room' });
+            return false;
+        }
+        if (autoJoinState) stopAutoJoin('cancelled', { name: autoJoinState.target.name });
+
+        var state = {
+            doc: iframeDoc,
+            target: {
+                name: name,
+                country: String(target.country || '').toLowerCase(),
+                distance: target.distance == null ? null : Number(target.distance)
+            },
+            timer: null,
+            timerDue: 0,
+            observer: null,
+            checking: false,
+            nextRefreshAt: 0
+        };
+        autoJoinState = state;
+
+        var root = getRoomListRoot(iframeDoc);
+        var refreshBtn = iframeDoc.querySelector('.roomlist-view [data-hook="refresh"]');
+        state.observer = new MutationObserver(function () {
+            scheduleAutoJoinCheck(state, 20);
+        });
+        if (root) state.observer.observe(root, { childList: true, subtree: true, characterData: true });
+        if (refreshBtn) state.observer.observe(refreshBtn, { attributes: true, attributeFilter: ['disabled', 'class'] });
+
+        postAutoJoinStatus(iframeDoc, 'waiting', { name: name });
+        scheduleAutoJoinCheck(state, 0);
+        return true;
+    }
+
     var THEME_VAR_KEYS = [
         '--theme-bg-primary', '--theme-bg-secondary', '--theme-bg-tertiary',
         '--theme-bg-primary-rgb', '--theme-bg-hover', '--theme-bg-selected',
@@ -1759,9 +1903,15 @@
         } else if (action === 'select' && payload.name) {
             selectRoomByName(iframeDoc, payload.name);
         } else if (action === 'join' && payload.name) {
+            if (autoJoinState) stopAutoJoin('cancelled', { name: autoJoinState.target.name });
             selectRoomByName(iframeDoc, payload.name);
             var joinBtn = iframeDoc.querySelector('.roomlist-view [data-hook="join"]');
             if (joinBtn) joinBtn.click();
+        } else if (action === 'autojoinStart') {
+            startAutoJoin(iframeDoc, payload);
+        } else if (action === 'autojoinCancel') {
+            if (autoJoinState) stopAutoJoin('cancelled', { name: autoJoinState.target.name });
+            else postAutoJoinStatus(iframeDoc, 'idle');
         } else if (action === 'create') {
             if (payload && payload.name) {
                 submitCreateRoomFromPreview(iframeDoc, payload);

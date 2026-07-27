@@ -754,6 +754,22 @@
     }
 
     .card-footer button.primary:hover { opacity: 0.92; }
+    .card-footer button.autojoin-active {
+      background: var(--theme-text-primary);
+      color: var(--theme-bg-primary);
+      border-color: var(--theme-text-primary);
+    }
+    .autojoin-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      margin-right: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      vertical-align: 1px;
+    }
+    .autojoin-active .autojoin-dot { animation: autojoin-pulse 0.9s ease-in-out infinite; }
+    @keyframes autojoin-pulse { 50% { opacity: 0.3; transform: scale(0.75); } }
     .card-footer button:disabled {
       opacity: 0.35;
       cursor: not-allowed;
@@ -1638,6 +1654,7 @@
       <div class="card-footer" id="card-footer">
         <button type="button" data-cmd="replays" data-i18n="replays">Replays</button>
         <button type="button" id="create-btn" data-i18n="create">Crear sala</button>
+        <button type="button" id="autojoin-btn" disabled><span class="autojoin-dot"></span><span data-i18n="autojoin">AutoJoin</span></button>
         <button type="button" class="primary" id="join-btn" data-cmd="join" disabled data-i18n="join">Entrar</button>
       </div>
     </main>
@@ -1684,7 +1701,7 @@
       colDist: 'Dist.', colName: 'Nombre', colPlayers: 'Jugadores',
       empty: 'No hay salas que coincidan',
       loading: 'Cargando…',
-      create: 'Crear sala', join: 'Entrar', replays: 'Replays',
+      create: 'Crear sala', join: 'Entrar', replays: 'Replays', autojoin: 'AutoJoin', autojoinWaiting: 'Esperando hueco…', autojoinCancel: 'Cancelar AutoJoin',
       searchPh: 'Buscar sala…',
       ctxFavAdd: 'Agregar a favoritos', ctxFavRemove: 'Quitar de favoritos',
       ctxPinAdd: 'Fijar arriba', ctxPinRemove: 'Desfijar',
@@ -1732,7 +1749,7 @@
       colDist: 'Dist.', colName: 'Name', colPlayers: 'Players',
       empty: 'No matching rooms',
       loading: 'Loading…',
-      create: 'Create room', join: 'Join', replays: 'Replays',
+      create: 'Create room', join: 'Join', replays: 'Replays', autojoin: 'AutoJoin', autojoinWaiting: 'Waiting for a slot…', autojoinCancel: 'Cancel AutoJoin',
       searchPh: 'Search room…',
       ctxFavAdd: 'Add to favorites', ctxFavRemove: 'Remove from favorites',
       ctxPinAdd: 'Pin to top', ctxPinRemove: 'Unpin',
@@ -1780,7 +1797,7 @@
       colDist: 'Dist.', colName: 'Nome', colPlayers: 'Jogadores',
       empty: 'Nenhuma sala encontrada',
       loading: 'Carregando…',
-      create: 'Criar sala', join: 'Entrar', replays: 'Replays',
+      create: 'Criar sala', join: 'Entrar', replays: 'Replays', autojoin: 'AutoJoin', autojoinWaiting: 'Aguardando vaga…', autojoinCancel: 'Cancelar AutoJoin',
       searchPh: 'Buscar sala…',
       ctxFavAdd: 'Adicionar aos favoritos', ctxFavRemove: 'Remover dos favoritos',
       ctxPinAdd: 'Fixar no topo', ctxPinRemove: 'Desafixar',
@@ -1873,6 +1890,7 @@
   var emptyEl = document.getElementById('empty-state');
   var loadingEl = document.getElementById('loading-state');
   var joinBtn = document.getElementById('join-btn');
+  var autoJoinBtn = document.getElementById('autojoin-btn');
   var createBtn = document.getElementById('create-btn');
   var createOverlay = document.getElementById('create-overlay');
   var createNameInput = document.getElementById('create-name');
@@ -1897,6 +1915,8 @@
   var proNavTabs = document.getElementById('pro-nav-tabs');
   var proBackBtn = document.getElementById('pro-back-btn');
   var proViewOpen = false;
+  var autoJoinActive = false;
+  var autoJoinTargetName = '';
   var playerProfileOpen = false;
   var proSubTab = 'profile';
   var proDataLoaded = false;
@@ -3164,6 +3184,30 @@
     return false;
   }
 
+  function selectedRoomData() {
+    if (!selectedName) return null;
+    for (var i = 0; i < rooms.length; i++) {
+      if (rooms[i].name === selectedName) return rooms[i];
+    }
+    return null;
+  }
+
+  function updateAutoJoinButton() {
+    if (!autoJoinBtn) return;
+    var text = autoJoinBtn.querySelector('span:last-child');
+    autoJoinBtn.classList.toggle('autojoin-active', autoJoinActive);
+    autoJoinBtn.disabled = !autoJoinActive && !isSelectedRoomVisible();
+    if (text) text.textContent = autoJoinActive ? t('autojoinWaiting') : t('autojoin');
+    autoJoinBtn.title = autoJoinActive ? t('autojoinCancel') : t('autojoin');
+    autoJoinBtn.setAttribute('aria-pressed', autoJoinActive ? 'true' : 'false');
+  }
+
+  function setAutoJoinState(active, name) {
+    autoJoinActive = !!active;
+    autoJoinTargetName = autoJoinActive ? String(name || autoJoinTargetName || selectedName || '') : '';
+    updateAutoJoinButton();
+  }
+
   function patchVisibleRowMetrics() {
     if (!listEl || virtStart < 0) return false;
     var rows = listEl.querySelectorAll('.list-row');
@@ -3203,6 +3247,7 @@
     }
 
     joinBtn.disabled = !isSelectedRoomVisible();
+    updateAutoJoinButton();
     return true;
   }
 
@@ -3289,6 +3334,7 @@
       if (listEl) listEl.innerHTML = '';
       if (listInnerEl) listInnerEl.style.height = '0px';
       joinBtn.disabled = true;
+      updateAutoJoinButton();
       return;
     }
 
@@ -3348,6 +3394,7 @@
       }
     }
     joinBtn.disabled = !hasSelected;
+    updateAutoJoinButton();
   }
 
   function bindListEventsOnce() {
@@ -3542,6 +3589,11 @@
 
   window.addEventListener('message', function (e) {
     var data = e.data;
+    if (data && data.type === 'hxd-autojoin-status') {
+      if (data.status === 'waiting') setAutoJoinState(true, data.name);
+      else setAutoJoinState(false, '');
+      return;
+    }
     if (!data || data.type !== 'hxd-roomlist-sync') return;
     isLive = true;
     devBadge.hidden = true;
@@ -3550,7 +3602,7 @@
       currentPlayerNick = String(data.playerNick || '').replace(/\u200B/g, '').trim();
       syncNavbarAvatar(data.avatarUrl || '', data.playerNick || '');
     }
-    if (data.lang) { lang = data.lang; applyI18n(); }
+    if (data.lang) { lang = data.lang; applyI18n(); updateAutoJoinButton(); }
     if (typeof data.anonymous === 'boolean') applyAnonUi(data.anonymous);
     applyInpanelModeFromSync(data.inpanelMode);
     if (data.profile) renderPlayerProfileFromSync(data.profile);
@@ -3601,6 +3653,24 @@
       }
     });
   });
+
+  if (autoJoinBtn) {
+    autoJoinBtn.addEventListener('click', function () {
+      if (autoJoinActive) {
+        sendCmd('autojoinCancel');
+        setAutoJoinState(false, '');
+        return;
+      }
+      var room = selectedRoomData();
+      if (!room) return;
+      setAutoJoinState(true, room.name);
+      sendCmd('autojoinStart', {
+        name: room.name,
+        country: room.country || '',
+        distance: room.distance
+      });
+    });
+  }
 
   roomNavTabs.querySelectorAll('.tab').forEach(function (tab) {
     tab.addEventListener('click', function () {
