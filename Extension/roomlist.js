@@ -1456,13 +1456,21 @@
                 max: match ? match.room.max : null
             });
 
+            var loadingEl = doc.getElementById('loading-state');
+            var isLoading = loadingEl && !loadingEl.classList.contains('hidden');
             var refreshBtn = doc.querySelector('.roomlist-view [data-hook="refresh"]');
-            var now = Date.now();
-            if (refreshBtn && !refreshBtn.disabled && now >= state.nextRefreshAt) {
-                state.nextRefreshAt = now + AUTOJOIN_REFRESH_DELAY;
-                refreshBtn.click();
+
+            if (!isLoading && refreshBtn && !refreshBtn.disabled) {
+                var now = Date.now();
+                if (now >= state.nextRefreshAt) {
+                    state.nextRefreshAt = now + AUTOJOIN_REFRESH_DELAY;
+                    refreshBtn.click();
+                }
             }
-            scheduleAutoJoinCheck(state, refreshBtn && refreshBtn.disabled ? AUTOJOIN_SAFETY_DELAY : AUTOJOIN_REFRESH_DELAY);
+
+            if (!isLoading) {
+                scheduleAutoJoinCheck(state, refreshBtn && refreshBtn.disabled ? AUTOJOIN_SAFETY_DELAY : AUTOJOIN_REFRESH_DELAY);
+            }
         } finally {
             state.checking = false;
         }
