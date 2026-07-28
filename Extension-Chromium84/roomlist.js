@@ -39,8 +39,8 @@
     var profileDataCache = null;
     var profileDataPromise = null;
     var autoJoinState = null;
-    var AUTOJOIN_REFRESH_DELAY = 350;
-    var AUTOJOIN_SAFETY_DELAY = 1100;
+    var AUTOJOIN_REFRESH_DELAY = 50;
+    var AUTOJOIN_SAFETY_DELAY = 50;
 
     function scheduleRoomlistPreviewEnsure(doc, delay) {
         if (!doc) return;
