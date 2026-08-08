@@ -674,6 +674,8 @@
                 var it = getPlayerItemFromTarget(e.target);
                 if (it && hasValidPlayerId(it)) {
                     lastHoveredPlayerItem = it;
+                } else {
+                    lastHoveredPlayerItem = null;
                 }
             } catch (exH) {}
         }, true);
