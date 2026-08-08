@@ -559,10 +559,6 @@
 
     function openNativePlayerMenu(item) {
         if (!item) return;
-        if (typeof item.__haxOpenMenu === 'function') {
-            item.__haxOpenMenu();
-            return;
-        }
         var rect = item.getBoundingClientRect();
         var cx = Math.round(rect.left + Math.min(20, Math.max(4, rect.width * 0.2)));
         var cy = Math.round(rect.top + rect.height / 2);
