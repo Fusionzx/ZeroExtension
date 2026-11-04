@@ -1626,6 +1626,37 @@
         return true;
     }
 
+    function applyRoomlistPreviewZeroZoom(frame, sourceDoc) {
+        if (!frame || !frame.contentDocument) return false;
+        var target = frame.contentDocument;
+        var root = sourceDoc && sourceDoc.documentElement;
+        var enabled = root && root.getAttribute('data-hxd-zero-zoom') === '1';
+        var factor = parseFloat(root && root.getAttribute('data-hxd-page-zoom-factor') || '1');
+        if (!isFinite(factor) || factor <= 0) factor = 1;
+        var style = target.getElementById('hxd-roomlist-preview-zero-zoom');
+        if (!style) {
+            style = target.createElement('style');
+            style.id = 'hxd-roomlist-preview-zero-zoom';
+            (target.head || target.documentElement).appendChild(style);
+        }
+        if (!enabled) {
+            style.textContent = '';
+            target.documentElement.removeAttribute('data-hxd-roomlist-zero-zoom');
+            return true;
+        }
+        style.textContent =
+            'html[data-hxd-roomlist-zero-zoom="1"]{overflow:hidden!important;}' +
+            'html[data-hxd-roomlist-zero-zoom="1"] .page,' +
+            'html[data-hxd-roomlist-zero-zoom="1"] .scene{' +
+                'zoom:' + (1 / factor) + '!important;' +
+                'width:' + (factor * 100) + 'vw!important;' +
+                'height:' + (factor * 100) + 'vh!important;' +
+                'max-width:none!important;max-height:none!important;' +
+            '}';
+        target.documentElement.setAttribute('data-hxd-roomlist-zero-zoom', '1');
+        return true;
+    }
+
     function revealRoomlistPreviewAfterTheme(doc) {
         applyThemeToPreviewFrameDirect(doc.getElementById('hxd-roomlist-preview-frame'), doc);
         requestAnimationFrame(function () {
@@ -2316,6 +2347,7 @@
             iframe.onload = function () {
                 clearTimeout(pendingFallback);
                 applyThemeToPreviewFrameDirect(iframe, doc);
+                applyRoomlistPreviewZeroZoom(iframe, doc);
                 delete doc.hxdRoomlistThemePending;
                 pushRoomlistPreviewSyncNow(doc, true);
                 revealRoomlistPreviewAfterTheme(doc);
@@ -3038,10 +3070,18 @@
             if (!doc) doc = document;
             if (force !== false) invalidateRoomlistPreviewSync(doc);
             var frame = doc.getElementById('hxd-roomlist-preview-frame');
-            if (frame) applyThemeToPreviewFrameDirect(frame, doc);
+            if (frame) {
+                applyThemeToPreviewFrameDirect(frame, doc);
+                applyRoomlistPreviewZeroZoom(frame, doc);
+            }
             pushRoomlistPreviewSyncNow(doc, force !== false);
         };
     } catch (eApi) {}
+
+    window.addEventListener('hxd-browser-zoom-applied', function () {
+        var frame = document.getElementById('hxd-roomlist-preview-frame');
+        if (frame) applyRoomlistPreviewZeroZoom(frame, document);
+    });
 
     Injector.log('Roomlist module loaded');
 })();
