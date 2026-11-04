@@ -1170,7 +1170,26 @@
     }
 
     function applyRoomlistPreviewDialogSize(dialog) {
-        Injector.applyPreviewShellSize(dialog, 'hxd-roomlist-preview-dialog');
+        var root = document.documentElement;
+        var factor = parseFloat(root.getAttribute('data-hxd-page-zoom-factor') || '1');
+        if (!isFinite(factor) || factor <= 0) factor = 1;
+        var scale = root.getAttribute('data-hxd-zero-zoom') === '1' ? factor : 1;
+        var vw = (window.innerWidth || document.documentElement.clientWidth || 1200) * scale;
+        var vh = (window.innerHeight || document.documentElement.clientHeight || 800) * scale;
+        var width = Math.min(1100, Math.max(720, vw - 48));
+        var height = Math.min(820, Math.max(520, Math.floor(vh * 0.92)));
+        dialog.style.boxSizing = 'border-box';
+        dialog.style.position = 'relative';
+        dialog.style.setProperty('width', width + 'px', 'important');
+        dialog.style.setProperty('min-width', width + 'px', 'important');
+        dialog.style.setProperty('max-width', width + 'px', 'important');
+        dialog.style.setProperty('min-height', height + 'px', 'important');
+        dialog.style.setProperty('height', height + 'px', 'important');
+        dialog.style.setProperty('max-height', '95vh', 'important');
+        dialog.style.padding = '0';
+        dialog.style.overflow = 'hidden';
+        dialog.style.borderRadius = '16px';
+        dialog.classList.add('hxd-roomlist-preview-dialog');
     }
 
     function bindRoomlistPreviewResize(doc) {
@@ -1185,6 +1204,7 @@
             }, 60);
         };
         doc.defaultView.addEventListener('resize', onResize);
+        doc.defaultView.addEventListener('hxd-browser-zoom-applied', onResize);
         if (doc.defaultView.parent && doc.defaultView.parent !== doc.defaultView) {
             try { doc.defaultView.parent.addEventListener('resize', onResize); } catch (eParent) {}
         }
