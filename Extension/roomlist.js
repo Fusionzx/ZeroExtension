@@ -1170,22 +1170,19 @@
     }
 
     function applyRoomlistPreviewDialogSize(dialog) {
-        var root = document.documentElement;
-        var factor = parseFloat(root.getAttribute('data-hxd-page-zoom-factor') || '1');
-        if (!isFinite(factor) || factor <= 0) factor = 1;
-        var scale = root.getAttribute('data-hxd-zero-zoom') === '1' ? factor : 1;
-        var vw = (window.innerWidth || document.documentElement.clientWidth || 1200) * scale;
-        var vh = (window.innerHeight || document.documentElement.clientHeight || 800) * scale;
-        var width = Math.min(1100, Math.max(720, vw - 48));
-        var height = Math.min(820, Math.max(520, Math.floor(vh * 0.92)));
+        var viewport = window.visualViewport;
+        var vw = viewport && viewport.width || window.innerWidth || document.documentElement.clientWidth || 1200;
+        var vh = viewport && viewport.height || window.innerHeight || document.documentElement.clientHeight || 800;
+        var width = Math.max(280, Math.min(1100, vw - Math.min(48, vw * 0.06)));
+        var height = Math.max(240, Math.min(820, Math.floor(vh * 0.92)));
         dialog.style.boxSizing = 'border-box';
         dialog.style.position = 'relative';
         dialog.style.setProperty('width', width + 'px', 'important');
-        dialog.style.setProperty('min-width', width + 'px', 'important');
+        dialog.style.setProperty('min-width', '0', 'important');
         dialog.style.setProperty('max-width', width + 'px', 'important');
-        dialog.style.setProperty('min-height', height + 'px', 'important');
+        dialog.style.setProperty('min-height', '0', 'important');
         dialog.style.setProperty('height', height + 'px', 'important');
-        dialog.style.setProperty('max-height', '95vh', 'important');
+        dialog.style.setProperty('max-height', '92vh', 'important');
         dialog.style.padding = '0';
         dialog.style.overflow = 'hidden';
         dialog.style.borderRadius = '16px';
