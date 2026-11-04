@@ -32,8 +32,7 @@ if (typeof console !== 'undefined') {
                 'html[data-hxd-zero-zoom="1"] #show-header-btn {' +
                     'zoom:var(--hxd-page-zoom-inverse,1) !important;' +
                 '}' +
-                'html[data-hxd-zero-zoom="1"] body > div > .roomlist-view,' +
-                'html[data-hxd-zero-zoom="1"] body > div > .view-wrapper {' +
+                'html[data-hxd-zero-zoom="1"] .roomlist-view {' +
                     'zoom:var(--hxd-page-zoom-inverse,1) !important;' +
                     'width:var(--hxd-page-zoom-vw,100vw) !important;' +
                     'height:var(--hxd-page-zoom-vh,100vh) !important;' +
