@@ -1150,6 +1150,10 @@
         '}' +
         '#hxd-roomlist-preview-root{display:block!important;position:relative;z-index:2;width:100%;height:100%;background:transparent!important;}' +
         '#hxd-roomlist-preview-frame{width:100%;height:100%;border:none;display:block;background:transparent;}' +
+        'html[data-hxd-zero-zoom="1"] #hxd-roomlist-preview-frame{' +
+            'width:var(--hxd-page-zoom-percent,100%)!important;height:var(--hxd-page-zoom-percent,100%)!important;' +
+            'transform:scale(var(--hxd-page-zoom-inverse,1));transform-origin:0 0;' +
+        '}' +
         'html.hxd-roomlist-preview-active .create-room-view{' +
             'position:fixed!important;left:-10000px!important;top:0!important;' +
             'opacity:0!important;visibility:hidden!important;pointer-events:none!important;' +
@@ -1170,9 +1174,9 @@
     }
 
     function applyRoomlistPreviewDialogSize(dialog) {
-        var viewport = window.visualViewport;
-        var vw = viewport && viewport.width || window.innerWidth || document.documentElement.clientWidth || 1200;
-        var vh = viewport && viewport.height || window.innerHeight || document.documentElement.clientHeight || 800;
+        var view = dialog.closest('.roomlist-view');
+        var vw = view.clientWidth;
+        var vh = view.clientHeight;
         var width = Math.max(280, Math.min(1100, vw - Math.min(48, vw * 0.06)));
         var height = Math.max(240, Math.min(820, Math.floor(vh * 0.92)));
         dialog.style.boxSizing = 'border-box';
@@ -1182,7 +1186,7 @@
         dialog.style.setProperty('max-width', width + 'px', 'important');
         dialog.style.setProperty('min-height', '0', 'important');
         dialog.style.setProperty('height', height + 'px', 'important');
-        dialog.style.setProperty('max-height', '92vh', 'important');
+        dialog.style.setProperty('max-height', height + 'px', 'important');
         dialog.style.padding = '0';
         dialog.style.overflow = 'hidden';
         dialog.style.borderRadius = '16px';
