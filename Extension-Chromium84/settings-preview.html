@@ -4362,6 +4362,8 @@
         try {
           var parentWindow = this.parentWin();
           var storedFps = parentWindow ? parseInt(parentWindow.localStorage.getItem('fps_limit'), 10) : NaN;
+          var fpsMode = parentWindow ? parentWindow.localStorage.getItem('fps_limit_mode') : null;
+          if (fpsMode === 'custom' && storedFps > 0) return 9;
           var fpsValues = [0, 30, 60, 75, 144, 240, 360, 480, 600];
           var savedIndex = fpsValues.indexOf(storedFps);
           if (savedIndex >= 0) return savedIndex;
@@ -5956,11 +5958,12 @@
         fpsCustom.className = 'fps-custom-input';
         var parentFpsCustom = Bridge.hookEl('fps-custom');
         fpsCustom.value = parentFpsCustom ? parentFpsCustom.value : '';
-        if (!parentFpsCustom && sel.selectedIndex === 9) {
+        if (sel.selectedIndex === 9) {
           try {
             var parentWindow = Bridge.parentWin();
             var storedFps = parentWindow ? parseInt(parentWindow.localStorage.getItem('fps_limit'), 10) : 0;
             if (storedFps > 0) fpsCustom.value = String(storedFps);
+            else if (parentFpsCustom && parentFpsCustom.value) fpsCustom.value = parentFpsCustom.value;
           } catch (e) {}
         }
         fpsCustom.style.display = sel.selectedIndex === 9 ? '' : 'none';
@@ -5974,7 +5977,10 @@
           }
           try {
             var parentWindow = Bridge.parentWin();
-            if (parentWindow) parentWindow.localStorage.setItem('fps_limit', String(value));
+            if (parentWindow) {
+              parentWindow.localStorage.setItem('fps_limit', String(value));
+              parentWindow.localStorage.setItem('fps_limit_mode', 'custom');
+            }
           } catch (e) {}
         };
         row.appendChild(fpsCustom);
@@ -5985,7 +5991,10 @@
           try {
             var parentWindow = Bridge.parentWin();
             var fpsValues = [0, 30, 60, 75, 144, 240, 360, 480, 600];
-            if (parentWindow) parentWindow.localStorage.setItem('fps_limit', String(fpsValues[sel.selectedIndex]));
+            if (parentWindow) {
+              parentWindow.localStorage.setItem('fps_limit', String(fpsValues[sel.selectedIndex]));
+              parentWindow.localStorage.setItem('fps_limit_mode', 'preset');
+            }
           } catch (e) {}
         }
         if (fpsCustom) {

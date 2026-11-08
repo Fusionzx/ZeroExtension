@@ -13442,7 +13442,9 @@
                 let fpsSel = dlg.querySelector('[data-hook="fps"]');
                 if (fpsSel) {
                     let fpsValue = m.j.Rh.v();
-                    fpsSel.value = [0, 30, 60, 75, 144, 240, 360, 480, 600].includes(fpsValue) ? String(fpsValue) : "custom";
+                    let fpsMode = "";
+                    try { fpsMode = localStorage.getItem("fps_limit_mode") || ""; } catch (e) {}
+                    fpsSel.value = fpsMode === "custom" || ![0, 30, 60, 75, 144, 240, 360, 480, 600].includes(fpsValue) ? "custom" : String(fpsValue);
                     let fpsCustom = dlg.querySelector('[data-hook="fps-custom"]');
                     if (fpsCustom) {
                         fpsCustom.value = fpsSel.value === "custom" && fpsValue > 0 ? String(fpsValue) : "";
@@ -13455,14 +13457,20 @@
                             if (fpsSel.value !== "custom") {
                                 let value = parseInt(fpsSel.value, 10) || 0;
                                 m.j.Rh.ha(value);
-                                try { localStorage.setItem("fps_limit", String(value)); } catch (e) {}
+                                try {
+                                    localStorage.setItem("fps_limit", String(value));
+                                    localStorage.setItem("fps_limit_mode", "preset");
+                                } catch (e) {}
                             }
                         });
                         if (fpsCustom) fpsCustom.addEventListener("change", function() {
                             let value = parseInt(fpsCustom.value, 10);
                             if (Number.isFinite(value) && value > 0) {
                                 m.j.Rh.ha(value);
-                                try { localStorage.setItem("fps_limit", String(value)); } catch (e) {}
+                                try {
+                                    localStorage.setItem("fps_limit", String(value));
+                                    localStorage.setItem("fps_limit_mode", "custom");
+                                } catch (e) {}
                             }
                         });
                     }
