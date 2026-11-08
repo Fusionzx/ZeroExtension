@@ -5299,6 +5299,12 @@
     window.__hxdSetAvatarOverlayVisible = __hxdSetAvatarOverlayVisible;
     window.__hxdClearAvatarOverlay = __hxdClearAvatarOverlay;
     window.__hxdMarkSettingsClosed = __hxdMarkSettingsClosed;
+    var __hxdFpsResumeGeneration = 0;
+    function __hxdResetFpsResumeClock() { __hxdFpsResumeGeneration++; }
+    window.addEventListener("focus", __hxdResetFpsResumeClock);
+    document.addEventListener("visibilitychange", function() {
+        if (!document.hidden) __hxdResetFpsResumeClock();
+    });
     function __hxdFpsRenderAllowed(state) {
         var limit = 0;
         try { limit = parseInt(localStorage.getItem('fps_limit'), 10) || parseInt(m.j.Rh.v(), 10) || 0; } catch (e) {}
@@ -5307,6 +5313,10 @@
             return true;
         }
         var now = performance.now();
+        if (state.__hxdFpsResumeGeneration !== __hxdFpsResumeGeneration) {
+            state.__hxdFpsResumeGeneration = __hxdFpsResumeGeneration;
+            state.__hxdLastRenderAt = 0;
+        }
         var interval = 1000 / limit;
         if (state.__hxdLastRenderAt && now - state.__hxdLastRenderAt < interval) return false;
         state.__hxdLastRenderAt = now;
