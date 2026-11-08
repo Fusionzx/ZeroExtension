@@ -11489,10 +11489,11 @@
         }
         A() {
             let a = ((window.performance.now() - this.bj) * this.Ec | 0) - this.Y;
-            if (a > 120) {
-                this.bj += (a - 30) / this.Ec;
-                a = 30;
+            if (a > 1200) {
+                this.bj += (a - 60) / this.Ec;
+                a = 60;
             }
+            a = Math.min(a, document.hidden ? 60 : 4);
             0 < a && this.Rj(a);
             7 <= this.Y - this.dl && this.Si();
             this.Y - this.cl >= this.to && (this.Si(),
