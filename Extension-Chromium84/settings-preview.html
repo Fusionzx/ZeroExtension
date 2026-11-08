@@ -4016,6 +4016,7 @@
     vid_chat_tr: { es: 'Transparencia del chat', en: 'Chat transparency', pt: 'Transparência do chat' },
     vid_score_tr: { es: 'Transparencia del marcador', en: 'Scoreboard transparency', pt: 'Transparência do placar' },
     fps_none: { es: 'Sin límite (recomendado)', en: 'No limit (recommended)', pt: 'Sem limite (recomendado)' },
+    fps_custom: { es: 'Personalizado', en: 'Custom', pt: 'Personalizado' },
     qual_perf: { es: 'Desempeño', en: 'Performance', pt: 'Desempenho' },
     qual_hd: { es: 'HD', en: 'HD', pt: 'HD' },
     chatbg_full: { es: 'Full', en: 'Full', pt: 'Full' },
@@ -5951,11 +5952,22 @@
           if (!parentInput || !Number.isFinite(value) || value < 1) return;
           parentInput.value = String(value);
           parentInput.dispatchEvent(new Event('change', { bubbles: true }));
+          try {
+            var parentWindow = Bridge.parentWin();
+            if (parentWindow) parentWindow.localStorage.setItem('fps_limit', String(value));
+          } catch (e) {}
         };
         row.appendChild(fpsCustom);
       }
       sel.onchange = function () {
         Bridge.setSelect(hook, sel.selectedIndex);
+        if (hook === 'fps' && sel.selectedIndex < 9) {
+          try {
+            var parentWindow = Bridge.parentWin();
+            var fpsValues = [0, 30, 60, 75, 144, 240, 360, 480, 600];
+            if (parentWindow) parentWindow.localStorage.setItem('fps_limit', String(fpsValues[sel.selectedIndex]));
+          } catch (e) {}
+        }
         if (fpsCustom) {
           fpsCustom.style.display = sel.selectedIndex === 9 ? '' : 'none';
           if (sel.selectedIndex === 9) {
@@ -6038,7 +6050,7 @@
         'Full 1.5× Zoom', 'Full 1.75× Zoom', 'Full 2× Zoom', 'Full 2.25× Zoom', 'Full 2.5× Zoom'
       ], 'viewmode viewport cámara'),
       mediaSelect('media', t('vid_fps'), [
-        t('fps_none'), '30', '60', '75', '144', '240', '360', '480', '600', 'Custom'
+        t('fps_none'), '30', '60', '75', '144', '240', '360', '480', '600', t('fps_custom')
       ], 'fps limit rendimiento'),
       mediaSlider('media', t('vid_scale'), 100, 10, 100, 5, '%', 'resscale resolution'),
       mediaSelect('media', t('vid_quality'), [t('qual_perf'), t('qual_hd')], 'qualitymode calidad'),
