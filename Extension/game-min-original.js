@@ -11489,6 +11489,10 @@
         }
         A() {
             let a = ((window.performance.now() - this.bj) * this.Ec | 0) - this.Y;
+            if (a > 120) {
+                this.bj += (a - 30) / this.Ec;
+                a = 30;
+            }
             0 < a && this.Rj(a);
             7 <= this.Y - this.dl && this.Si();
             this.Y - this.cl >= this.to && (this.Si(),
