@@ -5926,7 +5926,36 @@
     if (hook) {
       var idx = Bridge.readSelect(hook);
       if (idx !== null && idx >= 0 && idx < sel.options.length) sel.selectedIndex = idx;
-      sel.onchange = function () { Bridge.setSelect(hook, sel.selectedIndex); };
+      var fpsCustom = null;
+      if (hook === 'fps') {
+        fpsCustom = document.createElement('input');
+        fpsCustom.type = 'number';
+        fpsCustom.min = '1';
+        fpsCustom.step = '1';
+        fpsCustom.placeholder = 'FPS';
+        fpsCustom.className = 'fps-custom-input';
+        var parentFpsCustom = Bridge.hookEl('fps-custom');
+        fpsCustom.value = parentFpsCustom ? parentFpsCustom.value : '';
+        fpsCustom.style.display = sel.selectedIndex === 9 ? '' : 'none';
+        fpsCustom.onchange = function () {
+          var parentInput = Bridge.hookEl('fps-custom');
+          var value = parseInt(fpsCustom.value, 10);
+          if (!parentInput || !Number.isFinite(value) || value < 1) return;
+          parentInput.value = String(value);
+          parentInput.dispatchEvent(new Event('change', { bubbles: true }));
+        };
+        row.appendChild(fpsCustom);
+      }
+      sel.onchange = function () {
+        Bridge.setSelect(hook, sel.selectedIndex);
+        if (fpsCustom) {
+          fpsCustom.style.display = sel.selectedIndex === 9 ? '' : 'none';
+          if (sel.selectedIndex === 9) {
+            var parentInput = Bridge.hookEl('fps-custom');
+            fpsCustom.value = parentInput ? parentInput.value : '';
+          }
+        }
+      };
     }
     row.appendChild(sel);
     row._hxdSelect = sel;
@@ -6001,7 +6030,7 @@
         'Full 1.5× Zoom', 'Full 1.75× Zoom', 'Full 2× Zoom', 'Full 2.25× Zoom', 'Full 2.5× Zoom'
       ], 'viewmode viewport cámara'),
       mediaSelect('media', t('vid_fps'), [
-        t('fps_none'), '30', '60', '75', '144', '240'
+        t('fps_none'), '30', '60', '75', '144', '240', '360', '480', '600', 'Custom'
       ], 'fps limit rendimiento'),
       mediaSlider('media', t('vid_scale'), 100, 10, 100, 5, '%', 'resscale resolution'),
       mediaSelect('media', t('vid_quality'), [t('qual_perf'), t('qual_hd')], 'qualitymode calidad'),
