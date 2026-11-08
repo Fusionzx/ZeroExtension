@@ -4350,6 +4350,17 @@
       } catch (eSet) {}
     },
     readSelect: function (hook) {
+      if (hook === 'fps') {
+        try {
+          var parentWindow = this.parentWin();
+          var storedFps = parentWindow ? parseInt(parentWindow.localStorage.getItem('fps_limit'), 10) : NaN;
+          var fpsValues = [0, 30, 60, 75, 144, 240, 360, 480, 600];
+          var savedIndex = fpsValues.indexOf(storedFps);
+          if (savedIndex >= 0) return savedIndex;
+          if (storedFps > 0 && storedFps < fpsValues.length) return storedFps;
+          if (storedFps > 0) return 9;
+        } catch (eFps) {}
+      }
       var el = this.hookEl(hook);
       if (!el || el.tagName !== 'SELECT') return null;
       return el.selectedIndex;
@@ -5937,13 +5948,22 @@
         fpsCustom.className = 'fps-custom-input';
         var parentFpsCustom = Bridge.hookEl('fps-custom');
         fpsCustom.value = parentFpsCustom ? parentFpsCustom.value : '';
+        if (!parentFpsCustom && sel.selectedIndex === 9) {
+          try {
+            var parentWindow = Bridge.parentWin();
+            var storedFps = parentWindow ? parseInt(parentWindow.localStorage.getItem('fps_limit'), 10) : 0;
+            if (storedFps > 0) fpsCustom.value = String(storedFps);
+          } catch (e) {}
+        }
         fpsCustom.style.display = sel.selectedIndex === 9 ? '' : 'none';
         fpsCustom.onchange = function () {
           var parentInput = Bridge.hookEl('fps-custom');
           var value = parseInt(fpsCustom.value, 10);
-          if (!parentInput || !Number.isFinite(value) || value < 1) return;
-          parentInput.value = String(value);
-          parentInput.dispatchEvent(new Event('change', { bubbles: true }));
+          if (!Number.isFinite(value) || value < 1) return;
+          if (parentInput) {
+            parentInput.value = String(value);
+            parentInput.dispatchEvent(new Event('change', { bubbles: true }));
+          }
           try {
             var parentWindow = Bridge.parentWin();
             if (parentWindow) parentWindow.localStorage.setItem('fps_limit', String(value));
