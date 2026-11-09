@@ -5300,7 +5300,15 @@
     window.__hxdClearAvatarOverlay = __hxdClearAvatarOverlay;
     window.__hxdMarkSettingsClosed = __hxdMarkSettingsClosed;
     var __hxdFpsResumeGeneration = 0;
-    function __hxdResetFpsResumeClock() { __hxdFpsResumeGeneration++; }
+    var __hxdFpsRecoveryUntil = 0;
+    function __hxdResetFpsResumeClock() {
+        __hxdFpsResumeGeneration++;
+        __hxdFpsRecoveryUntil = performance.now() + 3000;
+    }
+    window.addEventListener('blur', __hxdResetFpsResumeClock);
+    window.addEventListener('resize', __hxdResetFpsResumeClock);
+    document.addEventListener('fullscreenchange', __hxdResetFpsResumeClock);
+    document.addEventListener('resume', __hxdResetFpsResumeClock);
     window.addEventListener("focus", __hxdResetFpsResumeClock);
     document.addEventListener("visibilitychange", function() {
         if (!document.hidden) __hxdResetFpsResumeClock();
@@ -5336,18 +5344,28 @@
     function __hxdFpsRenderAllowed(state) {
         if (document.hidden) {
             state.__hxdLastRenderAt = 0;
+            state.__hxdLastFrameCheck = null;
             return false;
         }
-        var limit = 0;
-        try { limit = parseInt(localStorage.getItem('fps_limit'), 10) || parseInt(m.j.Rh.v(), 10) || 0; } catch (e) {}
-        if (limit <= 0) {
-            state.__hxdLastRenderAt = 0;
-            return true;
-        }
         var now = performance.now();
+        if (state.__hxdLastFrameCheck != null && now - state.__hxdLastFrameCheck > 250) {
+            __hxdResetFpsResumeClock();
+        }
+        state.__hxdLastFrameCheck = now;
+        var limit = 0;
+        try {
+            var saved = localStorage.getItem('fps_limit');
+            limit = parseInt(saved === null ? m.j.Rh.v() : saved, 10) || 0;
+        } catch (e) {}
+        // Recovery affects rendering only; the saved preference remains authoritative.
+        if (now < __hxdFpsRecoveryUntil) limit = limit > 0 ? Math.min(limit, 240) : 240;
         if (state.__hxdFpsResumeGeneration !== __hxdFpsResumeGeneration) {
             state.__hxdFpsResumeGeneration = __hxdFpsResumeGeneration;
             state.__hxdLastRenderAt = 0;
+        }
+        if (limit <= 0) {
+            state.__hxdLastRenderAt = 0;
+            return true;
         }
         var interval = 1000 / limit;
         if (state.__hxdLastRenderAt && now - state.__hxdLastRenderAt < interval) return false;
