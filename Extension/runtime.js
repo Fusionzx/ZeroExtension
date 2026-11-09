@@ -72,78 +72,67 @@
         return false;
     }
 
-    // Scheduler leve para background frames.
-    // Nao faz monkey-patch do requestAnimationFrame quando a pagina esta visivel.
-    // So intercepta quando a pagina esta oculta (background).
-    // Isso evita overhead desnecessario no loop principal do jogo.
     function installBackgroundFrameScheduler() {
         if (window.__hxdBackgroundFrameScheduler) return;
-
-        var nativeRaf = window.requestAnimationFrame && window.requestAnimationFrame.bind(window);
-        var nativeCancel = window.cancelAnimationFrame && window.cancelAnimationFrame.bind(window);
-        if (!nativeRaf || !nativeCancel) return;
-
-        var timerHandle = null;
-        var lastFrameTime = 0;
-        var maxFps = 240;
-
-        function isBackground() {
-            try { return document.hidden || document.visibilityState === 'hidden'; }
-            catch (e) { return false; }
-        }
-
+        var nativeRaf = window.requestAnimationFrame.bind(window);
+        var nativeCancel = window.cancelAnimationFrame.bind(window);
+        var pending = new Map();
+        var nextId = 0;
+        var maxFps = 60;
         function bgFramesEnabled() {
-            try { return window.localStorage.getItem('hxd_background_frames') !== 'false'; }
+            try { return localStorage.getItem('hxd_background_frames') !== 'false'; }
             catch (e) { return true; }
         }
-
-        function shouldUseTimer() {
-            return isBackground() && bgFramesEnabled();
+        function useTimer() { return document.hidden && bgFramesEnabled(); }
+        function cancelEntry(entry) {
+            if (entry.timer) window.clearTimeout(entry.handle);
+            else nativeCancel(entry.handle);
         }
-
+        function schedule(id, entry) {
+            entry.timer = useTimer();
+            var generation = entry.generation = (entry.generation || 0) + 1;
+            function fire(time) {
+                if (pending.get(id) !== entry || entry.generation !== generation) return;
+                pending.delete(id);
+                entry.cb(time);
+            }
+            entry.handle = entry.timer
+                ? window.setTimeout(function() { fire(window.performance.now()); }, 1000 / maxFps)
+                : nativeRaf(fire);
+        }
+        function migrate() {
+            pending.forEach(function(entry, id) {
+                if (entry.timer === useTimer()) return;
+                cancelEntry(entry);
+                schedule(id, entry);
+            });
+        }
         window.requestAnimationFrame = function(cb) {
-            if (typeof cb !== 'function') return nativeRaf(cb);
-            if (shouldUseTimer()) {
-                var now = window.performance.now();
-                if (!lastFrameTime) lastFrameTime = now;
-                var interval = 1000 / maxFps;
-                var delay = Math.max(0, interval - (now - lastFrameTime));
-                timerHandle = window.setTimeout(function() {
-                    lastFrameTime = window.performance.now();
-                    timerHandle = null;
-                    cb(lastFrameTime);
-                }, delay);
-                return timerHandle;
-            }
-            return nativeRaf(cb);
+            if (typeof cb !== 'function') throw new TypeError('Frame callback must be a function');
+            var id = --nextId;
+            var entry = { cb: cb };
+            pending.set(id, entry);
+            schedule(id, entry);
+            return id;
         };
-
         window.cancelAnimationFrame = function(id) {
-            if (timerHandle !== null && (id === timerHandle || id === null)) {
-                clearTimeout(timerHandle);
-                timerHandle = null;
-            }
-            nativeCancel(id);
+            var entry = pending.get(id);
+            if (!entry) { nativeCancel(id); return; }
+            pending.delete(id);
+            cancelEntry(entry);
         };
-
-        // No visibilitychange handler needed - the game's sf() calls rAF()
-        // which checks shouldUseTimer() on each call, adapting automatically.
-
+        document.addEventListener('visibilitychange', migrate);
+        window.addEventListener('pageshow', migrate);
         window.__hxdBackgroundFrameScheduler = {
             isEnabled: bgFramesEnabled,
-            setEnabled: function(v) {
-                try { localStorage.setItem('hxd_background_frames', v ? 'true' : 'false'); } catch(e) {}
-                if (v && shouldUseTimer()) {
-                    // Force a rAF call to register new timer
-                } else if (!v && timerHandle !== null) {
-                    clearTimeout(timerHandle);
-                    timerHandle = null;
-                }
+            setEnabled: function(value) {
+                try { localStorage.setItem('hxd_background_frames', value ? 'true' : 'false'); } catch (e) {}
+                migrate();
             },
             getTargetFps: function() { return maxFps; }
         };
     }
-    
+
     // Carrega o game script do servidor local
     function loadGameScript() {
         if (isDesktopRuntime()) {
