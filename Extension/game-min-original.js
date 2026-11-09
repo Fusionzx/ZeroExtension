@@ -5306,6 +5306,10 @@
         if (!document.hidden) __hxdResetFpsResumeClock();
     });
     function __hxdFpsRenderAllowed(state) {
+        if (document.hidden) {
+            state.__hxdLastRenderAt = 0;
+            return false;
+        }
         var limit = 0;
         try { limit = parseInt(localStorage.getItem('fps_limit'), 10) || parseInt(m.j.Rh.v(), 10) || 0; } catch (e) {}
         if (limit <= 0) {
@@ -11057,7 +11061,8 @@
         Qk(a, b) {
             if (0 >= a)
                 return this.U;
-            a > this.Vf && (a = this.Vf);
+            // A stale state must not replay the prediction horizon on every render.
+            if (!Number.isFinite(a) || a > this.Vf) return this.U;
             ra.Cc++;
             let c = this.U.uc();
             null != b ? (this.hj.Os(this.ve, b),
@@ -11489,11 +11494,6 @@
         }
         A() {
             let a = ((window.performance.now() - this.bj) * this.Ec | 0) - this.Y;
-            if (a > 1200) {
-                this.bj += (a - 60) / this.Ec;
-                a = 60;
-            }
-            a = Math.min(a, document.hidden ? 60 : 4);
             0 < a && this.Rj(a);
             7 <= this.Y - this.dl && this.Si();
             this.Y - this.cl >= this.to && (this.Si(),
