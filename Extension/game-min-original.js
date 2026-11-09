@@ -5305,6 +5305,34 @@
     document.addEventListener("visibilitychange", function() {
         if (!document.hidden) __hxdResetFpsResumeClock();
     });
+    var __hxdCanvasRects = new WeakMap();
+    var __hxdCanvasLayoutVersion = 0;
+    function __hxdInvalidateCanvasLayout() { __hxdCanvasLayoutVersion++; }
+    window.addEventListener('resize', __hxdInvalidateCanvasLayout);
+    window.addEventListener('scroll', __hxdInvalidateCanvasLayout, true);
+    window.addEventListener('hxd-browser-zoom-applied', __hxdInvalidateCanvasLayout);
+    document.addEventListener('fullscreenchange', __hxdInvalidateCanvasLayout);
+    document.addEventListener('visibilitychange', __hxdInvalidateCanvasLayout);
+    function __hxdCanvasRect(canvas) {
+        var entry = __hxdCanvasRects.get(canvas);
+        if (!entry) {
+            entry = { dirty: true, version: -1, measuredAt: -Infinity, rect: null };
+            __hxdCanvasRects.set(canvas, entry);
+            if (typeof ResizeObserver === 'function') {
+                entry.observer = new ResizeObserver(function() { entry.dirty = true; });
+                entry.observer.observe(canvas);
+            }
+        }
+        var now = performance.now();
+        // Poll as a fallback for CSS transforms and browsers without ResizeObserver.
+        if (entry.dirty || entry.version !== __hxdCanvasLayoutVersion || now - entry.measuredAt >= 100) {
+            entry.rect = canvas.getBoundingClientRect();
+            entry.measuredAt = now;
+            entry.version = __hxdCanvasLayoutVersion;
+            entry.dirty = false;
+        }
+        return entry.rect;
+    }
     function __hxdFpsRenderAllowed(state) {
         if (document.hidden) {
             state.__hxdLastRenderAt = 0;
@@ -5375,7 +5403,7 @@
                 entry = __hxdAvatarOverlay.entries[key] = { el: el, frame: 0 };
             }
             var transform = ctx.getTransform();
-            var rect = ctx.canvas.getBoundingClientRect();
+            var rect = __hxdCanvasRect(ctx.canvas);
             var scaleCssX = rect.width / Math.max(1, ctx.canvas.width);
             var scaleCssY = rect.height / Math.max(1, ctx.canvas.height);
             var px = transform.a * x + transform.c * y + transform.e;
@@ -5714,7 +5742,7 @@
                     return 1;
                 })();
                 var a = window.devicePixelRatio * this.te * this.resolutionMultiplier;
-                let b = this.na.getBoundingClientRect()
+                let b = __hxdCanvasRect(this.na)
                   , c = Math.round(b.width * a);
                 a = Math.round(b.height * a);
                 
