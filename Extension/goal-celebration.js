@@ -151,6 +151,20 @@
         return n ? n.slice(0, 20) : 'GOL';
     }
 
+    var activeGoalAudio = null;
+    var activeGoalTimer = null;
+    var goalOverlayGeneration = 0;
+    function stopGoalCelebration() {
+        goalOverlayGeneration++;
+        if (activeGoalTimer !== null) clearTimeout(activeGoalTimer);
+        activeGoalTimer = null;
+        if (activeGoalAudio) {
+            activeGoalAudio.pause();
+            activeGoalAudio.src = '';
+            activeGoalAudio = null;
+        }
+        removeOverlay();
+    }
     function removeOverlay() {
         var root = document.getElementById('hxd-goal-anthem-overlay-root');
         if (root && root.parentNode) root.parentNode.removeChild(root);
@@ -217,7 +231,7 @@
         } else {
             doMount();
         }
-        setTimeout(removeOverlay, 4500);
+        activeGoalTimer = setTimeout(stopGoalCelebration, 4500);
     }
 
     function masterVol() {
