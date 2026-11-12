@@ -4499,6 +4499,7 @@
         var settingsObserver = null;
         var settingsOpenBurstObserver = null;
         var settingsOpenBurstStopTimer = null;
+        var settingsOpenBurstTimers = [];
         var observedSettingsHosts = [];
 
         ensureSettingsPreviewStyles(document);
@@ -4590,6 +4591,8 @@
                 clearTimeout(settingsOpenBurstStopTimer);
                 settingsOpenBurstStopTimer = null;
             }
+            for (var i = 0; i < settingsOpenBurstTimers.length; i++) clearTimeout(settingsOpenBurstTimers[i]);
+            settingsOpenBurstTimers = [];
             if (settingsOpenBurstObserver) {
                 settingsOpenBurstObserver.disconnect();
                 settingsOpenBurstObserver = null;
@@ -4597,13 +4600,14 @@
         };
 
         var armSettingsOpenBurst = function () {
+            if (settingsOpenBurstStopTimer) return;
             markSettingsOpening(window);
             var delays = [0, 25, 75, 150, 300, 600, 1000];
             for (var d = 0; d < delays.length; d++) {
                 (function (delay) {
-                    setTimeout(function () {
+                    settingsOpenBurstTimers.push(setTimeout(function () {
                         scheduleSettingsDialogCheck(0);
-                    }, delay);
+                    }, delay));
                 })(delays[d]);
             }
             if (!settingsOpenBurstObserver && document.body) {
