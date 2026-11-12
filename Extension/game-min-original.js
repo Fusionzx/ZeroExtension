@@ -4522,7 +4522,7 @@
         sf() {
             this.Re = window.requestAnimationFrame(M(this, this.sf));
             this.za.A();
-            if (__hxdFpsRenderAllowed(this)) this.Rc()
+            if (__hxdFpsRenderAllowed(this)) { let start = performance.now(); this.Rc(); __hxdRecordRenderCost(performance.now() - start) }
         }
         Rc() {
             this.se.A();
@@ -5341,6 +5341,21 @@
         }
         return entry.rect;
     }
+    var __hxdRenderCostAverage = 0;
+    var __hxdAdaptiveFpsCap = 0;
+    function __hxdRecordRenderCost(duration) {
+        if (!Number.isFinite(duration) || duration < 0) return;
+        duration = Math.min(duration, 50);
+        __hxdRenderCostAverage = __hxdRenderCostAverage
+            ? __hxdRenderCostAverage * 0.95 + duration * 0.05
+            : duration;
+        if (__hxdAdaptiveFpsCap === 0 && __hxdRenderCostAverage <= 4) return;
+        if (__hxdAdaptiveFpsCap !== 0 && __hxdRenderCostAverage < 3) {
+            __hxdAdaptiveFpsCap = 0;
+            return;
+        }
+        __hxdAdaptiveFpsCap = Math.max(60, Math.min(240, Math.floor(400 / __hxdRenderCostAverage)));
+    }
     function __hxdFpsRenderAllowed(state) {
         if (document.hidden) {
             state.__hxdLastRenderAt = 0;
@@ -5359,6 +5374,7 @@
         } catch (e) {}
         // Recovery affects rendering only; the saved preference remains authoritative.
         if (now < __hxdFpsRecoveryUntil) limit = limit > 0 ? Math.min(limit, 240) : 240;
+        if (__hxdAdaptiveFpsCap) limit = limit > 0 ? Math.min(limit, __hxdAdaptiveFpsCap) : __hxdAdaptiveFpsCap;
         if (state.__hxdFpsResumeGeneration !== __hxdFpsResumeGeneration) {
             state.__hxdFpsResumeGeneration = __hxdFpsResumeGeneration;
             state.__hxdLastRenderAt = 0;
@@ -9032,7 +9048,7 @@
             this.Re = window.requestAnimationFrame(M(this, this.sf));
             this.W.A();
             this.za.A();
-            if (__hxdFpsRenderAllowed(this)) this.Rc()
+            if (__hxdFpsRenderAllowed(this)) { let start = performance.now(); this.Rc(); __hxdRecordRenderCost(performance.now() - start) }
         }
         Rc() {
             var a = window.performance.now();
